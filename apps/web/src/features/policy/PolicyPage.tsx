@@ -5,7 +5,13 @@ import { useApi } from '../../app/ApiProvider';
 import { Alert, Button, Card, Spinner, TextField } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatIst } from '../../lib/format';
-import { describeChanges, floorRatePreview, formFromPolicy, parsePolicy } from './policyForm';
+import {
+  describeChanges,
+  floorRatePreview,
+  formFromPolicy,
+  lowestRatePreview,
+  parsePolicy,
+} from './policyForm';
 import type { PolicyForm } from './policyForm';
 
 const POLICY_KEY = ['policy'] as const;
@@ -176,14 +182,27 @@ export function PolicyPage() {
               hint="Saving a new number updates every future night's rooms."
               {...err('total_rooms_units')}
             />
+            <TextField
+              label="Max Sales discount (%)"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={100}
+              value={form.maxDiscount}
+              onChange={(e) => set({ maxDiscount: e.target.value })}
+              hint="Sales can give up to this much off the full price; more needs owner approval."
+              {...err('max_sales_discount_pct')}
+            />
           </div>
           <p className="mt-4" aria-live="polite">
-            {floorRatePreview(form) === null ? (
-              'Enter both numbers to see the floor rate.'
+            {floorRatePreview(form) === null || lowestRatePreview(form) === null ? (
+              'Enter the numbers to see the full price and the lowest Sales price.'
             ) : (
               <>
-                Floor rate: <strong>₹{floorRatePreview(form)?.toLocaleString('en-IN')}</strong> per
-                room per night, variable cost included. Quotes below it need owner review.
+                Full price: <strong>₹{floorRatePreview(form)?.toLocaleString('en-IN')}</strong> per
+                room per night, variable cost included. With up to {form.maxDiscount}% off, Sales
+                can go down to <strong>₹{lowestRatePreview(form)?.toLocaleString('en-IN')}</strong>;
+                anything lower needs owner approval.
               </>
             )}
           </p>

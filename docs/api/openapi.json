@@ -2569,6 +2569,11 @@
             "minimum": 1,
             "maximum": 500
           },
+          "max_sales_discount_pct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
           "validity_hours": {
             "type": "integer",
             "minimum": 1,
@@ -2613,6 +2618,7 @@
           "timezone",
           "contribution_floor_inr",
           "total_rooms_units",
+          "max_sales_discount_pct",
           "validity_hours",
           "stay_cutoff_hours",
           "min_validity_hours",
@@ -2637,6 +2643,11 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 500
+          },
+          "max_sales_discount_pct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
           },
           "validity_hours": {
             "type": "integer",
@@ -2681,6 +2692,7 @@
           "timezone",
           "contribution_floor_inr",
           "total_rooms_units",
+          "max_sales_discount_pct",
           "validity_hours",
           "stay_cutoff_hours",
           "min_validity_hours",
@@ -2979,6 +2991,11 @@
             "maximum": 1000000,
             "description": "Whole Indian rupees per unit. Integer, 0 or more."
           },
+          "discount_pct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
           "guests_per_room_units": {
             "type": "integer",
             "minimum": 1,
@@ -3112,6 +3129,35 @@
             "maximum": 9007199254740991,
             "description": "Whole Indian rupees. Integer; can be negative for headroom."
           },
+          "list_revenue_inr": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Whole Indian rupees. Integer; can be negative for headroom."
+          },
+          "discount_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100,
+                "description": "Percent, display only. Rules never compare it."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_discount_pct": {
+            "type": "number",
+            "maximum": 100,
+            "description": "Percent, display only. Rules never compare it."
+          },
+          "min_room_revenue_inr": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Whole Indian rupees. Integer; can be negative for headroom."
+          },
           "floor_headroom_inr": {
             "anyOf": [
               {
@@ -3162,6 +3208,10 @@
           "contribution_margin_pct",
           "contribution_floor_inr",
           "floor_rate_per_room_night_inr",
+          "list_revenue_inr",
+          "discount_pct",
+          "max_discount_pct",
+          "min_room_revenue_inr",
           "floor_headroom_inr",
           "shortfall_inr",
           "min_rate_per_room_night_inr"

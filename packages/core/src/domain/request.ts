@@ -46,5 +46,24 @@ export function validateQuoteRequest(input: unknown, instance?: string): QuoteRe
       }),
     };
   }
+  if (
+    parsed.value.discount_pct !== undefined &&
+    parsed.value.rate_per_room_night_inr !== undefined
+  ) {
+    return {
+      ok: false,
+      problem: problem('VALIDATION_FAILED', {
+        detail: '1 field failed validation',
+        errors: [
+          {
+            path: 'discount_pct',
+            code: 'INCONSISTENT',
+            message: 'Give a discount or a rate, not both',
+          },
+        ],
+        ...(instance === undefined ? {} : { instance }),
+      }),
+    };
+  }
   return { ok: true, value: { ...parsed.value, stay: resolveStay(parsed.value.stay) } };
 }

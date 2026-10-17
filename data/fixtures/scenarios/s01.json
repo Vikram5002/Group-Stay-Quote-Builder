@@ -26,7 +26,7 @@
       "room_revenue_inr": 40000,
       "variable_cost_inr": 16000,
       "contribution_inr": 24000,
-      "min_rate_per_room_night_inr": 2000
+      "min_rate_per_room_night_inr": 1800
     }
   }
 }

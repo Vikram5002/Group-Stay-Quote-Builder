@@ -21,12 +21,16 @@ export async function getPolicy(ctx: DataContext): Promise<Policy | null> {
 
 /**
  * Policies saved before D-056 carry floor_mode and floor_per_room_night_inr and have no
- * total_rooms_units. Read them as the new shape: drop the retired fields and assume the
- * default number of rooms until the owner saves the policy again.
+ * total_rooms_units; those before D-057 have no max_sales_discount_pct. Read them as the new
+ * shape: drop the retired fields and assume the defaults until the owner saves again.
  */
 export function upgradeStoredPolicy(fields: Record<string, unknown>): Record<string, unknown> {
   const { floor_mode: _m, floor_per_room_night_inr: _f, ...rest } = fields;
-  return { total_rooms_units: DEFAULT_POLICY.total_rooms_units, ...rest };
+  return {
+    total_rooms_units: DEFAULT_POLICY.total_rooms_units,
+    max_sales_discount_pct: DEFAULT_POLICY.max_sales_discount_pct,
+    ...rest,
+  };
 }
 
 /**

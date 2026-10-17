@@ -81,7 +81,9 @@ export function counterOffers(
 
   const minRate = baseEval.totals.min_rate_per_room_night_inr;
   if (minRate !== null) {
-    const e = reassess({ ...base, rate_per_room_night_inr: minRate });
+    // A rate replaces any discount the request gave (the two are never combined).
+    const { discount_pct: _discount, ...withoutDiscount } = base;
+    const e = reassess({ ...withoutDiscount, rate_per_room_night_inr: minRate });
     if (isClean(e)) {
       out.push(
         offer('RAISE_RATE', `Raise the rate to ${minRate} per room-night (minimum safe rate)`, e, {

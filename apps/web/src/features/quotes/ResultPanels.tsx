@@ -17,7 +17,7 @@ import type { LiveTotals } from './usePreview';
 export function LiveMeter({ live, updating }: { live: LiveTotals | null; updating: boolean }) {
   if (!live) {
     return (
-      <Card title="Live contribution">
+      <Card title="Live price check">
         <p className="text-sm text-ink-muted">
           Fill in the group, dates and rooms. The contribution against the floor will appear here
           and update as you change the rate.
@@ -27,26 +27,40 @@ export function LiveMeter({ live, updating }: { live: LiveTotals | null; updatin
   }
   const { totals, source } = live;
   return (
-    <Card title="Live contribution" aria-busy={updating || undefined}>
-      {totals.contribution_floor_inr === null ? (
+    <Card title="Live price check" aria-busy={updating || undefined}>
+      {/* The lowest room revenue that needs no owner review: minimum safe rate x room-nights.
+          It already allows for bundled extras, so the bar agrees with the decision. */}
+      {totals.min_rate_per_room_night_inr === null || totals.contribution_floor_inr === null ? (
         <p className="text-sm">
-          The variable cost is unknown, so the contribution and its floor are unknown too.
+          A cost is unknown, so the price cannot be checked yet: the owner reviews it.
         </p>
       ) : (
         <ContributionMeter
-          contribution={totals.contribution_inr}
-          floor={totals.contribution_floor_inr}
-          max={Math.max(totals.room_revenue_inr ?? 0, totals.contribution_floor_inr * 2)}
+          label="Revenue after discount"
+          floorLabel="Lowest allowed"
+          okText="Within the Sales limit"
+          belowText="Over the limit: owner review"
+          contribution={totals.room_revenue_inr}
+          floor={totals.min_rate_per_room_night_inr * totals.room_nights}
+          max={totals.list_revenue_inr}
         />
       )}
       <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
-        <dt>Floor rate per room-night</dt>
+        <dt>Total revenue at full price</dt>
+        <dd className="font-semibold">
+          <Money value={totals.list_revenue_inr} />
+        </dd>
+        <dt>Discount (Sales limit {totals.max_discount_pct}%)</dt>
+        <dd className="font-semibold">
+          {totals.discount_pct === null ? 'Unknown' : `${totals.discount_pct}%`}
+        </dd>
+        <dt>Revenue after discount</dt>
+        <dd className="font-semibold">
+          <Money value={totals.room_revenue_inr} />
+        </dd>
+        <dt>Full price per room-night</dt>
         <dd className="font-semibold">
           <Money value={totals.floor_rate_per_room_night_inr} />
-        </dd>
-        <dt>Contribution</dt>
-        <dd className="font-semibold">
-          <Money value={totals.contribution_inr} />
         </dd>
         <dt>Minimum safe rate per room-night</dt>
         <dd className="font-semibold">

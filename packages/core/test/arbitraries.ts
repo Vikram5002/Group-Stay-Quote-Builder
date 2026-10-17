@@ -26,6 +26,7 @@ export const maybe = <T>(arb: fc.Arbitrary<T>) => fc.option(arb, { nil: null, fr
 export const floorPolicy: fc.Arbitrary<FloorPolicy> = fc.record({
   contribution_floor_inr: fc.integer({ min: 0, max: 200_000 }),
   total_rooms_units: fc.integer({ min: 1, max: 200 }),
+  max_sales_discount_pct: fc.integer({ min: 0, max: 100 }),
 });
 
 export const policy: fc.Arbitrary<Policy> = fc

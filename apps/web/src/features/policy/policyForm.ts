@@ -5,6 +5,7 @@ import type { Policy, ValidationIssue } from '@c32/core';
 export interface PolicyForm {
   contributionFloor: string;
   totalRooms: string;
+  maxDiscount: string;
   validityHours: string;
   stayCutoffHours: string;
   minValidityHours: string;
@@ -20,6 +21,7 @@ export function formFromPolicy(policy: Policy): PolicyForm {
   return {
     contributionFloor: text(policy.contribution_floor_inr),
     totalRooms: text(policy.total_rooms_units),
+    maxDiscount: text(policy.max_sales_discount_pct),
     validityHours: text(policy.validity_hours),
     stayCutoffHours: text(policy.stay_cutoff_hours),
     minValidityHours: text(policy.min_validity_hours),
@@ -37,6 +39,7 @@ export function toUpdate(form: PolicyForm, version: number) {
     timezone: form.timezone.trim(),
     contribution_floor_inr: num(form.contributionFloor),
     total_rooms_units: num(form.totalRooms),
+    max_sales_discount_pct: num(form.maxDiscount),
     validity_hours: num(form.validityHours),
     stay_cutoff_hours: num(form.stayCutoffHours),
     min_validity_hours: num(form.minValidityHours),
@@ -49,6 +52,7 @@ export function toUpdate(form: PolicyForm, version: number) {
 export const FIELD_LABEL: Record<string, string> = {
   contribution_floor_inr: 'Package floor',
   total_rooms_units: 'Total rooms',
+  max_sales_discount_pct: 'Max Sales discount',
   validity_hours: 'Validity',
   stay_cutoff_hours: 'Stay cutoff',
   min_validity_hours: 'Minimum validity',
@@ -60,6 +64,7 @@ export const FIELD_LABEL: Record<string, string> = {
 const RANGES: Record<string, [number, number]> = {
   contribution_floor_inr: [0, LIMITS.MAX_UNIT_INR * 100],
   total_rooms_units: [1, LIMITS.MAX_ROOMS],
+  max_sales_discount_pct: [0, 100],
   validity_hours: [1, LIMITS.MAX_POLICY_HOURS],
   stay_cutoff_hours: [0, LIMITS.MAX_POLICY_HOURS],
   min_validity_hours: [0, LIMITS.MAX_POLICY_HOURS],
@@ -120,4 +125,12 @@ export function floorRatePreview(form: PolicyForm): number | null {
   const rooms = num(form.totalRooms);
   if (!Number.isInteger(floor) || floor < 0 || !Number.isInteger(rooms) || rooms < 1) return null;
   return Math.ceil(floor / rooms);
+}
+
+/** Lowest rate Sales can give alone: full price less the max Sales discount, rounded up. */
+export function lowestRatePreview(form: PolicyForm): number | null {
+  const full = floorRatePreview(form);
+  const pct = num(form.maxDiscount);
+  if (full === null || !Number.isInteger(pct) || pct < 0 || pct > 100) return null;
+  return Math.ceil((full * (100 - pct)) / 100);
 }

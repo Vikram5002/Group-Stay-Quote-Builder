@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { ErrorRequestHandler, RequestHandler, Response } from 'express';
 import { problem, type ErrorCode, type ProblemOptions, type ValidationIssue } from '@c32/core';
+import { knownError } from './errors.js';
 import { log } from './log.js';
 
 const REQUEST_ID = /^[A-Za-z0-9._-]{1,128}$/;
@@ -47,6 +48,11 @@ export const errorHandler: ErrorRequestHandler = (err: unknown, req, res, _next)
   }
   if (type === 'encoding.unsupported' || type === 'charset.unsupported') {
     sendProblem(res, 'UNSUPPORTED_MEDIA_TYPE', { instance: req.path });
+    return;
+  }
+  const known = knownError(err);
+  if (known) {
+    sendProblem(res, known.code, { detail: known.detail, instance: req.path });
     return;
   }
   log('error', 'unhandled_error', {

@@ -15,3 +15,4 @@ export * from './contract/openapi.js';
 export * from './domain/calendar.js';
 export * from './fixtures/c32.js';
 export * from './domain/money.js';
+export * from './domain/floor.js';

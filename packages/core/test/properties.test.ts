@@ -1,9 +1,17 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  amend,
+  cancel,
+  checkLedger,
+  confirm,
+  createLedger,
   evaluate,
   flatNights,
+  hold,
+  nightKey,
   price,
+  release,
   stayNights,
   validateQuoteRequest,
   type EvaluationContext,
@@ -271,6 +279,59 @@ describe('P6 a null input never turns into a number', () => {
             expect(e.counter_offers).toEqual([]);
           }
           if (priceUnknown) expect(e.totals.contribution_inr).toBeNull();
+        },
+      ),
+      { numRuns: 300 },
+    );
+  });
+});
+
+describe('P5 the ledger invariant survives any sequence of moves (BR-13 to BR-15)', () => {
+  const DATES = stayNights(CHECK_IN, 5);
+  const op = fc.record({
+    kind: fc.constantFrom('hold', 'release', 'confirm', 'amend', 'cancel'),
+    quote: fc.constantFrom('Q1', 'Q2', 'Q3', 'Q4'),
+    units: fc.integer({ min: 0, max: 12 }),
+    from: fc.nat(4),
+    length: fc.integer({ min: 1, max: 5 }),
+  });
+
+  it('total = available + held + confirmed and available >= 0 on every night, after every step', () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.integer({ min: 0, max: 15 }), { minLength: 5, maxLength: 5 }),
+        fc.array(op, { maxLength: 60 }),
+        (totals, ops) => {
+          let state = createLedger(
+            DATES.map((date, i) => ({
+              date,
+              room_type: 'standard',
+              total_units: totals[i]!,
+              available_units: totals[i]!,
+              held_units: 0,
+              confirmed_units: 0,
+            })),
+          );
+          for (const o of ops) {
+            const dates = DATES.slice(o.from, o.from + o.length);
+            const r =
+              o.kind === 'hold'
+                ? hold(state, o.quote, 'standard', dates, o.units)
+                : o.kind === 'release'
+                  ? release(state, o.quote)
+                  : o.kind === 'confirm'
+                    ? confirm(state, o.quote)
+                    : o.kind === 'amend'
+                      ? amend(state, o.quote, o.units)
+                      : cancel(state, o.quote);
+            if (r.ok) state = r.state; // a refused move changes nothing
+            expect(checkLedger(state)).toEqual([]);
+            for (const [i, date] of DATES.entries()) {
+              const n = state.nights.get(nightKey('standard', date))!;
+              expect(n.available_units).toBeGreaterThanOrEqual(0);
+              expect(n.total_units).toBe(totals[i]);
+            }
+          }
         },
       ),
       { numRuns: 300 },

@@ -32,7 +32,7 @@ test('every screen fits a phone without sideways scrolling', async ({ page }) =>
     ['Dashboard', 'Dashboard', 'Pipeline by status'],
     ['Review queue', 'Review queue', 'Terms side by side'],
     ['Availability', 'Availability', '01 Nov'],
-    ['Policy', 'Policy', 'Contribution floor'],
+    ['Policy', 'Policy', 'Floor and rooms'],
     ['Imports and exports', 'Imports and exports', 'Export'],
     ['Evidence', 'Evidence', 'Evidence ledger'],
     ['Experiment log', 'Experiment log', 'Log a contact'],

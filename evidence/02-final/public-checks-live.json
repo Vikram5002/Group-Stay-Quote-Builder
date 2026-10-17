@@ -1,0 +1,77 @@
+{
+  "environment": "AWS dev, ap-south-1, https://q2etqj5j4d.execute-api.ap-south-1.amazonaws.com",
+  "run_at": "2026-10-17T19:05:44+00:00",
+  "authenticated_as": "Cognito smoke-test users (Sales); real JWTs verified by API Gateway",
+  "synthetic": true,
+  "checks": [
+    {
+      "check": "1: 10 rooms x 2 nights at 2000 gives 40000 room revenue",
+      "expected": "OFFER, 40000 revenue, 24000 contribution",
+      "result": {
+        "decision": "OFFER",
+        "reasons": [],
+        "requested_rooms": 10,
+        "offered_rooms": 10,
+        "shortfall_rooms": 0,
+        "auto_confirm_allowed": true,
+        "totals": {
+          "room_nights": 20,
+          "room_revenue_inr": 40000,
+          "variable_cost_inr": 16000,
+          "contribution_inr": 24000,
+          "contribution_floor_inr": 19000,
+          "min_rate_per_room_night_inr": 1750
+        }
+      },
+      "pass": true
+    },
+    {
+      "check": "2: 12 requested, 10 available: partial alternative or decline",
+      "expected": "PARTIAL_OFFER for 10",
+      "result": {
+        "decision": "PARTIAL_OFFER",
+        "reasons": ["PARTIAL_AVAILABILITY"],
+        "requested_rooms": 12,
+        "offered_rooms": 10,
+        "shortfall_rooms": 2,
+        "auto_confirm_allowed": false,
+        "totals": {
+          "room_nights": 20,
+          "room_revenue_inr": 40000,
+          "variable_cost_inr": 16000,
+          "contribution_inr": 24000,
+          "contribution_floor_inr": 19000,
+          "min_rate_per_room_night_inr": 1750
+        }
+      },
+      "pass": true
+    },
+    {
+      "check": "3: below the floor needs review and cannot auto-confirm",
+      "expected": "PENDING_REVIEW; confirm refused with 409 APPROVAL_REQUIRED",
+      "result": {
+        "status": "PENDING_REVIEW",
+        "decision": "REVIEW",
+        "reasons": ["FLOOR_BREACH"],
+        "requested_rooms": 10,
+        "offered_rooms": 10,
+        "shortfall_rooms": 0,
+        "auto_confirm_allowed": false,
+        "totals": {
+          "room_nights": 20,
+          "room_revenue_inr": 30000,
+          "variable_cost_inr": 16000,
+          "contribution_inr": 14000,
+          "contribution_floor_inr": 19000,
+          "min_rate_per_room_night_inr": 1750
+        },
+        "confirm_attempt": {
+          "http_status": 409,
+          "code": "APPROVAL_REQUIRED"
+        }
+      },
+      "pass": true
+    }
+  ],
+  "cleanup": "The check-3 quote was cancelled afterwards so no rooms stay held (status CANCELLED)"
+}

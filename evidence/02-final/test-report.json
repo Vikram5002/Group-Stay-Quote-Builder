@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-10-17T19:07:28+00:00",
+  "suites": {
+    "core_api_infra": {
+      "test_suites": 183,
+      "tests": 541,
+      "passed": 541,
+      "failed": 0,
+      "skipped": 0
+    },
+    "web": {
+      "test_suites": 62,
+      "tests": 233,
+      "passed": 233,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "database_tests": "run against DynamoDB Local 3.3.2",
+  "ci": "GitHub Actions re-runs the same suites on every push (workflows ci and web)",
+  "traceability": "docs/testing/traceability.md maps T01-T25 and P1-P6 to these tests"
+}

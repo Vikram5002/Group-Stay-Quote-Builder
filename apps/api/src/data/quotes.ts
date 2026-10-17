@@ -160,34 +160,43 @@ export async function listQuotes(
   }
 
   const byStatus = opts.status !== undefined;
-  const out = await ctx.doc.send(
-    new QueryCommand({
-      TableName: ctx.tableName,
-      ...(byStatus
-        ? {
-            IndexName: TABLE.gsi1.name,
-            KeyConditionExpression: 'GSI1PK = :pk',
-            ExpressionAttributeValues: {
-              ':pk': keys.statusIndex(ctx.propertyId, opts.status as QuoteStatus),
-              ...values,
-            },
-          }
-        : {
-            KeyConditionExpression: 'PK = :pk AND begins_with(SK, :q)',
-            ExpressionAttributeValues: {
-              ':pk': keys.property(ctx.propertyId),
-              ':q': 'QUOTE#',
-              ...values,
-            },
-            ConsistentRead: true,
-          }),
-      ...(filters.length > 0 ? { FilterExpression: filters.join(' AND ') } : {}),
-      ...(Object.keys(names).length > 0 ? { ExpressionAttributeNames: names } : {}),
-      ScanIndexForward: false,
-      Limit: opts.limit,
-      ...(opts.cursor ? { ExclusiveStartKey: decodeCursor(opts.cursor) } : {}),
-    }),
-  );
+  let out;
+  try {
+    out = await ctx.doc.send(
+      new QueryCommand({
+        TableName: ctx.tableName,
+        ...(byStatus
+          ? {
+              IndexName: TABLE.gsi1.name,
+              KeyConditionExpression: 'GSI1PK = :pk',
+              ExpressionAttributeValues: {
+                ':pk': keys.statusIndex(ctx.propertyId, opts.status as QuoteStatus),
+                ...values,
+              },
+            }
+          : {
+              KeyConditionExpression: 'PK = :pk AND begins_with(SK, :q)',
+              ExpressionAttributeValues: {
+                ':pk': keys.property(ctx.propertyId),
+                ':q': 'QUOTE#',
+                ...values,
+              },
+              ConsistentRead: true,
+            }),
+        ...(filters.length > 0 ? { FilterExpression: filters.join(' AND ') } : {}),
+        ...(Object.keys(names).length > 0 ? { ExpressionAttributeNames: names } : {}),
+        ScanIndexForward: false,
+        Limit: opts.limit,
+        ...(opts.cursor ? { ExclusiveStartKey: decodeCursor(opts.cursor) } : {}),
+      }),
+    );
+  } catch (err) {
+    // A decodable cursor that is not a real start key for this query.
+    if (opts.cursor && (err as { name?: string }).name === 'ValidationException') {
+      throw new InvalidCursorError();
+    }
+    throw err;
+  }
   return {
     items: (out.Items ?? []).map(itemToQuote),
     next_cursor: out.LastEvaluatedKey ? encodeCursor(out.LastEvaluatedKey) : null,

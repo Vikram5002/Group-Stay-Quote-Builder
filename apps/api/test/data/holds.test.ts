@@ -9,7 +9,10 @@ import {
 } from '../../src/data/errors.js';
 import {
   acquireHolds,
+  amendHolds,
+  cancelHolds,
   confirmHolds,
+  extendHolds,
   getHoldLines,
   releaseHolds,
   type HoldRequest,
@@ -309,6 +312,68 @@ describe.skipIf(!hasDb)('transactional holds (DynamoDB Local)', () => {
       const releaseWon = released.status === 'fulfilled' && released.value.released;
       expect(confirmWon !== releaseWon).toBe(true);
       await consistent();
+    });
+  });
+
+  describe('amend, cancel and extend (BR-16)', () => {
+    it('amend 10 to 7 releases 3 rooms per night (6 room-nights)', async () => {
+      await acquireHolds(ctx, req('Q1', 10));
+      await confirmHolds(ctx, 'Q1');
+      const r = await amendHolds(ctx, 'Q1', 7);
+      expect(r.released_units).toBe(3);
+      expect(await counters()).toEqual([
+        [3, 0, 7],
+        [3, 0, 7],
+      ]);
+      expect((await getHoldLines(ctx, 'Q1')).map((l) => l.units)).toEqual([7, 7]);
+      await consistent();
+    });
+
+    it('amend only reduces, only confirmed bookings, and racing amendments serialise', async () => {
+      await acquireHolds(ctx, req('Q1', 4));
+      await expect(amendHolds(ctx, 'Q1', 2)).rejects.toBeInstanceOf(NotHeldError); // still held
+      await confirmHolds(ctx, 'Q1');
+      for (const bad of [0, 4, 5])
+        await expect(amendHolds(ctx, 'Q1', bad)).rejects.toBeInstanceOf(RangeError);
+      // Each amendment applies only to the units it read, so racing ones end in a valid order
+      // (4->3, 4->2 or 4->3->2) and the counters always match the lines.
+      await Promise.allSettled([amendHolds(ctx, 'Q1', 3), amendHolds(ctx, 'Q1', 2)]);
+      const units = (await getHoldLines(ctx, 'Q1')).map((l) => l.units);
+      expect([
+        [3, 3],
+        [2, 2],
+      ]).toContainEqual(units);
+      const nights = await getInventory(ctx, 'standard', '2026-11-01', '2026-11-02');
+      expect(nights.map((n) => n.confirmed_units)).toEqual(units);
+      await consistent();
+    });
+
+    it('cancel releases held and confirmed bookings and allows a new hold', async () => {
+      await acquireHolds(ctx, req('H', 3));
+      await acquireHolds(ctx, req('C', 4));
+      await confirmHolds(ctx, 'C');
+      expect((await cancelHolds(ctx, 'H')).released).toBe(true);
+      expect((await cancelHolds(ctx, 'C')).released).toBe(true);
+      expect(await counters()).toEqual([
+        [10, 0, 0],
+        [10, 0, 0],
+      ]);
+      expect(await cancelHolds(ctx, 'C')).toEqual({ released: false, lines: [] });
+      await acquireHolds(ctx, req('C', 2));
+      await consistent();
+    });
+
+    it('extend moves the expiry of held lines only', async () => {
+      await acquireHolds(ctx, req('Q1', 2));
+      await extendHolds(ctx, 'Q1', '2026-10-22T04:30:00.000Z');
+      expect((await getHoldLines(ctx, 'Q1')).map((l) => l.expires_at)).toEqual([
+        '2026-10-22T04:30:00.000Z',
+        '2026-10-22T04:30:00.000Z',
+      ]);
+      await confirmHolds(ctx, 'Q1');
+      await expect(extendHolds(ctx, 'Q1', '2026-10-23T04:30:00.000Z')).rejects.toBeInstanceOf(
+        NotHeldError,
+      );
     });
   });
 });

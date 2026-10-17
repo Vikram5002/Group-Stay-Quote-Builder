@@ -1,5 +1,8 @@
 import {
+  AmendmentRequest,
   ApproveRequest,
+  CancelRequest,
+  ExtendRequest,
   ListQuotesQuery,
   RejectRequest,
   Ulid,
@@ -11,6 +14,7 @@ import {
 import type { Request } from 'express';
 import { getEvents, getQuote, listQuotes } from '../data/quotes.js';
 import { ValidationFailure } from '../errors.js';
+import { amendQuote, cancelQuote, extendQuote } from '../services/changes.js';
 import { confirmQuote } from '../services/confirm-quote.js';
 import { createQuote } from '../services/create-quote.js';
 import { ServiceError } from '../services/errors.js';
@@ -24,6 +28,15 @@ function reasonBody(req: Request, schema: typeof ApproveRequest | typeof RejectR
   const b = parseWith(schema, req.body);
   if (!b.ok) throw new ValidationFailure(b.issues);
   return b.value.reason;
+}
+
+function body<S extends typeof AmendmentRequest | typeof CancelRequest | typeof ExtendRequest>(
+  req: Request,
+  schema: S,
+) {
+  const b = parseWith(schema, req.body ?? {});
+  if (!b.ok) throw new ValidationFailure(b.issues);
+  return b.value as ReturnType<S['parse']>;
 }
 
 function bodyRequest(req: Request) {
@@ -93,5 +106,23 @@ export const quoteHandlers: Handlers = {
   rejectQuote: async ({ req, deps, actor }) => ({
     status: 200,
     body: await rejectQuote(deps, quoteId(req), actor, reasonBody(req, RejectRequest)),
+  }),
+
+  extendQuote: async ({ req, deps, actor }) => ({
+    status: 200,
+    body: await extendQuote(deps, quoteId(req), actor, body(req, ExtendRequest).hours),
+  }),
+
+  amendQuote: async ({ req, deps, actor }) => {
+    const b = body(req, AmendmentRequest);
+    return {
+      status: 200,
+      body: await amendQuote(deps, quoteId(req), actor, b.rooms, b.reason ?? null),
+    };
+  },
+
+  cancelQuote: async ({ req, deps, actor }) => ({
+    status: 200,
+    body: await cancelQuote(deps, quoteId(req), actor, body(req, CancelRequest).reason ?? null),
   }),
 };

@@ -10,6 +10,7 @@ import { useNow, useQuoteAction } from '../quotes/queries';
 import { ArithmeticTrail, TotalsTable } from '../quotes/ResultPanels';
 import { StatusBadge } from '../quotes/StatusBadge';
 import { TermsComparison } from './TermsComparison';
+import { counted } from '../../lib/plural';
 
 export type ReviewResult = { kind: 'approved' | 'rejected'; quote: Quote };
 
@@ -83,7 +84,7 @@ export function ReviewPanel({
         </div>
         <p className="mt-1 text-sm text-ink-muted">
           Requested by {quote.created_by.user_id} ({quote.created_by.role}) · {evaluation.check_in}{' '}
-          to {evaluation.check_out} · {evaluation.requested_rooms} rooms ·{' '}
+          to {evaluation.check_out} · {counted(evaluation.requested_rooms, 'room')} ·{' '}
           {quote.valid_until && (
             <>
               hold {formatCountdown(quote.valid_until, now)} (

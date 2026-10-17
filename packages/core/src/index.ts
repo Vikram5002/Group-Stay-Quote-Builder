@@ -32,3 +32,4 @@ export * from './domain/terms.js';
 export * from './domain/amend.js';
 export * from './domain/csv.js';
 export * from './domain/imports.js';
+export * from './domain/plural.js';

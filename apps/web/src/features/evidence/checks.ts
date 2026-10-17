@@ -2,6 +2,7 @@ import { flatNights, mapC32Fixture, price } from '@c32/core';
 import type { QuoteRequest } from '@c32/core';
 import fixtureJson from '../../../../../data/fixtures/fixture.json';
 import type { ApiClient } from '../../lib/api';
+import { counted } from '../../lib/plural';
 
 const fixture = mapC32Fixture(fixtureJson);
 
@@ -51,8 +52,8 @@ export async function runPublicChecks(api: ApiClient, now: Date = new Date()): P
     statement:
       two ??
       'A request for 12 rooms when only 10 are available must offer a partial alternative or decline.',
-    expected: `A partial offer or a decline, with the shortage flagged. Never more than ${sellable} rooms.`,
-    actual: `${check2.decision}, ${check2.offered_rooms} rooms offered`,
+    expected: `A partial offer or a decline, with the shortage flagged. Never more than ${counted(sellable, 'room')}.`,
+    actual: `${check2.decision}, ${counted(check2.offered_rooms, 'room')} offered`,
     // A partial offer that also breaches the floor goes to review; that still counts, as long as
     // the shortage is flagged and no more than the available rooms are offered.
     passed:

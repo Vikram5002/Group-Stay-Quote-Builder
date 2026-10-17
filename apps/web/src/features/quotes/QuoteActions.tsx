@@ -9,6 +9,7 @@ import { usePolicy } from '../policy/queries';
 import { friendlyIssue } from './form';
 import { OPEN_STATUSES } from './labels';
 import { useQuoteAction } from './queries';
+import { counted } from '../../lib/plural';
 
 const WRITE_ROLES: readonly Role[] = ['Sales', 'Owner'];
 const HOUR_MS = 3_600_000;
@@ -164,8 +165,8 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
           />
           {cannotExtend ? (
             <Alert tone="info" title="This quote cannot be extended">
-              Its hold already runs to the stay cutoff, {policy.data?.stay_cutoff_hours} hours
-              before check-in.
+              Its hold already runs to the stay cutoff,{' '}
+              {counted(policy.data?.stay_cutoff_hours ?? 0, 'hour')} before check-in.
             </Alert>
           ) : (
             <TextField
@@ -179,7 +180,7 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
               hint={
                 maxHours === null
                   ? 'Rooms stay held for this long after the current expiry. The server checks the policy limit and availability.'
-                  : `Rooms stay held for this long after the current expiry, up to ${maxHours} hours under the policy. The server re-checks availability.`
+                  : `Rooms stay held for this long after the current expiry, up to ${counted(maxHours, 'hour')} under the policy. The server re-checks availability.`
               }
               {...(hoursError ? { error: hoursError } : {})}
             />

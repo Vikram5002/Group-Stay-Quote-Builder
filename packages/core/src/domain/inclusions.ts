@@ -1,6 +1,7 @@
 import type { InclusionInput } from '../contract/quote.js';
 import { assertInt } from './money.js';
 import type { PricingExtras } from './pricing.js';
+import { counted } from './plural.js';
 
 /**
  * Inclusions such as breakfast (blueprint 5.6, FR-13, G4).
@@ -35,12 +36,15 @@ function unitsFor(
   guestsPerRoom: number | null,
 ): { units: number | null; basis: string } {
   if (inc.basis === 'per_room_night') {
-    return { units: rooms * nights, basis: `${rooms} rooms x ${nights} nights` };
+    return {
+      units: rooms * nights,
+      basis: `${counted(rooms, 'room')} x ${counted(nights, 'night')}`,
+    };
   }
   if (guestsPerRoom === null) return { units: null, basis: 'guests per room unknown' };
   return {
     units: rooms * guestsPerRoom * nights,
-    basis: `${rooms} rooms x ${guestsPerRoom} guests x ${nights} nights`,
+    basis: `${counted(rooms, 'room')} x ${counted(guestsPerRoom, 'guest')} x ${counted(nights, 'night')}`,
   };
 }
 

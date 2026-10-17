@@ -6,6 +6,7 @@ import { formatIst } from '../../lib/format';
 import { useAuth } from '../auth/auth';
 import { runPublicChecks } from './checks';
 import type { CheckRun } from './checks';
+import { counted } from '../../lib/plural';
 
 const MODE = import.meta.env.VITE_API_MODE ?? (import.meta.env.DEV ? 'mock' : 'api');
 
@@ -80,7 +81,7 @@ export function PublicChecks() {
         <div className="mt-4 flex flex-col gap-3" aria-live="polite">
           <Alert
             tone={passed === run.results.length ? 'success' : 'danger'}
-            title={`${passed} of ${run.results.length} checks passed`}
+            title={`${passed} of ${counted(run.results.length, 'check')} passed`}
           >
             Run at <time dateTime={run.ranAt}>{formatIst(run.ranAt)}</time>.
           </Alert>

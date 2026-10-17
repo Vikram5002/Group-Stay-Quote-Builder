@@ -14,6 +14,7 @@ import { formatIst } from '../../lib/format';
 import { meterStatus } from './meterStatus';
 import type { ReviewBanner } from './reviewState';
 import type { LiveMeterState } from './usePreview';
+import { counted } from '../../lib/plural';
 
 const METER_NOTE: Record<LiveMeterState['kind'], string> = {
   start:
@@ -80,7 +81,7 @@ const DECISION_VIEW: Record<
   OFFER: { tone: 'success', title: () => 'Ready to offer' },
   PARTIAL_OFFER: {
     tone: 'info',
-    title: (e) => `Partial offer: ${e.offered_rooms} of ${e.requested_rooms} rooms`,
+    title: (e) => `Partial offer: ${e.offered_rooms} of ${counted(e.requested_rooms, 'room')}`,
   },
   REVIEW: { tone: 'warning', title: () => 'Owner review required' },
   DECLINE: { tone: 'danger', title: () => 'This request cannot be offered' },
@@ -123,9 +124,9 @@ export function DecisionSummary({
       {partial && (
         <Card title="Partial offer">
           <p className="text-sm">
-            Only {evaluation.offered_rooms} of {evaluation.requested_rooms} rooms can be held on
-            every night. You are {evaluation.shortfall_rooms} short. The quote will hold{' '}
-            {evaluation.offered_rooms} rooms and never more than are available.
+            Only {evaluation.offered_rooms} of {counted(evaluation.requested_rooms, 'room')} can be
+            held on every night. You are {evaluation.shortfall_rooms} short. The quote will hold{' '}
+            {counted(evaluation.offered_rooms, 'room')} and never more than are available.
           </p>
           {onUseRooms && (
             <Button
@@ -133,7 +134,7 @@ export function DecisionSummary({
               className="mt-3"
               onClick={() => onUseRooms(evaluation.offered_rooms)}
             >
-              Change the request to {evaluation.offered_rooms} rooms
+              Change the request to {counted(evaluation.offered_rooms, 'room')}
             </Button>
           )}
         </Card>

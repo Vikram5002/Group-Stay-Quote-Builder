@@ -1,5 +1,7 @@
 import {
+  counted,
   parseImport,
+  plural,
   type Actor,
   type ImportKind,
   type ImportReport,
@@ -149,7 +151,7 @@ async function analyse(deps: FileDeps, rec: ImportRecord): Promise<Analysis> {
         issues.push(
           ledgerIssue(
             a.row,
-            `${s} rooms are held or confirmed; availability cannot become unknown`,
+            `${counted(s, 'room')} ${plural(s, 'is', 'are')} held or confirmed; availability cannot become unknown`,
             rooms,
           ),
         );
@@ -157,7 +159,11 @@ async function analyse(deps: FileDeps, rec: ImportRecord): Promise<Analysis> {
       }
       if (rooms !== null && rooms < s) {
         issues.push(
-          ledgerIssue(a.row, `${rooms} rooms is below the ${s} already held or confirmed`, rooms),
+          ledgerIssue(
+            a.row,
+            `${counted(rooms, 'room')} is below the ${s} already held or confirmed`,
+            rooms,
+          ),
         );
         return false;
       }

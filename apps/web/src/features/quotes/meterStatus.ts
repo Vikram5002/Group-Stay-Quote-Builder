@@ -1,5 +1,6 @@
 import type { Evaluation, QuoteTotals, ReasonCode } from '@c32/core';
 import type { Tone } from '../../components';
+import { counted } from '../../lib/plural';
 
 export interface MeterStatus {
   tone: Tone;
@@ -34,7 +35,7 @@ export function meterStatus(evaluation: Evaluation, totals: QuoteTotals): MeterS
   if (evaluation.offered_rooms < evaluation.requested_rooms) {
     return {
       tone: 'info',
-      label: `Meets floor: partial offer of ${evaluation.offered_rooms} rooms`,
+      label: `Meets floor: partial offer of ${counted(evaluation.offered_rooms, 'room')}`,
     };
   }
   return { tone: 'success', label: 'Meets floor' };

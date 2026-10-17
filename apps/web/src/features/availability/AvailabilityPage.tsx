@@ -21,6 +21,7 @@ import { ROOM_TYPES } from '../quotes/form';
 import { STATUS_LABEL } from '../quotes/labels';
 import { useQuoteList } from '../quotes/queries';
 import { StatusBadge } from '../quotes/StatusBadge';
+import { counted } from '../../lib/plural';
 
 /** Case fixture dates: the seeded inventory starts on 1 November 2026. */
 const DEFAULT_FROM = '2026-11-01';
@@ -168,8 +169,8 @@ function NightDetail({ cell, roomType }: { cell: Cell; roomType: string }) {
   return (
     <Card title={heading}>
       <p className="text-sm">
-        {n.total_units} rooms = {n.available_units} available + {n.held_units} held +{' '}
-        {n.confirmed_units} confirmed.
+        {counted(n.total_units ?? 0, 'room')} = {n.available_units} available + {n.held_units} held
+        + {n.confirmed_units} confirmed.
       </p>
       <h3 className="mb-2 mt-4 font-semibold">Quotes holding this night</h3>
       {quotes.isPending ? (

@@ -11,6 +11,7 @@ import { useNow, useQuote, useQuoteAudit } from './queries';
 import { ArithmeticTrail, DecisionSummary, TotalsTable } from './ResultPanels';
 import { reviewBadge, reviewBanner, reviewState } from './reviewState';
 import { StatusBadge } from './StatusBadge';
+import { counted } from '../../lib/plural';
 
 function Countdown({ quote }: { quote: Quote }) {
   const now = useNow();
@@ -45,7 +46,7 @@ function Summary({ quote }: { quote: Quote }) {
         </dd>
         <dt className="text-ink-muted">Stay</dt>
         <dd>
-          {evaluation.check_in} to {evaluation.check_out} ({evaluation.nights} nights)
+          {evaluation.check_in} to {evaluation.check_out} ({counted(evaluation.nights, 'night')})
         </dd>
         <dt className="text-ink-muted">Room type</dt>
         <dd className="capitalize">{request.room_type}</dd>

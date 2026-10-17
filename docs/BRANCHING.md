@@ -8,7 +8,7 @@
 - Each branch is cut from the latest `main`.
 - Every meaningful change is committed and pushed to the branch straight away.
 - No pull requests. When the work package's "done when" line passes (`npm run verify`), the owner merges the branch into `main` with `git merge --no-ff` and pushes.
-- Commit messages are short and lowercase, for example `core: add quote request schema`.
+- Commit messages are short, lowercase, plain words with no prefix and no colon, for example `quote request schema`.
 - Changes to `packages/core` should be walked through with someone from a different track before merging.
 
 ## Track 1: Core Engine and API

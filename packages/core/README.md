@@ -124,3 +124,20 @@ const { evaluation } = evaluate(request, ctx);
 | `CHANGE_VOLUME`     | Floor breach               | Fewest extra rooms (within stock) that clear it |
 
 Each counter-offer is re-run through the engine and kept only if it is a clean OFFER.
+
+## Property tests and the ledger model (T1.06)
+
+`test/properties.test.ts` checks the blueprint's invariants on random inputs (fast-check):
+
+| ID  | Invariant                                                                     |
+| --- | ----------------------------------------------------------------------------- |
+| P1  | contribution = revenue - all costs; every money value is a safe integer       |
+| P2  | revenue never falls when rate, rooms or nights go up                          |
+| P3  | offered rooms never exceed requested or sellable, nor do counter-offer rooms  |
+| P4  | the floor passes at the minimum safe rate and fails one rupee below           |
+| P5  | any sequence of ledger moves keeps total = available + held + confirmed, >= 0 |
+| P6  | an unknown input never becomes a number; it is null, or REVIEW with no offers |
+
+`domain/ledger.ts` is the pure reference model for room-night holds (BR-13 to BR-15):
+`hold` (all nights or none), `release` (exactly once), `confirm`, `amend`, `cancel`, and
+`checkLedger` (drift report). The DynamoDB repository in T1.07 is tested against it.

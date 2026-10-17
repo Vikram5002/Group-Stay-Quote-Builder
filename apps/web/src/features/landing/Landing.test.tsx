@@ -67,9 +67,9 @@ describe('landing page as the front door', () => {
   it('shows the sample figures from the real engine in the hero', () => {
     renderAt('/');
     const hero = screen.getByRole('heading', { level: 1 }).closest('section') as HTMLElement;
-    expect(within(hero).getAllByText('₹40,000').length).toBeGreaterThan(0);
-    expect(within(hero).getAllByText('₹24,000').length).toBeGreaterThan(0);
-    expect(within(hero).getAllByText('₹1,800').length).toBeGreaterThan(0);
+    expect(within(hero).getAllByText('₹50,000').length).toBeGreaterThan(0);
+    expect(within(hero).getAllByText('₹34,000').length).toBeGreaterThan(0);
+    expect(within(hero).getAllByText('₹2,000').length).toBeGreaterThan(0);
   });
 
   it('carries the full story in order, from the enquiry to the closing call to action', () => {
@@ -122,17 +122,18 @@ describe('introducing StayQuote tabs', () => {
     renderAt('/');
     await user.click(screen.getByRole('tab', { name: 'Negotiation' }));
     const panel = screen.getByRole('tabpanel');
-    expect(within(panel).getByText('₹22,000')).toBeInTheDocument();
-    expect(within(panel).getByText('Meets the ₹20,000 minimum')).toBeInTheDocument();
+    expect(within(panel).getByText('₹29,000')).toBeInTheDocument();
+    expect(within(panel).getByText('Meets the ₹24,000 minimum')).toBeInTheDocument();
 
-    await user.click(within(panel).getByRole('button', { name: '10% off' }));
-    expect(within(panel).getByText('₹20,000')).toBeInTheDocument();
-    expect(within(panel).getByText('Meets the ₹20,000 minimum')).toBeInTheDocument();
+    // 20% off is the lowest safe rate: it lands exactly on the minimum, and equal passes.
+    await user.click(within(panel).getByRole('button', { name: '20% off' }));
+    expect(within(panel).getByText('₹24,000')).toBeInTheDocument();
+    expect(within(panel).getByText('Meets the ₹24,000 minimum')).toBeInTheDocument();
 
-    await user.click(within(panel).getByRole('button', { name: '15% off' }));
-    expect(within(panel).getByText('₹18,000')).toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: '25% off' }));
+    expect(within(panel).getByText('₹21,500')).toBeInTheDocument();
     expect(
-      within(panel).getByText('Below the ₹20,000 minimum: needs approval'),
+      within(panel).getByText('Below the ₹24,000 minimum: needs approval'),
     ).toBeInTheDocument();
   });
 });
@@ -141,28 +142,28 @@ describe('quote calculator', () => {
   const banner = () =>
     screen.getAllByRole('status').find((el) => el.tagName !== 'OUTPUT') as HTMLElement;
 
-  it('starts on the sample booking: ready to offer, 40000 and 24000', () => {
+  it('starts on the sample booking: ready to offer, 50000 and 34000', () => {
     renderAt('/');
     expect(within(banner()).getByText('Ready to offer')).toBeInTheDocument();
-    expect(screen.getByText('20 x 2000 = 40000 room revenue')).toBeInTheDocument();
-    expect(screen.getAllByText('₹24,000').length).toBeGreaterThan(0);
+    expect(screen.getByText('20 x 2500 = 50000 room revenue')).toBeInTheDocument();
+    expect(screen.getAllByText('₹34,000').length).toBeGreaterThan(0);
     expect(screen.getByText('Meets floor')).toBeInTheDocument();
   });
 
-  it('asks for review on a 15% discount and offers the lowest safe rate, which fixes it', async () => {
+  it('asks for review on a 25% discount and offers the lowest safe rate, which fixes it', async () => {
     const user = userEvent.setup();
     renderAt('/');
-    await user.click(screen.getByRole('button', { name: '15% discount' }));
+    await user.click(screen.getByRole('button', { name: '25% discount' }));
     expect(within(banner()).getByText('Owner review required')).toBeInTheDocument();
     expect(screen.getByText('Contribution is below the contribution floor.')).toBeInTheDocument();
     expect(screen.getByText(/Below floor: review required/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Use ₹1,800' }));
+    await user.click(screen.getByRole('button', { name: 'Use ₹2,000' }));
     expect(within(banner()).getByText('Ready to offer')).toBeInTheDocument();
-    expect(screen.getByLabelText('Rate per room per night')).toHaveValue('1800');
+    expect(screen.getByLabelText('Rate per room per night')).toHaveValue('2000');
   });
 
-  it('accepts a 10% discount, which lands exactly on the minimum', async () => {
+  it('accepts a 10% discount, which is still above the minimum', async () => {
     const user = userEvent.setup();
     renderAt('/');
     await user.click(screen.getByRole('button', { name: '10% discount' }));
@@ -312,7 +313,7 @@ describe('accessibility', () => {
     await user.click(screen.getByRole('button', { name: 'Issue the quote' }));
     expect(await axe(container)).toHaveNoViolations();
     await user.click(screen.getByRole('tab', { name: 'Negotiation' }));
-    await user.click(screen.getByRole('button', { name: '15% off' }));
+    await user.click(screen.getByRole('button', { name: '25% off' }));
     expect(await axe(container)).toHaveNoViolations();
   });
 });

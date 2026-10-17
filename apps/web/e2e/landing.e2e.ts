@@ -54,13 +54,13 @@ test.describe('landing page', () => {
     page,
   }) => {
     await openApp(page, '/');
-    await page.getByRole('button', { name: '15% discount' }).click();
+    await page.getByRole('button', { name: '25% discount' }).click();
     const banner = page.locator('[role=status]', { hasText: 'Owner review required' });
     await expect(banner).toBeVisible();
     await expect(page.getByText('Contribution is below the contribution floor.')).toBeVisible();
 
     // Fixing the rate turns it into an offer, with a small burst of dots.
-    await page.getByRole('button', { name: 'Use ₹1,800' }).click();
+    await page.getByRole('button', { name: 'Use ₹2,000' }).click();
     await expect(page.locator('[role=status]', { hasText: 'Ready to offer' })).toBeVisible();
     await expect(page.locator('.lp-particle').first()).toBeVisible();
 
@@ -74,9 +74,9 @@ test.describe('landing page', () => {
 
   test('the figures glide to their new value and settle on the exact one', async ({ page }) => {
     await openApp(page, '/');
-    await page.getByRole('button', { name: '15% discount' }).click();
-    await expect(page.getByText('₹18,000', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('-₹2,000', { exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: '25% discount' }).click();
+    await expect(page.getByText('₹37,500', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('-₹2,500', { exact: true }).first()).toBeVisible();
   });
 
   test('the negotiation tab shows what each discount does, and its marker slides', async ({
@@ -90,9 +90,9 @@ test.describe('landing page', () => {
       .poll(() => marker.evaluate((el) => (el as HTMLElement).style.left))
       .not.toBe(before);
     const panel = page.getByRole('tabpanel');
-    await expect(panel).toContainText('₹22,000');
-    await panel.getByRole('button', { name: '15% off' }).click();
-    await expect(panel).toContainText('₹18,000');
+    await expect(panel).toContainText('₹29,000');
+    await panel.getByRole('button', { name: '25% off' }).click();
+    await expect(panel).toContainText('₹21,500');
     await expect(panel).toContainText('needs approval');
   });
 
@@ -214,8 +214,8 @@ test.describe('landing page', () => {
     );
     expect(running).toBe(0);
     // And a good outcome does not throw dots around.
-    await page.getByRole('button', { name: '15% discount' }).click();
-    await page.getByRole('button', { name: 'Use ₹1,800' }).click();
+    await page.getByRole('button', { name: '25% discount' }).click();
+    await page.getByRole('button', { name: 'Use ₹2,000' }).click();
     await expect(page.locator('.lp-particle')).toHaveCount(0);
   });
 });

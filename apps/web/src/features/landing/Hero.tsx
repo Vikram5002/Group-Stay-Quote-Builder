@@ -13,7 +13,7 @@ import {
   IconScale,
 } from './icons';
 import { prefersReducedMotion, useCountUp, useSeen } from './motion';
-import { SAMPLE } from './sample';
+import { SAMPLE, SAMPLE_MIN_CONTRIBUTION, rupees } from './sample';
 
 function QuoteCard() {
   const [ref, seen] = useSeen<HTMLDivElement>(0.3);
@@ -38,6 +38,9 @@ function QuoteCard() {
 
   const revenue = useCountUp(SAMPLE.totals.room_revenue_inr ?? 0, seen, 1400);
   const contribution = useCountUp(SAMPLE.totals.contribution_inr ?? 0, seen, 1400);
+  const sampleRevenue = SAMPLE.totals.room_revenue_inr ?? 1;
+  const barWidth = Math.round(((SAMPLE.totals.contribution_inr ?? 0) / sampleRevenue) * 100);
+  const markerAt = Math.round((SAMPLE_MIN_CONTRIBUTION / sampleRevenue) * 100);
 
   return (
     <div
@@ -60,7 +63,7 @@ function QuoteCard() {
           </span>
         </div>
         <p className="lp-muted mt-3 text-sm">
-          10 rooms · 2 nights from 1 Nov 2026 · ₹2,000 a night
+          10 rooms · 2 nights from 1 Nov 2026 · ₹2,500 a night
         </p>
 
         <dl className="mt-5 grid grid-cols-2 gap-3">
@@ -88,13 +91,16 @@ function QuoteCard() {
           <div className="relative h-2.5 overflow-hidden rounded-full bg-[var(--lp-bg)]">
             <div
               className="h-full rounded-full bg-[var(--lp-ink)] transition-[width] duration-[1400ms] ease-out"
-              style={{ width: seen ? '60%' : '0%' }}
+              style={{ width: seen ? `${barWidth}%` : '0%' }}
             />
-            <div className="absolute inset-y-0 w-0.5 bg-[var(--lp-blue)]" style={{ left: '50%' }} />
+            <div
+              className="absolute inset-y-0 w-0.5 bg-[var(--lp-blue)]"
+              style={{ left: `${markerAt}%` }}
+            />
           </div>
           <div className="lp-muted mt-1.5 flex justify-between text-xs">
             <span>₹0</span>
-            <span>Minimum acceptable ₹20,000</span>
+            <span>Minimum acceptable {rupees(SAMPLE_MIN_CONTRIBUTION)}</span>
           </div>
         </div>
       </div>
@@ -119,7 +125,7 @@ function QuoteCard() {
         style={{ '--r': '-2deg', '--fd': '-4s' } as CSSProperties}
       >
         <span className="lp-dot" style={{ '--d': 'var(--color-danger)' } as CSSProperties} />
-        At ₹1,700 it needs approval
+        At ₹1,875 it needs approval
       </div>
     </div>
   );

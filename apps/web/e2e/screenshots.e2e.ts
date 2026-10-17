@@ -30,10 +30,10 @@ test.describe('evidence screenshots', () => {
     await openApp(page, '/');
     await page.waitForTimeout(2200);
     await shot(page, '00-landing-hero');
-    await page.getByRole('button', { name: '15% discount' }).click();
+    await page.getByRole('button', { name: '25% discount' }).click();
     await page.evaluate(() => document.getElementById('try')?.scrollIntoView());
     await page.waitForTimeout(1400);
-    await shot(page, '00b-landing-calculator-15-percent-discount');
+    await shot(page, '00b-landing-calculator-25-percent-discount');
     await page.evaluate(() => document.getElementById('holds')?.scrollIntoView());
     await page.getByRole('button', { name: 'Issue the quote' }).click();
     await page.getByLabel('Fast-forward time').fill('60');

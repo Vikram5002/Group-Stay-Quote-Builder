@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { IconArrowRight, IconCheck } from './icons';
 import { prefersReducedMotion, Reveal } from './motion';
-import { contributionAt, rupees } from './sample';
+import { SAMPLE, SAMPLE_MIN_CONTRIBUTION, contributionAt, rupees } from './sample';
 import { Section } from './Section';
 
 interface Step {
@@ -19,7 +19,7 @@ function EnterVisual() {
     ['Check-out', '3 Nov 2026'],
     ['Room type', 'Standard'],
     ['Number of rooms', '10'],
-    ['Proposed rate', '₹2,000 per room per night'],
+    ['Proposed rate', '₹2,500 per room per night'],
   ];
   return (
     <div className="space-y-2" aria-hidden="true">
@@ -45,11 +45,12 @@ function EnterVisual() {
 }
 
 function CheckVisual() {
+  const revenue = SAMPLE.totals.room_revenue_inr ?? 1;
   const discounts: Array<[string, number]> = [
-    ['No discount', 2000],
-    ['5% off', 1900],
-    ['10% off', 1800],
-    ['15% off', 1700],
+    ['No discount', 2500],
+    ['10% off', 2250],
+    ['20% off', 2000],
+    ['25% off', 1875],
   ];
   return (
     <div className="space-y-3" aria-hidden="true">
@@ -57,11 +58,11 @@ function CheckVisual() {
         <span className="lp-chip">
           <IconCheck className="size-4 text-success" /> 10 rooms free every night
         </span>
-        <span className="lp-chip">Revenue ₹40,000</span>
+        <span className="lp-chip">Revenue {rupees(SAMPLE.totals.room_revenue_inr)}</span>
       </div>
       {discounts.map(([label, rate], i) => {
         const c = contributionAt(rate) ?? 0;
-        const ok = c >= 20000;
+        const ok = c >= SAMPLE_MIN_CONTRIBUTION;
         return (
           <div key={label} className="lp-pop" style={{ animationDelay: `${i * 110}ms` }}>
             <div className="mb-1 flex justify-between text-sm">
@@ -73,11 +74,11 @@ function CheckVisual() {
             <div className="relative h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-[var(--lp-line)]">
               <div
                 className={`h-full origin-left rounded-full ${ok ? 'bg-[var(--lp-ink)]' : 'bg-danger'}`}
-                style={{ width: `${(c / 40000) * 100}%`, animation: 'lp-grow 1s ease-out both' }}
+                style={{ width: `${(c / revenue) * 100}%`, animation: 'lp-grow 1s ease-out both' }}
               />
               <div
                 className="absolute inset-y-0 w-0.5 bg-[var(--lp-blue)]"
-                style={{ left: '50%' }}
+                style={{ left: `${(SAMPLE_MIN_CONTRIBUTION / revenue) * 100}%` }}
               />
             </div>
           </div>
@@ -105,7 +106,7 @@ function ShareVisual() {
         <dt className="lp-muted">Rooms</dt>
         <dd className="text-right font-medium">10 standard</dd>
         <dt className="lp-muted">Total room revenue</dt>
-        <dd className="text-right font-medium">₹40,000</dd>
+        <dd className="text-right font-medium">{rupees(SAMPLE.totals.room_revenue_inr)}</dd>
         <dt className="lp-muted">Quote valid for</dt>
         <dd className="text-right font-medium">3 days</dd>
       </dl>

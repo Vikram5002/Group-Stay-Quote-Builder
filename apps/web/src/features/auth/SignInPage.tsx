@@ -13,7 +13,7 @@ const ROLE_HELP: Record<Role, string> = {
 };
 
 export function SignInPage() {
-  const { session, signInMock } = useAuth();
+  const { session, signInMock, mode, signInCognito, pending, authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
@@ -26,6 +26,28 @@ export function SignInPage() {
   }, []);
 
   if (session) return <Navigate to={from} replace />;
+
+  if (mode === 'cognito') {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-4">
+        <h1 className="text-2xl font-bold">Sign in</h1>
+        {authError ? (
+          <Alert tone="danger" title="Sign-in did not complete">
+            {authError}
+          </Alert>
+        ) : null}
+        <Card>
+          <div className="flex flex-col gap-4">
+            <p>Sign in with the account the hotel owner created for you.</p>
+            <Button type="button" disabled={pending} onClick={() => signInCognito(from)}>
+              Sign in
+            </Button>
+          </div>
+        </Card>
+        <p className="text-sm">All data in this case is synthetic.</p>
+      </main>
+    );
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();

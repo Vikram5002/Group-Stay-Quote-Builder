@@ -10,7 +10,9 @@ import { z } from 'zod';
 import { getInventory } from '../data/catalog.js';
 import { savePolicy } from '../data/policy.js';
 import { ValidationFailure } from '../errors.js';
+import { log } from '../log.js';
 import { loadPolicy } from '../services/inputs.js';
+import { applyRoomTotals } from '../services/room-totals.js';
 import type { Handlers } from './operations.js';
 
 /** Availability calendar and policy operations. */
@@ -60,7 +62,18 @@ export const propertyHandlers: Handlers = {
   updatePolicy: async ({ req, deps }) => {
     const p = parseWith(PolicyUpdateRequest, req.body);
     if (!p.ok) throw new ValidationFailure(p.issues);
+    const before = await loadPolicy(deps.data);
     const saved = await savePolicy(deps.data, { ...p.value, property_id: deps.data.propertyId });
+    if (saved.total_rooms_units !== before.total_rooms_units) {
+      // The owner changed how many rooms the hotel has: every future night follows (D-056).
+      const r = await applyRoomTotals(
+        deps.data,
+        saved.total_rooms_units,
+        saved.timezone,
+        deps.clock.now(),
+      );
+      log('info', 'room_totals_applied', { total_rooms: saved.total_rooms_units, ...r });
+    }
     return { status: 200, body: saved };
   },
 };

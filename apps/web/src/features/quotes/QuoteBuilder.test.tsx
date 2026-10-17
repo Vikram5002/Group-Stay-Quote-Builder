@@ -185,6 +185,37 @@ describe('quote builder: forms and live meter', () => {
     expect(screen.getByText(/A required cost is unknown/)).toBeInTheDocument();
   });
 
+  it('an inclusion charged on top needs its price, and the calculation matches what was typed', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    await u.type(screen.getByLabelText(/Rate per room per night/), '2000');
+    await u.click(screen.getByRole('button', { name: 'Add inclusion' }));
+    await u.type(screen.getByLabelText(/Inclusion 1 name/), 'Breakfast');
+    await u.type(screen.getByLabelText(/Cost to the hotel per unit/), '150');
+    await u.click(screen.getByLabelText('Already included in the room rate'));
+
+    // Blank is not 0: the price must be typed.
+    const price = screen.getByLabelText(/Extra price charged per unit/);
+    expect(
+      screen.getByText('Enter the extra price, or 0 if there is no extra charge'),
+    ).toBeInTheDocument();
+    expect(price).toHaveAttribute('aria-invalid', 'true');
+    await next(u);
+    expect(screen.getByRole('heading', { name: 'Inclusions' })).toBeInTheDocument();
+
+    await u.type(price, '200');
+    await next(u);
+    expect(
+      await screen.findByText(
+        /Breakfast: .* = 6000 cost, charged separately 40 x 200 = 8000 revenue/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/included in the rate/)).not.toBeInTheDocument();
+  });
+
   it('starts a fresh form when New quote is chosen again', async () => {
     const u = user();
     renderBuilder();

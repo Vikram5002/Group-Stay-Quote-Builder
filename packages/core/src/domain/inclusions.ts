@@ -60,17 +60,20 @@ function lineFor(
   // Revenue needs only the units; if units are unknown the whole line is unknown via cost.
   const revenue = charged && units !== null ? units * (inc.price_inr as number) : 0;
 
-  const unitWord = inc.basis === 'per_guest_night' ? 'guest-nights' : 'room-nights';
+  const unitWord = inc.basis === 'per_guest_night' ? 'guest-night' : 'room-night';
   let explain: string;
   if (units === null) {
     explain = `${inc.name}: ${basis}, cost unknown`;
   } else if (cost === null) {
-    explain = `${inc.name}: ${basis} = ${units} ${unitWord}, unit cost unknown`;
+    explain = `${inc.name}: ${basis} = ${counted(units, unitWord)}, unit cost unknown`;
   } else {
-    explain = `${inc.name}: ${basis} = ${units} ${unitWord} x ${inc.unit_cost_inr} = ${cost} cost`;
+    explain = `${inc.name}: ${basis} = ${counted(units, unitWord)} x ${inc.unit_cost_inr} = ${cost} cost`;
+    // Say what was entered: an inclusion left out of the rate with no price earns nothing.
     explain += charged
       ? `, charged separately ${units} x ${inc.price_inr} = ${revenue} revenue`
-      : ', included in the rate';
+      : inc.included_in_rate
+        ? ', included in the rate'
+        : ', not included in the rate and no extra price given, so no revenue';
   }
   return { name: inc.name, units, cost_inr: cost, revenue_inr: revenue, explain };
 }

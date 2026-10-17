@@ -126,8 +126,15 @@ export function parseForm(form: QuoteForm, calendar?: FormCalendar): ParsedReque
     calendar && ISO_DATE.test(form.checkIn)
       ? pastCheckInIssue(form.checkIn, calendar.nowMs, calendar.timeZone)
       : null;
-  if (result.ok && !past) return { ok: true, request: result.value };
-  return { ok: false, issues: [...(result.ok ? [] : result.issues), ...(past ? [past] : [])] };
+  // Charged on top of the rate means a price must be typed; blank is never read as 0.
+  const unpriced: ValidationIssue[] = form.inclusions.flatMap((inc, i) =>
+    !inc.includedInRate && inc.price.trim() === ''
+      ? [{ path: `inclusions.${i}.price_inr`, code: 'REQUIRED' as const, message: 'Required' }]
+      : [],
+  );
+  const extra = [...(past ? [past] : []), ...unpriced];
+  if (result.ok && extra.length === 0) return { ok: true, request: result.value };
+  return { ok: false, issues: [...(result.ok ? [] : result.issues), ...extra] };
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -145,7 +152,9 @@ export function friendlyIssue(issue: ValidationIssue): string {
     RANGES[issue.path] ?? (issue.path.endsWith('_inr') ? [0, LIMITS.MAX_UNIT_INR] : undefined);
   switch (issue.code) {
     case 'REQUIRED':
-      return 'Required';
+      return issue.path.endsWith('.price_inr')
+        ? 'Enter the extra price, or 0 if there is no extra charge'
+        : 'Required';
     case 'NOT_INTEGER':
       return 'Use a whole number';
     case 'INVALID_TYPE':

@@ -202,6 +202,8 @@ function InclusionRow({
             type="number"
             inputMode="numeric"
             min={0}
+            required
+            hint="Charged on top of the rate. Enter 0 if there is no extra charge."
             value={inclusion.price}
             onChange={(e) => onChange({ price: e.target.value })}
             {...err(errors, path('price_inr'))}

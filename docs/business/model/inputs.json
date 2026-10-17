@@ -1,0 +1,53 @@
+{
+  "_note": "All money in whole INR per month unless stated. Every value has a type: Derived (arithmetic from the fixture), Assumption (to test), or Measured (from logs or Cost Explorer). Replace Assumptions as evidence arrives and rerun: node docs/business/model/unit-economics.mjs",
+  "price_points_inr": {
+    "value": [999, 1999, 2999],
+    "type": "Assumption",
+    "source": "Blueprint 16.3 probe values, not recommendations"
+  },
+  "per_group_fee_pct": {
+    "value": 2,
+    "type": "Assumption",
+    "source": "Blueprint 16.3 option B probe"
+  },
+  "fixture_group_contribution_inr": {
+    "value": 24000,
+    "type": "Derived",
+    "source": "fixture: 10 rooms x 2 nights x (2000 - 800)"
+  },
+  "protected_contribution_per_prevented_breach_inr": {
+    "value": 6000,
+    "type": "Derived",
+    "source": "rate 1500 vs floor: shortfall 6000 (T05)"
+  },
+  "prevented_breaches_per_month": {
+    "value": [0.25, 0.5, 1, 2],
+    "type": "Assumption",
+    "source": "Unknown; H2 interviews measure it"
+  },
+  "groups_confirmed_per_month": {
+    "value": [2, 4, 8],
+    "type": "Assumption",
+    "source": "Unknown; interview Q2"
+  },
+  "aws_cost_per_property_inr": {
+    "value": [100, 300, 800],
+    "type": "Assumption",
+    "source": "Pay-per-use estimate band until T4.07 measures it"
+  },
+  "support_minutes_per_property": {
+    "value": 60,
+    "type": "Assumption",
+    "source": "Pilot log will measure"
+  },
+  "support_cost_per_hour_inr": {
+    "value": 300,
+    "type": "Assumption",
+    "source": "Student-team time valued at a junior support rate"
+  },
+  "fixed_costs_inr": {
+    "value": 3000,
+    "type": "Assumption",
+    "source": "Domain, monitoring and tooling once the product leaves the free tier"
+  }
+}

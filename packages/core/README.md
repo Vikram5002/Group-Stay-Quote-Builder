@@ -97,3 +97,30 @@ const { evaluation, validity } = evaluate(v.value, {
 | 7     | Everything fine                                   | OFFER         | none (auto-confirm)    |
 
 Sellable rooms are the minimum over the stay's nights. Offered rooms never exceed it (BR-05).
+
+## Inclusions and counter-offers (T1.05)
+
+```ts
+const { evaluation } = evaluate(request, ctx);
+// request.inclusions: [{ name: 'Breakfast', basis: 'per_guest_night', unit_cost_inr: 150,
+//                        included_in_rate: true }]
+// evaluation.counter_offers: [
+//   { type: 'RAISE_RATE', rate_per_room_night_inr: 2100, contribution_inr: 20000, ... },
+//   { type: 'REPRICE_INCLUSION', inclusions: [...], contribution_inr: 24000, ... },
+// ]
+```
+
+| Basis             | Units                            | Revenue                                      |
+| ----------------- | -------------------------------- | -------------------------------------------- |
+| `per_guest_night` | rooms x guests per room x nights | `price_inr` x units, only if not in the rate |
+| `per_room_night`  | rooms x nights                   | same                                         |
+| unknown           | guests or unit cost `null`       | cost unknown: REVIEW with `UNKNOWN_COST`     |
+
+| Counter-offer       | When                       | Proposal                                        |
+| ------------------- | -------------------------- | ----------------------------------------------- |
+| `PARTIAL_ROOMS`     | Short of rooms             | The sellable rooms                              |
+| `RAISE_RATE`        | Floor breach               | The minimum safe rate                           |
+| `REPRICE_INCLUSION` | Floor breach, bundled item | Charge it separately at its unit cost           |
+| `CHANGE_VOLUME`     | Floor breach               | Fewest extra rooms (within stock) that clear it |
+
+Each counter-offer is re-run through the engine and kept only if it is a clean OFFER.

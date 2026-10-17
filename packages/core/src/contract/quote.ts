@@ -110,6 +110,13 @@ export const Stay = z
   });
 export type Stay = z.infer<typeof Stay>;
 
+/** Another block of rooms in the same quote: its own stay and room count (D-058). */
+export const StayLine = z.strictObject({
+  stay: Stay,
+  rooms: z.int().min(LIMITS.MIN_ROOMS).max(LIMITS.MAX_ROOMS),
+});
+export type StayLine = z.infer<typeof StayLine>;
+
 /** POST /v1/quotes and POST /v1/quotes/preview body. Unknown fields are rejected (BR-18). */
 export const QuoteRequest = z.strictObject({
   organiser: Organiser,
@@ -126,6 +133,11 @@ export const QuoteRequest = z.strictObject({
   /** Overrides the policy default for per-guest inclusions. */
   guests_per_room_units: z.int().min(1).max(LIMITS.MAX_GUESTS_PER_ROOM).optional(),
   inclusions: z.array(InclusionInput).max(LIMITS.MAX_INCLUSIONS).optional(),
+  /**
+   * More blocks of rooms in the same quote, for example 5 rooms for 3 nights plus 3 rooms for 4
+   * nights (D-058). Same room type, pricing and inclusions; held all together or not at all.
+   */
+  additional_lines: z.array(StayLine).max(LIMITS.MAX_EXTRA_LINES).optional(),
 });
 export type QuoteRequest = z.infer<typeof QuoteRequest>;
 
@@ -176,6 +188,15 @@ export const CounterOffer = z.strictObject({
 });
 export type CounterOffer = z.infer<typeof CounterOffer>;
 
+/** One block of rooms as the engine saw it. */
+export const EvaluationLine = z.strictObject({
+  check_in: IsoDate,
+  check_out: IsoDate,
+  nights: z.int().min(LIMITS.MIN_NIGHTS).max(LIMITS.MAX_NIGHTS),
+  rooms: z.int().min(1),
+});
+export type EvaluationLine = z.infer<typeof EvaluationLine>;
+
 /** Engine output. Every decision carries reason codes and an arithmetic trail. */
 export const Evaluation = z.strictObject({
   decision: Decision,
@@ -192,6 +213,11 @@ export const Evaluation = z.strictObject({
   counter_offers: z.array(CounterOffer),
   /** Human-readable arithmetic, for example "20 x 2000 = 40000". */
   trail: z.array(z.string()),
+  /**
+   * The blocks of rooms (D-058). For a multi-line quote check_in / check_out span all lines and
+   * requested_rooms / offered_rooms are the sum over lines. Absent on quotes saved before it.
+   */
+  lines: z.array(EvaluationLine).optional(),
 });
 export type Evaluation = z.infer<typeof Evaluation>;
 

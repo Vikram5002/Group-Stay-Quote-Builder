@@ -1,5 +1,6 @@
 import { problem, type ProblemDetails } from '../contract/problem.js';
 import { QuoteRequest, type Stay } from '../contract/quote.js';
+import { LIMITS } from '../contract/primitives.js';
 import { parseWith } from '../contract/validation.js';
 import { checkOutDate, daysBetween, stayNights } from './calendar.js';
 
@@ -17,7 +18,36 @@ export interface ResolvedStay {
   night_dates: string[];
 }
 
-export type ResolvedQuoteRequest = Omit<QuoteRequest, 'stay'> & { stay: ResolvedStay };
+/** One block of rooms: its stay and how many rooms (D-058). */
+export interface ResolvedLine {
+  stay: ResolvedStay;
+  rooms: number;
+}
+
+export type ResolvedQuoteRequest = Omit<QuoteRequest, 'stay'> & {
+  stay: ResolvedStay;
+  /** Every block of rooms, the first one being `stay` and `rooms`. */
+  lines: ResolvedLine[];
+};
+
+/** Earliest check-in to latest check-out over all lines, as night dates. */
+export function spanDates(lines: readonly ResolvedLine[]): string[] {
+  const first = lines.map((l) => l.stay.check_in).sort()[0] as string;
+  const last = lines
+    .map((l) => l.stay.check_out)
+    .sort()
+    .at(-1) as string;
+  return stayNights(first, daysBetween(first, last));
+}
+
+/** Rooms needed on each night: the sum over the lines that cover it. */
+export function roomsByNight(lines: readonly ResolvedLine[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const line of lines) {
+    for (const date of line.stay.night_dates) out.set(date, (out.get(date) ?? 0) + line.rooms);
+  }
+  return out;
+}
 
 export type QuoteRequestResult =
   { ok: true; value: ResolvedQuoteRequest } | { ok: false; problem: ProblemDetails };
@@ -46,6 +76,27 @@ export function validateQuoteRequest(input: unknown, instance?: string): QuoteRe
       }),
     };
   }
+  const v = parsed.value;
+  const lines: ResolvedLine[] = [
+    { stay: resolveStay(v.stay), rooms: v.rooms },
+    ...(v.additional_lines ?? []).map((l) => ({ stay: resolveStay(l.stay), rooms: l.rooms })),
+  ];
+  if (lines.length > 1 && spanDates(lines).length > LIMITS.MAX_NIGHTS) {
+    return {
+      ok: false,
+      problem: problem('VALIDATION_FAILED', {
+        detail: '1 field failed validation',
+        errors: [
+          {
+            path: 'additional_lines',
+            code: 'OUT_OF_RANGE',
+            message: `All lines together must fit within ${LIMITS.MAX_NIGHTS} nights`,
+          },
+        ],
+        ...(instance === undefined ? {} : { instance }),
+      }),
+    };
+  }
   if (
     parsed.value.discount_pct !== undefined &&
     parsed.value.rate_per_room_night_inr !== undefined
@@ -65,5 +116,5 @@ export function validateQuoteRequest(input: unknown, instance?: string): QuoteRe
       }),
     };
   }
-  return { ok: true, value: { ...parsed.value, stay: resolveStay(parsed.value.stay) } };
+  return { ok: true, value: { ...v, stay: lines[0]?.stay as ResolvedStay, lines } };
 }

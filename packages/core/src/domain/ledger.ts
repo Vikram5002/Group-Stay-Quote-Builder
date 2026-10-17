@@ -19,7 +19,14 @@ export interface Booking {
   room_type: string;
   dates: readonly string[];
   units: number;
+  /** Rooms per night when they differ by night (a multi-line quote, D-058); else `units`. */
+  units_by_date?: Readonly<Record<string, number>>;
   state: BookingState;
+}
+
+/** Rooms a booking takes on one of its nights. */
+export function bookingUnits(b: Booking, date: string): number {
+  return b.units_by_date?.[date] ?? b.units;
 }
 
 export interface LedgerState {
@@ -211,7 +218,7 @@ export function checkLedger(state: LedgerState): LedgerDrift[] {
     const target = b.state === 'held' ? held : confirmed;
     for (const date of b.dates) {
       const key = nightKey(b.room_type, date);
-      target.set(key, (target.get(key) ?? 0) + b.units);
+      target.set(key, (target.get(key) ?? 0) + bookingUnits(b, date));
     }
   }
   for (const [key, n] of state.nights) {

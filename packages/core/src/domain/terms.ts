@@ -28,6 +28,7 @@ export function commercialTerms(request: ResolvedQuoteRequest, evaluation: Evalu
     rooms: evaluation.offered_rooms,
     rate_per_room_night_inr: request.rate_per_room_night_inr ?? null,
     discount_pct: request.discount_pct ?? null,
+    additional_lines: request.additional_lines ?? [],
     guests_per_room_units: request.guests_per_room_units ?? null,
     inclusions: request.inclusions ?? [],
     room_revenue_inr: t.room_revenue_inr,

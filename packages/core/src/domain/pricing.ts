@@ -244,9 +244,32 @@ export function explainPricing(input: PricingInput, t: QuoteTotals): string[] {
     );
   }
 
-  const lowest = minimumRate(input.floor);
+  trail.push(...explainFloor(input.floor, t, hasExtras));
+  return trail;
+}
+
+/** Price a package: totals, floor result and the arithmetic trail. */
+export function price(input: PricingInput): PricingResult {
+  const totals = priceTotals(input);
+  return {
+    totals,
+    floor_ok:
+      totals.contribution_inr === null || totals.contribution_floor_inr === null
+        ? null
+        : floorPasses(totals.contribution_inr, totals.contribution_floor_inr),
+    trail: explainPricing(input, totals),
+  };
+}
+
+/**
+ * The full price, discount, floor and minimum-rate part of the trail, for any package totals
+ * (single or multi-line).
+ */
+export function explainFloor(floor: FloorPolicy, t: QuoteTotals, hasExtras: boolean): string[] {
+  const trail: string[] = [];
+  const lowest = minimumRate(floor);
   trail.push(
-    `full price ${input.floor.contribution_floor_inr} / ${input.floor.total_rooms_units} rooms = ${t.floor_rate_per_room_night_inr} per room-night (floor rate, variable cost included)`,
+    `full price ${floor.contribution_floor_inr} / ${floor.total_rooms_units} rooms = ${t.floor_rate_per_room_night_inr} per room-night (floor rate, variable cost included)`,
   );
   if (t.discount_pct !== null) {
     trail.push(
@@ -281,17 +304,4 @@ export function explainPricing(input: PricingInput, t: QuoteTotals): string[] {
     );
   }
   return trail;
-}
-
-/** Price a package: totals, floor result and the arithmetic trail. */
-export function price(input: PricingInput): PricingResult {
-  const totals = priceTotals(input);
-  return {
-    totals,
-    floor_ok:
-      totals.contribution_inr === null || totals.contribution_floor_inr === null
-        ? null
-        : floorPasses(totals.contribution_inr, totals.contribution_floor_inr),
-    trail: explainPricing(input, totals),
-  };
 }

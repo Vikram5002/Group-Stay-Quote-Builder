@@ -12,6 +12,8 @@ export const LIMITS = {
   MAX_ROOMS: 500,
   MAX_ROOM_TYPE_NIGHTS: 45,
   MAX_INCLUSIONS: 10,
+  /** Extra blocks of rooms in one quote, besides the first (D-058). */
+  MAX_EXTRA_LINES: 9,
   MAX_GUESTS_PER_ROOM: 6,
   /** Upper bound for any per-unit money input (rate, cost, price). */
   MAX_UNIT_INR: 1_000_000,

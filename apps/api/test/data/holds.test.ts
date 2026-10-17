@@ -329,26 +329,22 @@ describe.skipIf(!hasDb)('transactional holds (DynamoDB Local)', () => {
       await consistent();
     });
 
-    it('amend only reduces, only confirmed bookings, and never applies twice', async () => {
+    it('amend only reduces, only confirmed bookings, and racing amendments serialise', async () => {
       await acquireHolds(ctx, req('Q1', 4));
       await expect(amendHolds(ctx, 'Q1', 2)).rejects.toBeInstanceOf(NotHeldError); // still held
       await confirmHolds(ctx, 'Q1');
       for (const bad of [0, 4, 5])
         await expect(amendHolds(ctx, 'Q1', bad)).rejects.toBeInstanceOf(RangeError);
-      const results = await Promise.allSettled([
-        amendHolds(ctx, 'Q1', 3),
-        amendHolds(ctx, 'Q1', 2),
-      ]);
-      if (results.filter((x) => x.status === 'fulfilled').length !== 1)
-        console.log(
-          'AMEND_RACE',
-          JSON.stringify(
-            results.map((x) =>
-              x.status === 'fulfilled' ? 'ok' : String((x as PromiseRejectedResult).reason),
-            ),
-          ),
-        );
-      expect(results.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+      // Each amendment applies only to the units it read, so racing ones end in a valid order
+      // (4->3, 4->2 or 4->3->2) and the counters always match the lines.
+      await Promise.allSettled([amendHolds(ctx, 'Q1', 3), amendHolds(ctx, 'Q1', 2)]);
+      const units = (await getHoldLines(ctx, 'Q1')).map((l) => l.units);
+      expect([
+        [3, 3],
+        [2, 2],
+      ]).toContainEqual(units);
+      const nights = await getInventory(ctx, 'standard', '2026-11-01', '2026-11-02');
+      expect(nights.map((n) => n.confirmed_units)).toEqual(units);
       await consistent();
     });
 

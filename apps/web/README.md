@@ -76,6 +76,15 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - `/experiments` is the growth experiment log: role played, channel, send and response times in IST, the quote and version, what was said, and the tier reached. No response is shown as "No response yet", never as zero. Only people who agreed to play a role are logged, and the page says that role-play is process evidence, not market demand.
 - The API has no experiment route yet, so the log is kept in this browser only (`src/features/experiments/store.ts`) with a CSV export to commit as evidence. A server-backed store can replace it without changing the screen.
 
+## Work package T2-09: End-to-end tests and accessibility
+
+- `npm run e2e` runs Playwright in a real Chromium against the app and its built-in mock API (the dev server starts by itself). Run `npm run e2e:install` once to download the browser. Set `E2E_BASE_URL` to run the same tests against a deployed environment.
+- `e2e/rubric.e2e.ts`: the three rubric flows end to end (fixture offered and confirmed, shortage as a partial offer with no over-hold, below the floor needing review, four-eyes approval, then confirmation by a different person).
+- `e2e/access.e2e.ts`: axe (WCAG 2.1 A and AA, real colour contrast) on every screen with real content on it, dialogs included; the skip link, keyboard submit, dialog focus trap and Escape, tab titles, and role limits.
+- `e2e/responsive.e2e.ts`: every screen fits a phone-sized viewport without sideways scrolling, and the main controls are easy to touch.
+- The mock API keeps its data in memory, so the tests load the app once and move around with the menu. The browser clock is pinned so the November 2026 case dates stay in the future.
+- Fixes found by running the app in a browser: sign-out now starts the next person at the dashboard, the dashboard and calendar refresh as soon as a quote is issued or changed, each availability night is named by its visible text, and every screen sets its tab title.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -84,6 +93,6 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - Every text and background colour pair is checked against WCAG 2.1 AA in `src/lib/contrast.test.ts`.
 - Focus is visible, the first tab stop is a skip link, and focus moves to the main content after navigation.
 
-## Not in this work package
+## Still open
 
-Cognito sign-in (needs the Track 3 user pool), Track 2's remaining items are the end-to-end tests and the final polish (T2-09).
+All Track 2 work packages are built. What is left depends on other tracks: Cognito sign-in once Track 3 provides the user pool, and server storage for the evidence and experiment data if Track 1 adds routes for them.

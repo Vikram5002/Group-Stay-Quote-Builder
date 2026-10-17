@@ -7,6 +7,7 @@ import { newIdempotencyKey } from '../../lib/api';
 export const quoteKey = (id: string) => ['quote', id] as const;
 export const auditKey = (id: string) => ['quote-audit', id] as const;
 export const QUOTES_KEY = ['quotes'] as const;
+export const AVAILABILITY_KEY = ['availability'] as const;
 
 export function useQuote(id: string) {
   const api = useApi();
@@ -59,6 +60,7 @@ export function useQuoteAction<Input>(
       queryClient.setQueryData(quoteKey(quoteId), quote);
       void queryClient.invalidateQueries({ queryKey: auditKey(quoteId) });
       void queryClient.invalidateQueries({ queryKey: QUOTES_KEY });
+      void queryClient.invalidateQueries({ queryKey: AVAILABILITY_KEY });
     },
     onError: () => {
       // The quote may have changed under us (expired, cancelled by someone else). Re-read it.

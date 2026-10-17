@@ -51,7 +51,8 @@ export function PublicChecks() {
       <p className="text-sm">
         Runs the three public checks from the case fixture against{' '}
         {MODE === 'mock' ? 'the practice API built into this app (mock mode)' : 'the connected API'}
-        . They are previews, so no rooms are held and nothing is saved.
+        . They are previews, so no rooms are held and nothing is saved. They use today's
+        availability, so rooms already held or confirmed on the fixture dates can make a check fail.
       </p>
       {!canRun && (
         <p className="mt-2 text-sm text-ink-muted">

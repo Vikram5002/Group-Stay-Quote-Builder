@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ROLES } from '@c32/core';
@@ -20,6 +20,10 @@ export function SignInPage() {
   const [name, setName] = useState('');
   const [role, setRole] = useState<Role>('Sales');
   const [error, setError] = useState<string | undefined>();
+
+  useEffect(() => {
+    document.title = 'Sign in · Group Stay Quote Builder';
+  }, []);
 
   if (session) return <Navigate to={from} replace />;
 

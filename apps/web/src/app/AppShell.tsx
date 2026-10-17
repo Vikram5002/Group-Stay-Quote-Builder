@@ -5,6 +5,8 @@ import { useAuth } from '../features/auth/auth';
 import { cn } from '../lib/cn';
 import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 
+const APP_NAME = 'Group Stay Quote Builder';
+
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
     'flex min-h-11 items-center rounded-control px-3 text-sm font-semibold',
@@ -16,6 +18,7 @@ export function AppShell() {
   const { pathname } = useLocation();
   const previousPath = useRef(pathname);
   const { session, signOut } = useAuth();
+
   const role = session?.user.role;
   const items = NAV_ITEMS.filter(
     (item) => !item.roles || (role !== undefined && item.roles.includes(role)),
@@ -30,6 +33,21 @@ export function AppShell() {
       mainRef.current?.focus();
     }
   }, [pathname]);
+
+  // Keep the browser tab title in step with the screen's heading, including pages that load
+  // their heading after the data arrives (a quote's organiser, for example).
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const update = () => {
+      const heading = main.querySelector('h1')?.textContent?.trim();
+      document.title = heading ? `${heading} · ${APP_NAME}` : APP_NAME;
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(main, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[16rem_1fr]">
@@ -64,7 +82,7 @@ export function AppShell() {
           <div className="border-t border-border p-4 text-sm">
             <p className="font-semibold">{session.displayName}</p>
             <p className="text-ink-muted">Role: {session.user.role}</p>
-            <Button variant="secondary" className="mt-3" onClick={signOut}>
+            <Button variant="secondary" className="mt-3" onClick={() => signOut('manual')}>
               Sign out
             </Button>
           </div>

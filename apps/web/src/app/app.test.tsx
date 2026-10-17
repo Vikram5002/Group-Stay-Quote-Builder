@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
 import type { Role } from '@c32/core';
@@ -49,6 +49,14 @@ describe('app shell and routing', () => {
     expect(screen.getByRole('main')).toHaveFocus();
   });
 
+  it('keeps the browser tab title in step with the screen', async () => {
+    const user = userEvent.setup();
+    renderAt('/review');
+    await waitFor(() => expect(document.title).toBe('Review queue · Group Stay Quote Builder'));
+    await user.click(screen.getByRole('link', { name: 'Availability' }));
+    await waitFor(() => expect(document.title).toBe('Availability · Group Stay Quote Builder'));
+  });
+
   it('offers a skip link as the first tab stop', async () => {
     const user = userEvent.setup();
     renderAt('/');
@@ -87,6 +95,15 @@ describe('sign-in and roles', () => {
     renderAt('/');
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('starts the next person at the dashboard after a deliberate sign-out', async () => {
+    const user = userEvent.setup();
+    renderAt('/availability');
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    await user.type(screen.getByLabelText(/Your name/), 'Ravi');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
   });
 
   it('hides Owner-only screens from the menu for Sales', () => {

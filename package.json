@@ -9,11 +9,12 @@
   },
   "workspaces": [
     "packages/core",
-    "apps/api"
+    "apps/api",
+    "infra"
   ],
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -b && tsc -p packages/core/tsconfig.test.json && tsc -p apps/api/tsconfig.test.json",
+    "typecheck": "tsc -b && tsc -p packages/core/tsconfig.test.json && tsc -p apps/api/tsconfig.test.json && tsc -p infra/tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,md,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,js,md,yml}\"",

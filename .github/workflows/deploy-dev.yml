@@ -1,0 +1,66 @@
+name: deploy-dev
+
+# Deploys every stack to dev after a push to main (blueprint 15.1, stage 4). AWS access comes from
+# the c32-github-deploy role through GitHub OIDC; no AWS keys are stored in GitHub.
+# One-time setup: Settings -> Secrets and variables -> Actions -> Variables:
+#   AWS_DEPLOY_ROLE_ARN  (output DeployRoleArn of the c32-github-oidc stack)
+#   ALERT_EMAIL          (budget and alarm emails; optional)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_REGION: ap-south-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run bundle -w @c32/api
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Deploy backend stacks
+        working-directory: infra
+        run: >
+          npx cdk deploy c32-dev-web c32-dev-data c32-dev-auth c32-dev-api c32-dev-observability
+          -c stage=dev -c version=dev-${GITHUB_SHA::7} -c alertEmail="${{ vars.ALERT_EMAIL }}"
+          --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Build the web app against the deployed API
+        run: |
+          api=$(node -p "require('./infra/cdk-outputs.json')['c32-dev-api'].ApiUrl")
+          cd apps/web && npm install --no-audit --no-fund
+          VITE_API_MODE=api VITE_API_BASE_URL="$api" npm run build
+
+      - name: Deploy the web app
+        working-directory: infra
+        run: >
+          npx cdk deploy c32-dev-web-content -c stage=dev -c alertEmail="${{ vars.ALERT_EMAIL }}"
+          --require-approval never
+
+      - name: Smoke test
+        run: |
+          api=$(node -p "require('./infra/cdk-outputs.json')['c32-dev-api'].ApiUrl")
+          curl -fsS "$api/health"
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$api/v1/quotes")" = 401

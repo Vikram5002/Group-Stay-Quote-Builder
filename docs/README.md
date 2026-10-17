@@ -11,5 +11,6 @@
 | [UI screenshots](ui/screenshots)                          | Track 2 | 17 screenshots of every screen, for the evidence bundle                |
 | [Test traceability](testing/traceability.md)              | Track 1 | Every golden test T01 to T25 and property P1 to P6, and what proves it |
 | [Performance](testing/performance.md)                     | Track 1 | Local latency check against the 500 ms target (not AWS)                |
+| [Runbook](architecture/runbook.md)                        | Track 3 | Live dev endpoints, deploy, users, alarms, rollback, restore, teardown |
 | [Decision log](architecture/decisions.md)                 | All     | Every scope or design decision with date and reason                    |
 | [Contributing](../.github/CONTRIBUTING.md)                | All     | Branch per work package, commit style, merge rule                      |

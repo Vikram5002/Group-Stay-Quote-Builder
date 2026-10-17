@@ -33,11 +33,14 @@ export async function readLedgerState(ctx: DataContext): Promise<LedgerState> {
     const id = line['quote_id'] as string;
     const existing = bookings.get(id);
     const date = line['date'] as string;
+    const units = line['units'] as number;
     bookings.set(id, {
       quote_id: id,
       room_type: line['room_type'] as string,
       dates: existing ? [...existing.dates, date].sort() : [date],
-      units: line['units'] as number,
+      units,
+      // Each hold line keeps its own night's rooms, so multi-line quotes add up right (D-058).
+      units_by_date: { ...existing?.units_by_date, [date]: units },
       state: line['state'] as Booking['state'],
     });
   }

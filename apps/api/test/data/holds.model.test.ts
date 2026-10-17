@@ -1,5 +1,6 @@
 import {
   amend,
+  bookingUnits,
   cancel,
   checkLedger,
   confirm,
@@ -40,8 +41,14 @@ const op = fc.record({
 function snapshot(s: LedgerState) {
   return {
     nights: [...s.nights.entries()].sort(([a], [b]) => a.localeCompare(b)),
+    // Rooms on each night, however the booking stores them (one count or one per night).
     bookings: [...s.bookings.values()]
-      .map((b) => ({ ...b, dates: [...b.dates] }))
+      .map((b) => ({
+        quote_id: b.quote_id,
+        room_type: b.room_type,
+        state: b.state,
+        nights: b.dates.map((d) => [d, bookingUnits(b, d)]),
+      }))
       .sort((a, b) => a.quote_id.localeCompare(b.quote_id)),
   };
 }

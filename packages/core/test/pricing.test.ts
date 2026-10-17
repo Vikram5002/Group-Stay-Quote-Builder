@@ -225,3 +225,65 @@ describe('input guards and edge cases', () => {
     expect(() => price(input as PricingInput)).toThrow(RangeError);
   });
 });
+
+describe('arithmetic trail (explainable decisions)', () => {
+  it('explains the fixture quote line by line', () => {
+    expect(price(pkg(10)).trail).toEqual([
+      '10 rooms x 2 nights = 20 room-nights',
+      '20 x 2000 = 40000 room revenue',
+      '20 x 800 = 16000 variable cost',
+      '40000 - 16000 = 24000 contribution >= 20000 floor, headroom 4000',
+      'minimum safe rate ceil((20000 + 16000) / 20) = 1800',
+    ]);
+  });
+
+  it('states the shortfall on a breach', () => {
+    expect(price(pkg(10, 1500)).trail[3]).toBe(
+      '30000 - 16000 = 14000 contribution < 20000 floor, shortfall 6000',
+    );
+  });
+
+  it('lists nightly values when the rate varies', () => {
+    const r = price({
+      rooms: 10,
+      nights: [
+        { date: '2026-11-01', rate_inr: 2000, variable_cost_inr: 800 },
+        { date: '2026-11-02', rate_inr: 2400, variable_cost_inr: 800 },
+      ],
+      floor: DEFAULT_POLICY,
+    });
+    expect(r.trail[1]).toBe('10 x (2000 + 2400) = 44000 room revenue');
+    expect(r.trail[2]).toBe('20 x 800 = 16000 variable cost');
+  });
+
+  it('names the nights whose values are unknown', () => {
+    const r = price({
+      rooms: 10,
+      nights: [
+        { date: '2026-11-01', rate_inr: 2000, variable_cost_inr: 800 },
+        { date: '2026-11-02', rate_inr: 2000, variable_cost_inr: null },
+      ],
+      floor: DEFAULT_POLICY,
+    });
+    expect(r.trail).toContain('variable cost unknown on 2026-11-02');
+    expect(r.trail).toContain('contribution unknown, so the floor cannot be checked');
+  });
+
+  it('shows extras and the per-room-night floor when they apply', () => {
+    const r = price({
+      ...pkg(7, 2000, perRoomNight),
+      extras: { revenue_inr: 5600, cost_inr: 4200 },
+    });
+    expect(r.trail).toContain('inclusions revenue 5600, inclusions cost 4200');
+    expect(r.trail).toContain('floor 1000 x 14 = 14000');
+    expect(r.trail).toContain(
+      '28000 + 5600 - 11200 - 4200 = 18200 contribution >= 14000 floor, headroom 4200',
+    );
+    expect(r.trail).toContain('minimum safe rate ceil((14000 + 11200 + 4200 - 5600) / 14) = 1700');
+  });
+
+  it('marks unknown extras explicitly', () => {
+    const r = price({ ...pkg(10), extras: { revenue_inr: null, cost_inr: null } });
+    expect(r.trail).toContain('inclusions revenue unknown, inclusions cost unknown');
+  });
+});

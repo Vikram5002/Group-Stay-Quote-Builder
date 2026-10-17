@@ -150,7 +150,7 @@ export class LocalFileStore implements FileStore {
       return null;
     }
   }
-  async put(key: string, body: Buffer | string): Promise<void> {
+  async put(key: string, body: Buffer | string, _contentType?: string): Promise<void> {
     const p = this.path(key);
     await mkdir(dirname(p), { recursive: true });
     await writeFile(p, body);

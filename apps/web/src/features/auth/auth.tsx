@@ -1,12 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Actor, Role } from '@c32/core';
 import { makeMockToken } from '../../mocks/auth';
+import { authorizeUrl, cognitoConfig, completeSignIn, logoutUrl } from './cognito';
 
 /**
- * Sign-in is mock first (T2-02). The same shape is kept for the Cognito hosted UI (PKCE) so the
- * rest of the app does not change when it is wired in (T3-03): a signed-in user, a token getter
- * and sign-out.
+ * Sign-in is mock first (T2-02); with VITE_AUTH_MODE=cognito it uses the Cognito hosted UI with
+ * PKCE (T3-03, see cognito.ts). The rest of the app sees the same shape either way: a signed-in
+ * user, a token getter and sign-out.
  */
 export interface Session {
   user: Actor;
@@ -22,6 +23,14 @@ export interface AuthContextValue {
   /** How the last sign-out happened, or null while signed in. */
   signedOutBy: 'manual' | 'expired' | null;
   getToken: () => string | null;
+  /** 'cognito' on a deployed site (VITE_AUTH_MODE=cognito), otherwise the practice sign-in. */
+  mode: 'mock' | 'cognito';
+  /** Sends the browser to the Cognito hosted sign-in page. */
+  signInCognito: (returnTo?: string) => void;
+  /** True while a Cognito sign-in callback is being completed. */
+  pending: boolean;
+  /** Why the last Cognito sign-in failed, if it did. */
+  authError: string | null;
 }
 
 const STORAGE_KEY = 'c32.session';
@@ -74,6 +83,46 @@ export function AuthProvider({
   );
 
   const [signedOutBy, setSignedOutBy] = useState<'manual' | 'expired' | null>(null);
+  const cognito = useMemo(() => cognitoConfig(), []);
+  const [pending, setPending] = useState(() => {
+    if (!cognito) return false;
+    const params = new URL(window.location.href).searchParams;
+    return params.has('code') || params.has('error');
+  });
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Finish a Cognito sign-in when the hosted UI redirects back with ?code=...
+  useEffect(() => {
+    if (!cognito || !pending) return;
+    let cancelled = false;
+    completeSignIn(cognito, new URL(window.location.href))
+      .then((result) => {
+        if (cancelled || !result) return;
+        persist(result.session);
+        setSession(result.session);
+        setSignedOutBy(null);
+        window.history.replaceState(null, '', result.returnTo);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setAuthError(err instanceof Error ? err.message : 'Sign-in failed');
+        window.history.replaceState(null, '', '/sign-in');
+      })
+      .finally(() => {
+        if (!cancelled) setPending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cognito, pending]);
+
+  const signInCognito = useCallback(
+    (returnTo = '/') => {
+      if (!cognito) return;
+      void authorizeUrl(cognito, returnTo).then((url) => window.location.assign(url));
+    },
+    [cognito],
+  );
 
   const signInMock = useCallback((role: Role, displayName: string) => {
     const next = mockSession(role, displayName);
@@ -82,18 +131,43 @@ export function AuthProvider({
     setSignedOutBy(null);
   }, []);
 
-  const signOut = useCallback((reason?: 'manual') => {
-    persist(null);
-    setSession(null);
-    setSignedOutBy(reason ?? 'expired');
-  }, []);
+  const signOut = useCallback(
+    (reason?: 'manual') => {
+      persist(null);
+      setSession(null);
+      setSignedOutBy(reason ?? 'expired');
+      // A deliberate sign-out also ends the Cognito session, so the next person must sign in.
+      if (cognito && reason === 'manual') window.location.assign(logoutUrl(cognito));
+    },
+    [cognito],
+  );
 
   const token = session?.token ?? null;
   const getToken = useCallback(() => token, [token]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, signInMock, signOut, signedOutBy, getToken }),
-    [session, signInMock, signOut, signedOutBy, getToken],
+    () => ({
+      session,
+      signInMock,
+      signOut,
+      signedOutBy,
+      getToken,
+      mode: cognito ? 'cognito' : 'mock',
+      signInCognito,
+      pending,
+      authError,
+    }),
+    [
+      session,
+      signInMock,
+      signOut,
+      signedOutBy,
+      getToken,
+      cognito,
+      signInCognito,
+      pending,
+      authError,
+    ],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,5 +1,6 @@
 import type { ImportReport, ImportRowIssue } from '@c32/core';
 import { Alert, Badge, Button, DataTable } from '../../components';
+import { counted, plural } from '../../lib/plural';
 
 const HEADLINE: Record<
   ImportReport['status'],
@@ -18,6 +19,20 @@ function sortIssues(issues: readonly ImportRowIssue[]): ImportRowIssue[] {
       Number(b.severity === 'error') - Number(a.severity === 'error') ||
       a.field.localeCompare(b.field),
   );
+}
+
+/** The value as written in the file. An empty cell says so; a whole-file problem has none. */
+function IssueValue({ value }: { value: string | undefined }) {
+  if (value === undefined) {
+    return (
+      <>
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">No single value</span>
+      </>
+    );
+  }
+  if (value === '') return <span className="text-ink-muted">(empty)</span>;
+  return <code className="font-mono text-sm break-all">{value}</code>;
 }
 
 /** Dry-run or commit result with every problem listed by row number. */
@@ -40,10 +55,8 @@ export function ReportView({
   return (
     <section aria-label="Check result" className="flex flex-col gap-4">
       <Alert tone={head.tone} title={head.title}>
-        {report.rows_total} row{report.rows_total === 1 ? '' : 's'} read: {report.rows_accepted}{' '}
-        accepted, {report.rows_rejected} rejected. {errors} error{errors === 1 ? '' : 's'},{' '}
-        {warnings} warning
-        {warnings === 1 ? '' : 's'}.
+        {counted(report.rows_total, 'row')} read: {report.rows_accepted} accepted,{' '}
+        {report.rows_rejected} rejected. {counted(errors, 'error')}, {counted(warnings, 'warning')}.
         <span className="mt-1 block text-xs">
           File fingerprint: {report.content_sha256.slice(0, 12)}
         </span>
@@ -57,6 +70,7 @@ export function ReportView({
         columns={[
           { header: 'Row', numeric: true, render: (i) => i.row },
           { header: 'Field', render: (i) => i.field },
+          { header: 'Value', render: (i) => <IssueValue value={i.value} /> },
           { header: 'Problem', render: (i) => i.message },
           {
             header: 'Level',
@@ -73,13 +87,13 @@ export function ReportView({
       {report.status === 'VALIDATED' && (
         <div>
           <Button loading={busy} disabled={report.rows_accepted === 0} onClick={onCommit}>
-            Import {report.rows_accepted} row{report.rows_accepted === 1 ? '' : 's'}
+            Import {counted(report.rows_accepted, 'row')}
           </Button>
           {partial && (
             <p className="mt-2 text-sm">
-              {report.rows_rejected} row{report.rows_rejected === 1 ? ' has' : 's have'} errors and
-              will not be imported. Fix {report.rows_rejected === 1 ? 'it' : 'them'} in the file and
-              import again to add {report.rows_rejected === 1 ? 'it' : 'them'}.
+              {counted(report.rows_rejected, 'row')} {plural(report.rows_rejected, 'has', 'have')}{' '}
+              errors and will not be imported. Fix {plural(report.rows_rejected, 'it', 'them')} in
+              the file and import again to add {plural(report.rows_rejected, 'it', 'them')}.
             </p>
           )}
           {warnings > 0 && (

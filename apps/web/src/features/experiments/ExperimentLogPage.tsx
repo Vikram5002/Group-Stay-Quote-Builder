@@ -26,6 +26,7 @@ import {
 import type { Channel, ExperimentEntry, ExperimentForm, FormErrors, QuoteKind, Tier } from './log';
 import { browserStore } from './store';
 import type { ExperimentStore } from './store';
+import { counted } from '../../lib/plural';
 
 function downloadCsv(entries: readonly ExperimentEntry[]) {
   const blob = new Blob([entriesToCsv(entries)], { type: 'text/csv;charset=utf-8' });
@@ -45,7 +46,7 @@ function Summary({ entries }: { entries: readonly ExperimentEntry[] }) {
   return (
     <Card title="Summary">
       <p className="text-sm">
-        {entries.length} contact{entries.length === 1 ? '' : 's'} logged, {responded} responded,{' '}
+        {counted(entries.length, 'contact')} logged, {responded} responded,{' '}
         {entries.length - responded} with no response yet.
       </p>
       <ul className="mt-3 flex flex-wrap gap-2" aria-label="Contacts by tier reached">

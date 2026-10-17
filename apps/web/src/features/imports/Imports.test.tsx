@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { RouterProvider } from 'react-router-dom';
+import { problem } from '@c32/core';
 import type { Role } from '@c32/core';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -76,7 +77,10 @@ describe('importing a file', () => {
       screen.getByText(/2 rows read: 2 accepted, 0 rejected\. 0 errors, 1 warning/),
     ).toBeInTheDocument();
     const problems = screen.getByRole('table', { name: 'Problems found, by row' });
-    expect(within(problems).getByText(/availability is unknown/)).toBeInTheDocument();
+    expect(
+      within(problems).getByText('Empty: imported as unknown (null), not 0'),
+    ).toBeInTheDocument();
+    expect(within(problems).getByText('(empty)')).toBeInTheDocument();
     expect(within(problems).getByText('Warning')).toBeInTheDocument();
     expect(store.inventory).toHaveLength(0);
 
@@ -125,13 +129,44 @@ describe('importing a file', () => {
     const rows = within(table).getAllByRole('row').slice(1);
     const rowNumbers = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);
     expect(rowNumbers).toEqual(['2', '3', '4']);
-    expect(within(rows[2] as HTMLElement).getByText(/Duplicate of row 1/)).toBeInTheDocument();
+    expect(
+      within(rows[2] as HTMLElement).getByText('standard on 2026-11-01 already appears on row 1'),
+    ).toBeInTheDocument();
+    expect(
+      within(rows[0] as HTMLElement).getByText('Rooms must be a whole number'),
+    ).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText('ten')).toBeInTheDocument();
+    expect(
+      within(rows[1] as HTMLElement).getByText('Date must be YYYY-MM-DD and a real calendar date'),
+    ).toBeInTheDocument();
     expect(screen.getByText(/3 rows have errors and will not be imported/)).toBeInTheDocument();
     expect(store.inventory).toHaveLength(0);
 
     await u.click(screen.getByRole('button', { name: 'Import 1 row' }));
     expect(await screen.findByText('Imported')).toBeInTheDocument();
     expect(store.inventory.map((r) => [r.date, r.total_units])).toEqual([['2026-11-01', 10]]);
+  });
+
+  it('rejects a room type the property does not sell, and shows the bad value', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    await pick(u, csv('date,room_type,rooms\n2026-11-22,suite,5\n2026-11-23,standard,-1\n'));
+    await u.click(screen.getByRole('button', { name: 'Check file' }));
+
+    const table = await screen.findByRole('table', { name: 'Problems found, by row' });
+    expect(within(table).getByRole('columnheader', { name: 'Value' })).toBeInTheDocument();
+    const [suite, negative] = within(table).getAllByRole('row').slice(1) as HTMLElement[];
+    expect(
+      within(suite as HTMLElement).getByText(
+        'Room type "suite" is not sold here. Use one of: standard, deluxe',
+      ),
+    ).toBeInTheDocument();
+    expect(within(suite as HTMLElement).getByText('suite')).toBeInTheDocument();
+    expect(
+      within(negative as HTMLElement).getByText('Rooms must be 0 or more'),
+    ).toBeInTheDocument();
+    expect(within(negative as HTMLElement).getByText('-1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import 0 rows' })).toBeDisabled();
   });
 
   it('offers no import when no row can be used', async () => {
@@ -149,9 +184,72 @@ describe('importing a file', () => {
     const u = userEvent.setup();
     renderPage();
     await pick(u, csv('date,room_type\n2026-11-01,standard'));
-    expect(await screen.findByText('This file cannot be read')).toBeInTheDocument();
-    expect(screen.getByText(/header row is missing: rooms/)).toBeInTheDocument();
+    expect(await screen.findByText(/header row is missing: rooms/)).toBeInTheDocument();
+    expect(fileInput()).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByRole('button', { name: 'Check file' })).toBeDisabled();
+    expect(store.uploads.size).toBe(0);
+  });
+
+  describe('a file that cannot be read says why, under the file field', () => {
+    const json = (text: string) => new File([text], 'inventory.json', { type: 'application/json' });
+    it.each([
+      [
+        'not JSON',
+        json('date,room_type,rooms'),
+        'The file is not valid JSON. Check for a missing comma, quote or bracket.',
+      ],
+      [
+        'JSON that is not a list of rows',
+        json('{"items": []}'),
+        'The JSON file must be a list of rows, or { "rows": [...] }.',
+      ],
+      [
+        'JSON rows with the wrong columns',
+        json('[{"day": "2026-11-01", "type": "standard", "rooms": 5}]'),
+        'The rows are missing date, room_type and have unknown columns day, type. Expected: date, room_type, rooms.',
+      ],
+      ['an empty JSON list', json('[]'), 'The file has no data rows.'],
+      [
+        'a CSV header with a missing column',
+        csv('date,room_type\n2026-11-01,standard'),
+        'The header row is missing: rooms. Expected: date, room_type, rooms.',
+      ],
+      [
+        'a CSV header with an unknown column',
+        csv('date,room_type,rooms,price\n2026-11-01,standard,4,100'),
+        'The header row has unknown columns: price. Expected: date, room_type, rooms.',
+      ],
+      ['an empty CSV', csv(''), 'The file is empty.'],
+      ['a CSV with only a header', csv('date,room_type,rooms\n'), 'The file has no data rows.'],
+    ])('%s', async (_label, file, message) => {
+      const u = userEvent.setup();
+      renderPage();
+      await pick(u, file);
+      await waitFor(() => expect(fileInput()).toHaveAttribute('aria-invalid', 'true'));
+      expect(fileInput()).toHaveAccessibleDescription(expect.stringContaining(message));
+      expect(screen.getByRole('button', { name: 'Check file' })).toBeDisabled();
+    });
+
+    it('a file over 2 MB', async () => {
+      const u = userEvent.setup();
+      renderPage();
+      await pick(u, csv(`date,room_type,rooms\n${'x'.repeat(2 * 1024 * 1024)}`));
+      await waitFor(() =>
+        expect(fileInput()).toHaveAccessibleDescription(expect.stringContaining('over 2 MB')),
+      );
+    });
+
+    it('accepts { "rows": [...] }, like the server', async () => {
+      const u = userEvent.setup();
+      renderPage();
+      await pick(
+        u,
+        json('{"rows": [{"date": "2026-11-01", "room_type": "standard", "rooms": 4}]}'),
+      );
+      expect(await screen.findByText('1 row read from the file')).toBeInTheDocument();
+      expect(fileInput()).not.toHaveAttribute('aria-invalid');
+      expect(screen.getByRole('button', { name: 'Check file' })).toBeEnabled();
+    });
   });
 
   it('only accepts CSV or JSON files', async () => {
@@ -174,7 +272,8 @@ describe('importing a file', () => {
     await pick(u, csv(rates, 'rates.csv'));
     await u.click(screen.getByRole('button', { name: 'Check file' }));
     expect(await screen.findByText('The file passed the check')).toBeInTheDocument();
-    expect(screen.getByText(/quotes that need it go to review/)).toBeInTheDocument();
+    // The empty cost and the empty rack rates are each imported as unknown, never zero.
+    expect(screen.getAllByText('Empty: imported as unknown (null), not 0')).toHaveLength(3);
 
     await u.click(screen.getByRole('button', { name: 'Import 2 rows' }));
     await screen.findByText('Imported');
@@ -200,9 +299,27 @@ describe('importing a file', () => {
     renderPage();
     await pick(u, csv(GOOD));
     await u.click(screen.getByRole('button', { name: 'Check file' }));
-    expect(await screen.findByText('That did not work')).toBeInTheDocument();
-    expect(screen.getByText(/Something went wrong on our side/)).toBeInTheDocument();
+    expect(await screen.findByText('Could not check the file')).toBeInTheDocument();
+    expect(screen.getByText('The file could not be uploaded.')).toBeInTheDocument();
     expect(screen.queryByText('The file passed the check')).not.toBeInTheDocument();
+  });
+
+  it("explains a refused import in the server's own words", async () => {
+    server.use(
+      http.post('*/v1/imports/:kind/:id/commit', () =>
+        HttpResponse.json(
+          problem('INVALID_STATE', { detail: 'No file has been uploaded for this import yet' }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+    const u = userEvent.setup();
+    renderPage();
+    await pick(u, csv(GOOD));
+    await u.click(screen.getByRole('button', { name: 'Check file' }));
+    await u.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
+    expect(await screen.findByText('Could not import the file')).toBeInTheDocument();
+    expect(screen.getByText('No file has been uploaded for this import yet')).toBeInTheDocument();
   });
 
   it('offers a template with the right columns', () => {

@@ -1,12 +1,18 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { DEFAULT_POLICY, localDate } from '@c32/core';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Card, Spinner, Stepper } from '../../components';
+import { LEAVE_ALLOWED, LeaveGuard } from '../../app/LeaveGuard';
+import { Alert, Button, Card, ProblemAlert, Spinner, Stepper } from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
+import { usePolicy } from '../policy/queries';
 import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
 import { initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
 import type { QuoteForm } from './form';
+import { clearDraft, isBlank, loadDraft, saveDraft } from './draft';
+import type { QuoteDraft } from './draft';
+import { WIZARD_STATE } from './QuoteBuilderRoute';
 import {
   ArithmeticTrail,
   DecisionSummary,
@@ -15,28 +21,65 @@ import {
   ValidUntil,
 } from './ResultPanels';
 import { GroupStep, PricingStep, RoomsStep } from './steps';
-import { liveTotals, usePreview } from './usePreview';
+import { liveMeterState, usePreview } from './usePreview';
 
 const LAST = STEPS.length - 1;
+
+/** The step in the URL (?step=2 is the second step), as a zero-based index. */
+function stepFromUrl(search: string): number {
+  const n = Number(new URLSearchParams(search).get('step'));
+  return Number.isInteger(n) && n >= 1 ? Math.min(n, STEPS.length) - 1 : 0;
+}
 
 export function QuoteBuilderPage() {
   const api = useApi();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [form, setForm] = useState<QuoteForm>(initialForm);
-  const [step, setStep] = useState(0);
+  // Unfinished input from an earlier visit in this tab, offered before anything else.
+  const [offer, setOffer] = useState<QuoteDraft | null>(() => loadDraft());
+  const done = useRef(false);
   const [showErrors, setShowErrors] = useState(false);
+  // Fields the person has changed or left; their errors show at once, the rest after Next.
+  const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const patch = (changes: Partial<QuoteForm>) => setForm((f) => ({ ...f, ...changes }));
 
-  const parsed = useMemo(() => parseForm(form), [form]);
+  // Only an Owner can read the policy; otherwise the documented default zone (IST, which every
+  // screen displays) is used here, and the server checks the date with the real policy.
+  const policy = usePolicy();
+  const timeZone = policy.data?.timezone ?? DEFAULT_POLICY.timezone;
+  const nowMs = Date.now();
+  const today = localDate(nowMs, timeZone);
+  // Re-parsed when the form or the property's day changes, not on every tick of the clock.
+  const parsed = useMemo(() => parseForm(form, { nowMs, timeZone }), [form, today, timeZone]);
   const request = parsed.ok ? parsed.request : null;
-  const issues = parsed.ok ? [] : parsed.issues;
+
+  const { preview, basis, current, stale, error: previewError, refetch } = usePreview(request);
+  const live = liveMeterState(request, {
+    basis,
+    evaluation: preview?.evaluation,
+    current,
+    error: previewError,
+  });
+
+  // Field problems the server found (for example a check-in that is past in the property's zone).
+  const serverIssues =
+    previewError instanceof ApiError && previewError.code === 'VALIDATION_FAILED'
+      ? (previewError.problem.errors ?? [])
+      : [];
+  const issues = [...(parsed.ok ? [] : parsed.issues), ...serverIssues];
   const errors = issuesByPath(issues);
 
-  const { preview, basis, stale, error: previewError, refetch } = usePreview(request);
-  const live = liveTotals(request, basis, preview?.evaluation, stale);
+  // The step lives in the URL, so browser Back and Forward move between steps. A step is only
+  // shown once the steps before it are valid, whatever the URL says.
+  const requested = stepFromUrl(location.search);
+  const firstInvalid = STEPS.findIndex((_s, i) => i < LAST && stepErrors(i, issues).length > 0);
+  const step = firstInvalid === -1 ? requested : Math.min(requested, firstInvalid);
+  // The server's answer for exactly this form, so it uses the real policy and clock.
+  const tooLate = current && (preview?.evaluation.reasons.includes('TOO_LATE_TO_QUOTE') ?? false);
 
   // One key per user intent: a double click or a retry of the same request replays the same quote.
   const intent = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -57,16 +100,50 @@ export function QuoteBuilderPage() {
       // The dashboard and the calendar must show the new quote and its held rooms at once.
       void queryClient.invalidateQueries({ queryKey: QUOTES_KEY });
       void queryClient.invalidateQueries({ queryKey: AVAILABILITY_KEY });
-      navigate(`/quotes/${quote.quote_id}`);
+      done.current = true;
+      clearDraft();
+      navigate(`/quotes/${quote.quote_id}`, { state: LEAVE_ALLOWED });
     },
   });
 
   function goTo(next: number) {
-    setStep(next);
+    navigate({ search: `?step=${next + 1}` }, { state: WIZARD_STATE });
+  }
+
+  // On arrival, mark the entry as the wizard's own, so Back to it keeps the form. Only once:
+  // a navigation lands after the render that asked for it, so later the location may lag.
+  const arrived = useRef(false);
+  useEffect(() => {
+    if (arrived.current) return;
+    arrived.current = true;
+    if ((location.state as { wizard?: boolean } | null)?.wizard) return;
+    navigate({ search: `?step=${step + 1}` }, { replace: true, state: WIZARD_STATE });
+  });
+
+  // Keep the URL on the step actually shown when the form does not allow the one asked for, so
+  // the wizard does not jump ahead once the earlier step becomes valid.
+  useEffect(() => {
+    if (!offer && step < requested) {
+      navigate({ search: `?step=${step + 1}` }, { replace: true, state: WIZARD_STATE });
+    }
+  }, [offer, step, requested, navigate]);
+
+  // A new step starts without old errors or refusals, with focus on the heading.
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
     setShowErrors(false);
     issue.reset();
     headingRef.current?.focus();
-  }
+  }, [step, issue]);
+
+  // Keep the input as a draft for this tab while it is unfinished.
+  useEffect(() => {
+    if (offer || done.current) return;
+    if (isBlank(form)) clearDraft();
+    else saveDraft({ form, step });
+  }, [form, step, offer]);
 
   function next() {
     if (stepErrors(step, issues).length > 0) {
@@ -76,14 +153,65 @@ export function QuoteBuilderPage() {
     goTo(step + 1);
   }
 
-  const visibleErrors = showErrors ? errors : {};
+  const visibleErrors = showErrors
+    ? errors
+    : Object.fromEntries(Object.entries(errors).filter(([path]) => touched.has(path)));
+  const touch = (target: EventTarget) => {
+    const { name } = target as HTMLInputElement;
+    if (name && !touched.has(name)) setTouched(new Set(touched).add(name));
+  };
   const evaluation = preview?.evaluation;
   const canIssue =
     request !== null && !stale && evaluation !== undefined && evaluation.decision !== 'DECLINE';
   const issueError = issue.error instanceof ApiError ? issue.error : null;
 
+  if (offer) {
+    const name = offer.form.organiser.trim() || 'an unnamed group';
+    const date = offer.form.checkIn ? `, check-in ${offer.form.checkIn}` : '';
+    return (
+      <div className="mx-auto max-w-6xl">
+        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold focus:outline-none">
+          New quote
+        </h1>
+        <div className="mt-6 max-w-xl">
+          <Card title="Resume your draft?">
+            <p className="text-sm">
+              You have a draft for {name}
+              {date}, from step {offer.step + 1} of {STEPS.length}. It was kept when you left the
+              builder in this tab.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button
+                onClick={() => {
+                  setForm(offer.form);
+                  setOffer(null);
+                  goTo(offer.step);
+                }}
+              >
+                Resume draft
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  clearDraft();
+                  setOffer(null);
+                }}
+              >
+                Start over
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl">
+      <LeaveGuard when={!isBlank(form)} title="Leave this quote?">
+        What you entered is kept as a draft in this tab. Choose New quote to resume it or start
+        over.
+      </LeaveGuard>
       <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold focus:outline-none">
         New quote
       </h1>
@@ -98,12 +226,23 @@ export function QuoteBuilderPage() {
         <form
           className="flex flex-col gap-6"
           noValidate
+          onChange={(e) => touch(e.target)}
+          onBlur={(e) => touch(e.target)}
           onSubmit={(e) => {
             e.preventDefault();
             if (step < LAST) next();
           }}
         >
-          {step === 0 && <GroupStep form={form} patch={patch} errors={visibleErrors} />}
+          {step === 0 && (
+            <GroupStep
+              form={form}
+              patch={patch}
+              errors={visibleErrors}
+              today={today}
+              tooLate={tooLate}
+              policy={policy.data}
+            />
+          )}
           {step === 1 && <RoomsStep form={form} patch={patch} errors={visibleErrors} />}
           {step === 2 && <PricingStep form={form} patch={patch} errors={visibleErrors} />}
 
@@ -150,21 +289,17 @@ export function QuoteBuilderPage() {
                   </Card>
                 </div>
               )}
-              {issueError && (
-                <Alert
-                  tone="danger"
-                  title={issueError.friendly.title}
-                  action={
-                    issueError.friendly.action === 're-quote' ? (
-                      <Button variant="secondary" onClick={() => void refetch()}>
-                        Re-quote
-                      </Button>
-                    ) : undefined
-                  }
-                >
-                  {issueError.friendly.message} {issueError.friendly.nextStep}
-                </Alert>
-              )}
+              <ProblemAlert
+                error={issueError}
+                title="Could not issue the quote"
+                action={
+                  issueError?.friendly.action === 're-quote' ? (
+                    <Button variant="secondary" onClick={() => void refetch()}>
+                      Re-quote
+                    </Button>
+                  ) : undefined
+                }
+              />
             </>
           )}
 
@@ -183,7 +318,7 @@ export function QuoteBuilderPage() {
         </form>
 
         <aside aria-label="Live price check" className="lg:sticky lg:top-4 lg:self-start">
-          <LiveMeter live={live} updating={stale && request !== null} />
+          <LiveMeter state={live} />
         </aside>
       </div>
     </div>

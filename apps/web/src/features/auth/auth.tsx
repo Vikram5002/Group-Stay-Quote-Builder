@@ -13,6 +13,8 @@ export interface Session {
   user: Actor;
   displayName: string;
   token: string;
+  /** When the access token stops working (ms since epoch). Absent for the practice sign-in. */
+  expiresAt?: number;
 }
 
 export interface AuthContextValue {
@@ -33,12 +35,39 @@ export interface AuthContextValue {
   authError: string | null;
 }
 
+/**
+ * The session is shared by every tab of this site (localStorage), so a link opened in a new tab
+ * stays signed in, and a sign-out in one tab signs out all of them (the storage event). Only the
+ * short-lived access token is kept (no refresh token), and it is never used past expiresAt: an
+ * expired session is dropped on load and ends on a timer, in every tab.
+ */
 const STORAGE_KEY = 'c32.session';
+
+/** The longest delay setTimeout accepts; a longer expiry is re-checked when the timer fires. */
+const MAX_TIMER_MS = 2_147_483_647;
+
+function isLive(session: Session, now = Date.now()): boolean {
+  return session.expiresAt === undefined || session.expiresAt > now;
+}
+
+function parse(raw: string | null): Session | null {
+  if (!raw) return null;
+  try {
+    const session = JSON.parse(raw) as Session;
+    return session && typeof session.token === 'string' && session.user ? session : null;
+  } catch {
+    return null;
+  }
+}
 
 function load(): Session | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Session) : null;
+    // Sessions used to be kept per tab; never leave a token behind there.
+    sessionStorage.removeItem(STORAGE_KEY);
+    const session = parse(localStorage.getItem(STORAGE_KEY));
+    if (session && isLive(session)) return session;
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
   } catch {
     return null;
   }
@@ -46,10 +75,10 @@ function load(): Session | null {
 
 function persist(session: Session | null) {
   try {
-    if (session) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    else sessionStorage.removeItem(STORAGE_KEY);
+    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    else localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // Storage can be blocked; the session then lasts until reload.
+    // Storage can be blocked; the session then lasts until reload, in this tab only.
   }
 }
 
@@ -141,6 +170,38 @@ export function AuthProvider({
     },
     [cognito],
   );
+
+  // Another tab signed in or out (or its session expired): follow it.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      // A null key means the whole store was cleared.
+      if (event.key !== null && event.key !== STORAGE_KEY) return;
+      const next = parse(event.newValue);
+      if (next && isLive(next)) {
+        setSession(next);
+        setSignedOutBy(null);
+      } else {
+        setSession(null);
+        // Someone else ended it, so the next person starts at the beginning.
+        setSignedOutBy('manual');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // The token is never used past its expiry: the session ends then, here and in every tab.
+  useEffect(() => {
+    if (session?.expiresAt === undefined) return;
+    const timer = setTimeout(
+      () => {
+        if (!isLive(session)) signOut();
+        else setSession({ ...session }); // a very long expiry: check again later
+      },
+      Math.min(MAX_TIMER_MS, Math.max(0, session.expiresAt - Date.now())),
+    );
+    return () => clearTimeout(timer);
+  }, [session, signOut]);
 
   const token = session?.token ?? null;
   const getToken = useCallback(() => token, [token]);

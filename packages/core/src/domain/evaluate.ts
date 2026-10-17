@@ -12,6 +12,7 @@ import { discountedRate } from './floor.js';
 import { formatInZone } from './timezone.js';
 import { unknownPricingReasons } from './unknowns.js';
 import { computeValidity, type Validity } from './validity.js';
+import { counted } from './plural.js';
 
 /**
  * The evaluation pipeline (blueprint 6.2), steps 2 to 7, for one validated request:
@@ -64,11 +65,11 @@ function availabilityLine(
       const { sellable } = availability;
       const over = request.stay.night_dates.join(', ');
       if (plan.offered_rooms === 0)
-        return `${sellable} rooms sellable on every night (${over}): nothing to offer`;
+        return `${counted(sellable, 'room')} sellable on every night (${over}): nothing to offer`;
       if (plan.offered_rooms < request.rooms) {
         return `${request.rooms} requested, ${sellable} sellable on every night (${over}): offering ${plan.offered_rooms}`;
       }
-      return `${sellable} rooms sellable on every night (${over}): ${request.rooms} requested fit`;
+      return `${counted(sellable, 'room')} sellable on every night (${over}): ${request.rooms} requested fit`;
     }
   }
 }

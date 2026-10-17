@@ -1,4 +1,4 @@
-import { LIMITS, parseWith, QuoteRequest } from '@c32/core';
+import { LIMITS, parseWith, pastCheckInIssue, PROPERTY_ROOM_TYPES, QuoteRequest } from '@c32/core';
 import type { INCLUSION_BASES, InclusionInput, ValidationIssue } from '@c32/core';
 
 export type InclusionBasisValue = (typeof INCLUSION_BASES)[number];
@@ -32,10 +32,8 @@ export interface QuoteForm {
   inclusions: InclusionForm[];
 }
 
-export const ROOM_TYPES = [
-  { value: 'standard', label: 'Standard' },
-  { value: 'deluxe', label: 'Deluxe' },
-] as const;
+/** The room types on sale: the same list the import check accepts. */
+export const ROOM_TYPES = PROPERTY_ROOM_TYPES;
 
 export const initialForm: QuoteForm = {
   organiser: '',
@@ -117,11 +115,34 @@ export function toRequest(form: QuoteForm): unknown {
 export type ParsedRequest =
   { ok: true; request: QuoteRequest } | { ok: false; issues: ValidationIssue[] };
 
-/** Validation uses the same schema as the server, so the two cannot drift. */
-export function parseForm(form: QuoteForm): ParsedRequest {
-  const result = parseWith(QuoteRequest, toRequest(form));
-  return result.ok ? { ok: true, request: result.value } : { ok: false, issues: result.issues };
+/** "Today" for the check-in rule: the current instant and the property time zone. */
+export interface FormCalendar {
+  nowMs: number;
+  timeZone: string;
 }
+
+/**
+ * Validation uses the same schema as the server, so the two cannot drift. With a calendar it also
+ * applies the server's rule that check-in is today or later in the property time zone.
+ */
+export function parseForm(form: QuoteForm, calendar?: FormCalendar): ParsedRequest {
+  const result = parseWith(QuoteRequest, toRequest(form));
+  const past =
+    calendar && ISO_DATE.test(form.checkIn)
+      ? pastCheckInIssue(form.checkIn, calendar.nowMs, calendar.timeZone)
+      : null;
+  // Charged on top of the rate means a price must be typed; blank is never read as 0.
+  const unpriced: ValidationIssue[] = form.inclusions.flatMap((inc, i) =>
+    !inc.includedInRate && inc.price.trim() === ''
+      ? [{ path: `inclusions.${i}.price_inr`, code: 'REQUIRED' as const, message: 'Required' }]
+      : [],
+  );
+  const extra = [...(past ? [past] : []), ...unpriced];
+  if (result.ok && extra.length === 0) return { ok: true, request: result.value };
+  return { ok: false, issues: [...(result.ok ? [] : result.issues), ...extra] };
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const RANGES: Record<string, [number, number]> = {
   'stay.nights': [LIMITS.MIN_NIGHTS, LIMITS.MAX_NIGHTS],
@@ -137,7 +158,9 @@ export function friendlyIssue(issue: ValidationIssue): string {
     RANGES[issue.path] ?? (issue.path.endsWith('_inr') ? [0, LIMITS.MAX_UNIT_INR] : undefined);
   switch (issue.code) {
     case 'REQUIRED':
-      return 'Required';
+      return issue.path.endsWith('.price_inr')
+        ? 'Enter the extra price, or 0 if there is no extra charge'
+        : 'Required';
     case 'NOT_INTEGER':
       return 'Use a whole number';
     case 'INVALID_TYPE':

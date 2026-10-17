@@ -1,5 +1,24 @@
-import { ERROR_CODES } from '@c32/core';
-import { describeError } from './errors';
+import { ERROR_CODES, problem } from '@c32/core';
+import { ApiError, describeError, problemText } from './errors';
+
+describe('problemText: what to tell the person when an action fails', () => {
+  it("uses the server's problem+json detail", () => {
+    const error = new ApiError(
+      problem('INVALID_STATE', { detail: 'An extension can be at most 24 hours' }),
+    );
+    expect(problemText(error)).toBe('An extension can be at most 24 hours');
+  });
+
+  it('falls back to the title when there is no detail', () => {
+    expect(problemText(new ApiError(problem('QUOTE_EXPIRED')))).toBe('Quote has expired');
+  });
+
+  it('never shows the text of an unexpected error', () => {
+    expect(problemText(new Error('TypeError: x is undefined'))).toBe(
+      'Something went wrong. Try again.',
+    );
+  });
+});
 
 describe('error messages', () => {
   it.each(ERROR_CODES)('%s has a plain-language message and next step', (code) => {

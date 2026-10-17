@@ -214,8 +214,9 @@ describe('approving and rejecting', () => {
     await u.type(within(dialog).getByLabelText(/Reason/), 'Repeat client, strategic account');
     await u.click(within(dialog).getByRole('button', { name: 'Approve quote' }));
 
+    expect(await within(dialog).findByText('Could not approve the quote')).toBeInTheDocument();
     expect(
-      await within(dialog).findByText('Action not allowed in the current state'),
+      within(dialog).getByText('Only a PENDING_REVIEW quote can be reviewed, not CANCELLED'),
     ).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/Reason/)).toHaveValue('Repeat client, strategic account');
   });

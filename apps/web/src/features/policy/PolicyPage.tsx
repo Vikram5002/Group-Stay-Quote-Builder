@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Policy } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Card, Spinner, TextField } from '../../components';
+import { LeaveGuard } from '../../app/LeaveGuard';
+import { Alert, Button, Card, ProblemAlert, Spinner, TextField } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatIst } from '../../lib/format';
 import {
@@ -13,8 +14,7 @@ import {
   parsePolicy,
 } from './policyForm';
 import type { PolicyForm } from './policyForm';
-
-const POLICY_KEY = ['policy'] as const;
+import { POLICY_KEY } from './queries';
 
 interface SavedChange {
   version: number;
@@ -125,6 +125,9 @@ export function PolicyPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
+      <LeaveGuard when={dirty && !save.isPending} title="Leave without saving?">
+        Your changes to the policy are not saved. If you leave, they are lost.
+      </LeaveGuard>
       {heading}
       <p className="mt-1 text-ink-muted">
         Rules the quote engine follows for this property. Version {policy.version}. A save is
@@ -153,9 +156,7 @@ export function PolicyPage() {
       )}
       {failure && (
         <div className="mt-4">
-          <Alert tone="danger" title={failure.friendly.title}>
-            {failure.friendly.message} {failure.friendly.nextStep}
-          </Alert>
+          <ProblemAlert error={failure} title="Could not save the policy" />
         </div>
       )}
 

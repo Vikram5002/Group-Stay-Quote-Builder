@@ -5,6 +5,8 @@ import {
   type ImportKind,
   type ImportRowIssue,
 } from '../contract/imports.js';
+import { LIMITS, PROPERTY_ROOM_TYPES } from '../contract/primitives.js';
+import type { ValidationIssue } from '../contract/problem.js';
 import { parseWith } from '../contract/validation.js';
 import { CsvSyntaxError, parseCsv } from './csv.js';
 
@@ -16,7 +18,10 @@ import { CsvSyntaxError, parseCsv } from './csv.js';
  * - Invalid rows are rejected with their 1-based data row number and field (T22); valid rows
  *   are still accepted, so one typo does not block a whole calendar.
  * - A night (date and room type) may appear once per file.
+ * - The room type must be one the property sells (PROPERTY_ROOM_TYPES unless a list is given).
  * - Header problems (missing or unknown columns), bad CSV syntax or bad JSON reject the file.
+ * - Messages are plain words, never the schema library's own text, and a cell-level issue carries
+ *   the value as written in the file.
  */
 
 export const IMPORT_COLUMNS = {
@@ -56,7 +61,51 @@ const issue = (
   code: ImportRowIssue['code'],
   message: string,
   severity: ImportRowIssue['severity'] = 'error',
-): ImportRowIssue => ({ row, field, code, message, severity });
+  value?: string,
+): ImportRowIssue => ({
+  row,
+  field,
+  code,
+  message,
+  severity,
+  ...(value === undefined ? {} : { value }),
+});
+
+const FIELD_LABEL: Readonly<Record<string, string>> = {
+  date: 'Date',
+  room_type: 'Room type',
+  rooms: 'Rooms',
+  rate_per_room_night_inr: 'Rate',
+  variable_cost_per_room_night_inr: 'Variable cost',
+  rack_rate_inr: 'Rack rate',
+};
+
+const DATE_MESSAGE = 'Date must be YYYY-MM-DD and a real calendar date';
+const ROOM_TYPE_MESSAGE = 'Room type must be a code such as standard';
+const MAX_INR = LIMITS.MAX_UNIT_INR.toLocaleString('en-IN');
+
+/** A row-schema issue in plain words, for the person fixing the file. */
+function plainMessage(kind: ImportKind, p: ValidationIssue): string {
+  if (p.code === 'UNKNOWN_FIELD') return `Unknown column "${p.path}"`;
+  const label = FIELD_LABEL[p.path];
+  if (!label) return `Each row must be an object with ${IMPORT_COLUMNS[kind].join(', ')}`;
+  if (p.code === 'REQUIRED') return `${label} is missing. Leave it empty (null) if it is unknown`;
+  if (p.path === 'date') return DATE_MESSAGE;
+  if (p.path === 'room_type') return ROOM_TYPE_MESSAGE;
+  if (p.code === 'OUT_OF_RANGE') {
+    return p.path === 'rooms'
+      ? 'Rooms must be 0 or more'
+      : `${label} must be between 0 and ${MAX_INR}`;
+  }
+  return `${label} must be a whole number`; // NOT_INTEGER, or text where a number belongs
+}
+
+/** The value of one field as written: CSV cell text, or JSON so text and numbers differ. */
+function writtenValue(source: unknown, field: string, json: boolean): string | undefined {
+  if (typeof source !== 'object' || source === null || !(field in source)) return undefined;
+  const value = (source as Record<string, unknown>)[field];
+  return json ? JSON.stringify(value) : String(value);
+}
 
 function fileRejected(issues: ImportRowIssue[], total = 0): ParsedImport {
   return { rows: [], row_numbers: [], issues, rows_total: total, rejected: true };
@@ -76,8 +125,18 @@ function schemaFor(kind: ImportKind): z.ZodType<ImportRow> {
   return (kind === 'inventory' ? InventoryImportRow : RateImportRow) as z.ZodType<ImportRow>;
 }
 
+interface RowSource {
+  kind: ImportKind;
+  /** Rows to validate, with numbers already converted. */
+  candidates: unknown[];
+  /** The same rows as written in the file (CSV cell text, or the JSON objects). */
+  written: unknown[];
+  json: boolean;
+  roomTypes: readonly string[];
+}
+
 /** Validate candidate row objects (from CSV or JSON) into accepted rows and issues. */
-function validateRows(kind: ImportKind, candidates: unknown[]): ParsedImport {
+function validateRows({ kind, candidates, written, json, roomTypes }: RowSource): ParsedImport {
   const schema = schemaFor(kind);
   const rows: ImportRow[] = [];
   const rowNumbers: number[] = [];
@@ -86,12 +145,38 @@ function validateRows(kind: ImportKind, candidates: unknown[]): ParsedImport {
 
   candidates.forEach((candidate, i) => {
     const rowNo = i + 1;
+    const value = (field: string) => writtenValue(written[i], field, json);
     const parsed = parseWith(schema, candidate);
     if (!parsed.ok) {
-      for (const p of parsed.issues) issues.push(issue(rowNo, p.path || '*', p.code, p.message));
+      for (const p of parsed.issues) {
+        const field = p.path || '*';
+        issues.push(
+          issue(
+            rowNo,
+            field,
+            p.code,
+            plainMessage(kind, p),
+            'error',
+            p.path ? value(p.path) : undefined,
+          ),
+        );
+      }
       return;
     }
     const r = parsed.value;
+    if (!roomTypes.includes(r.room_type)) {
+      issues.push(
+        issue(
+          rowNo,
+          'room_type',
+          'INVALID_ENUM',
+          `Room type "${r.room_type}" is not sold here. Use one of: ${roomTypes.join(', ')}`,
+          'error',
+          value('room_type'),
+        ),
+      );
+      return;
+    }
     const key = `${r.room_type}#${r.date}`;
     const first = seen.get(key);
     if (first !== undefined) {
@@ -101,6 +186,8 @@ function validateRows(kind: ImportKind, candidates: unknown[]): ParsedImport {
           'date',
           'INCONSISTENT',
           `${r.room_type} on ${r.date} already appears on row ${first}`,
+          'error',
+          value('date'),
         ),
       );
       return;
@@ -109,7 +196,14 @@ function validateRows(kind: ImportKind, candidates: unknown[]): ParsedImport {
     for (const field of NUMERIC[kind]) {
       if ((r as Record<string, unknown>)[field] === null) {
         issues.push(
-          issue(rowNo, field, 'REQUIRED', 'Empty: imported as unknown (null), not 0', 'warning'),
+          issue(
+            rowNo,
+            field,
+            'REQUIRED',
+            'Empty: imported as unknown (null), not 0',
+            'warning',
+            value(field),
+          ),
         );
       }
     }
@@ -119,7 +213,11 @@ function validateRows(kind: ImportKind, candidates: unknown[]): ParsedImport {
   return { rows, row_numbers: rowNumbers, issues, rows_total: candidates.length, rejected: false };
 }
 
-function parseCsvImport(kind: ImportKind, text: string): ParsedImport {
+function parseCsvImport(
+  kind: ImportKind,
+  text: string,
+  roomTypes: readonly string[],
+): ParsedImport {
   let table: string[][];
   try {
     table = parseCsv(text);
@@ -154,6 +252,9 @@ function parseCsvImport(kind: ImportKind, text: string): ParsedImport {
   }
 
   const shapeIssues: ImportRowIssue[] = [];
+  const written = body.map((cells) =>
+    Object.fromEntries(columns.map((c, j) => [c, (cells[j] ?? '').trim()])),
+  );
   const candidates: unknown[] = body.map((cells, i) => {
     if (cells.length !== columns.length) {
       shapeIssues.push(
@@ -170,7 +271,7 @@ function parseCsvImport(kind: ImportKind, text: string): ParsedImport {
       columns.map((c, j) => [c, cellValue(cells[j] ?? '', NUMERIC[kind].has(c))]),
     );
   });
-  const result = validateRows(kind, candidates);
+  const result = validateRows({ kind, candidates, written, json: false, roomTypes });
   // A row with the wrong cell count is reported once, as a shape problem.
   const badShape = new Set(shapeIssues.map((s) => s.row));
   return {
@@ -181,7 +282,11 @@ function parseCsvImport(kind: ImportKind, text: string): ParsedImport {
   };
 }
 
-function parseJsonImport(kind: ImportKind, text: string): ParsedImport {
+function parseJsonImport(
+  kind: ImportKind,
+  text: string,
+  roomTypes: readonly string[],
+): ParsedImport {
   let data: unknown;
   try {
     data = JSON.parse(text.startsWith('﻿') ? text.slice(1) : text);
@@ -204,9 +309,19 @@ function parseJsonImport(kind: ImportKind, text: string): ParsedImport {
       rows.length,
     );
   }
-  return validateRows(kind, rows);
+  return validateRows({ kind, candidates: rows, written: rows, json: true, roomTypes });
 }
 
-export function parseImport(kind: ImportKind, format: 'csv' | 'json', text: string): ParsedImport {
-  return format === 'csv' ? parseCsvImport(kind, text) : parseJsonImport(kind, text);
+/** The codes of the room types this property sells. */
+export const PROPERTY_ROOM_TYPE_CODES: readonly string[] = PROPERTY_ROOM_TYPES.map((t) => t.code);
+
+export function parseImport(
+  kind: ImportKind,
+  format: 'csv' | 'json',
+  text: string,
+  roomTypes: readonly string[] = PROPERTY_ROOM_TYPE_CODES,
+): ParsedImport {
+  return format === 'csv'
+    ? parseCsvImport(kind, text, roomTypes)
+    : parseJsonImport(kind, text, roomTypes);
 }

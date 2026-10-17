@@ -4,6 +4,7 @@ import { LIMITS } from '../contract/primitives.js';
 import { stayNights } from './calendar.js';
 import { floorFor, floorPasses, floorRate, minimumRate, type FloorPolicy } from './floor.js';
 import { assertInt, ceilDiv, percentOneDecimal, sumKnown } from './money.js';
+import { counted } from './plural.js';
 
 /**
  * Pricing engine (blueprint 5.5, BR-01, BR-06, BR-07, BR-20). Pure and integer-only.
@@ -229,7 +230,7 @@ function lineFor(
 export function explainPricing(input: PricingInput, t: QuoteTotals): string[] {
   const extras = input.extras ?? NO_EXTRAS;
   const trail = [
-    `${input.rooms} rooms x ${input.nights.length} nights = ${t.room_nights} room-nights`,
+    `${counted(input.rooms, 'room')} x ${counted(input.nights.length, 'night')} = ${counted(t.room_nights, 'room-night')}`,
   ];
   trail.push(lineFor('room revenue', input, 'rate_inr', t.room_revenue_inr, t.room_nights));
   trail.push(

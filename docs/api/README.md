@@ -1,6 +1,6 @@
 # API contract
 
-**Version 0.1.0** (handoff C1, end of week 1). Source of truth: [`packages/core/src/contract`](../../packages/core/src/contract). The [OpenAPI document](openapi.json) is generated from it with `npm run openapi`; a test fails if the two drift.
+**Version 0.2.0** (audit fixes, 2026-10-18; 0.1.0 was handoff C1, end of week 1). Source of truth: [`packages/core/src/contract`](../../packages/core/src/contract). The [OpenAPI document](openapi.json) is generated from it with `npm run openapi`; a test fails if the two drift.
 
 ## Conventions
 
@@ -52,6 +52,15 @@
 | PUT    | `/v1/policy`                             | Owner        | live   |
 
 ## Changelog
+
+### 0.2.0 (2026-10-18)
+
+Fixes from the audit of the deployed app. Additive: a 0.1.0 client that ignores unknown fields is unaffected.
+
+- `ImportRowIssue` gains an optional `value`: the cell as written in the file (CSV text, or JSON), when the issue is about one cell.
+- Import rows whose `room_type` the property does not sell are rejected (`INVALID_ENUM` on `room_type`). The list is `PROPERTY_ROOM_TYPES` in `@c32/core`.
+- Import row messages are plain words (for example "Rooms must be 0 or more") instead of the schema library's text.
+- `POST /v1/quotes` and `/v1/quotes/preview` refuse a `stay.check_in` before today in the policy time zone with `422 VALIDATION_FAILED` (`OUT_OF_RANGE` on `stay.check_in`). A stay that starts too soon is still a `DECLINE` with `TOO_LATE_TO_QUOTE`.
 
 ### 0.1.0 (2026-10-17)
 

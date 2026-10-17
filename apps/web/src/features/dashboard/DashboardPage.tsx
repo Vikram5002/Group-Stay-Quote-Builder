@@ -4,6 +4,7 @@ import type { Quote } from '@c32/core';
 import { Alert, Button, Card, DataTable, EmptyState, Money, Spinner } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatCountdown, formatIst } from '../../lib/format';
+import { counted, plural } from '../../lib/plural';
 import { useAuth } from '../auth/auth';
 import { OPEN_STATUSES, STATUS_LABEL } from '../quotes/labels';
 import { useNow, useQuoteList } from '../quotes/queries';
@@ -117,7 +118,7 @@ export function DashboardPage() {
     <div className="mx-auto max-w-5xl">
       {heading}
       <p className="mt-1 text-ink-muted">
-        {quotes.length} quote{quotes.length === 1 ? '' : 's'}
+        {counted(quotes.length, 'quote')}
         {list.data.next_cursor ? ' (showing the latest 100)' : ''}
       </p>
 
@@ -147,13 +148,14 @@ export function DashboardPage() {
             <Money value={risk.total} />
           </p>
           <p className="mt-2 text-sm text-ink-muted">
-            Contribution on {risk.openCount} open quote{risk.openCount === 1 ? '' : 's'} that are
-            offered or pending review. It is lost if they expire.
+            Contribution on {counted(risk.openCount, 'open quote')} that{' '}
+            {plural(risk.openCount, 'is', 'are')} offered or pending review. It is lost if{' '}
+            {plural(risk.openCount, 'it expires', 'they expire')}.
           </p>
           {risk.unknown > 0 && (
             <p className="mt-2 text-sm">
-              {risk.unknown} open quote{risk.unknown === 1 ? ' has' : 's have'} an unknown
-              contribution and {risk.unknown === 1 ? 'is' : 'are'} not included in this total.
+              {counted(risk.unknown, 'open quote')} {plural(risk.unknown, 'has', 'have')} an unknown
+              contribution and {plural(risk.unknown, 'is', 'are')} not included in this total.
             </p>
           )}
         </Card>

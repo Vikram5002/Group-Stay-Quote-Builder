@@ -133,5 +133,13 @@ export async function completeSignIn(
   const id = tokens.id_token ? jwtClaims(tokens.id_token) : {};
   const user: Actor = { user_id: String(access['sub']), role };
   const displayName = String(id['email'] ?? access['username'] ?? user.user_id);
-  return { session: { user, displayName, token: tokens.access_token }, returnTo: pkce.returnTo };
+  // The session ends when the access token does (exp is in seconds), in every tab.
+  const exp = access['exp'];
+  const session: Session = {
+    user,
+    displayName,
+    token: tokens.access_token,
+    ...(typeof exp === 'number' ? { expiresAt: exp * 1000 } : {}),
+  };
+  return { session, returnTo: pkce.returnTo };
 }

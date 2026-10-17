@@ -12,7 +12,7 @@ import type { DataContext } from '../data/catalog.js';
 import { ContentionError, HoldConflictError } from '../data/errors.js';
 import { acquireHolds } from '../data/holds.js';
 import { putEventTx, putNewQuoteTx } from '../data/quotes.js';
-import { loadPolicy, loadStay } from './inputs.js';
+import { loadPolicy, loadStay, refusePastCheckIn } from './inputs.js';
 import { scheduleQuietly, type ExpiryScheduler } from './scheduler.js';
 import { termsHash } from './terms-hash.js';
 
@@ -48,6 +48,7 @@ export async function createQuote(
   const { data } = deps;
   const quoteId = deps.newId();
   const policy = await loadPolicy(data);
+  refusePastCheckIn(request, policy, deps.clock.now());
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const { inventory, ratePlan } = await loadStay(data, request);

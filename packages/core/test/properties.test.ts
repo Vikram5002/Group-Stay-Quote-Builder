@@ -1,19 +1,31 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { flatNights, price } from '../src/index.js';
+import {
+  evaluate,
+  flatNights,
+  price,
+  stayNights,
+  validateQuoteRequest,
+  type EvaluationContext,
+  type QuoteRequest,
+} from '../src/index.js';
 import {
   CHECK_IN,
   floorPolicy,
   knownExtras,
   knownNights,
   nightCount,
+  policy,
+  positiveRooms,
   rate,
   rooms,
+  stock,
 } from './arbitraries.js';
 
 /** Property-based invariants P1 to P6 (blueprint 14.3). */
 
 const RUNS = { numRuns: 500 };
+const ISSUED = Date.parse('2026-10-17T10:00:00+05:30');
 
 describe('P1 contribution = revenue - all costs, never NaN or fractional', () => {
   it('holds for every valid known input', () => {
@@ -103,6 +115,58 @@ describe('P2 revenue is non-decreasing in rate, rooms and nights', () => {
         },
       ),
       RUNS,
+    );
+  });
+});
+
+const runEvaluate = (
+  request: Omit<QuoteRequest, 'organiser' | 'room_type' | 'stay'> & { nights: number },
+  context: Omit<EvaluationContext, 'nowMs'>,
+) => {
+  const v = validateQuoteRequest({
+    organiser: { name: 'Property test' },
+    room_type: 'standard',
+    stay: { check_in: CHECK_IN, nights: request.nights },
+    rooms: request.rooms,
+    ...(request.rate_per_room_night_inr === undefined
+      ? {}
+      : { rate_per_room_night_inr: request.rate_per_room_night_inr }),
+  });
+  if (!v.ok) throw new Error(JSON.stringify(v.problem.errors));
+  return evaluate(v.value, { ...context, nowMs: ISSUED }).evaluation;
+};
+
+describe('P3 offered rooms never exceed the smaller of requested and sellable', () => {
+  it('holds on random inventory, rates and policies', () => {
+    fc.assert(
+      fc.property(
+        positiveRooms,
+        fc.integer({ min: 1, max: 7 }).chain((n) => fc.tuple(fc.constant(n), stock(n))),
+        policy,
+        (requested, [n, { inventory, ratePlan }], pol) => {
+          const e = runEvaluate(
+            { rooms: requested, nights: n },
+            { inventory, ratePlan, policy: pol },
+          );
+          const dates = stayNights(CHECK_IN, n);
+          const known = dates.map((d) => inventory.find((x) => x.date === d)?.available_units);
+          const allKnown = known.every((a) => typeof a === 'number');
+          const sellable = allKnown ? Math.min(...(known as number[])) : null;
+
+          expect(e.offered_rooms).toBeLessThanOrEqual(requested);
+          if (sellable !== null) expect(e.offered_rooms).toBeLessThanOrEqual(sellable);
+          expect(e.offered_rooms + e.shortfall_rooms).toBe(requested);
+          if (e.decision === 'DECLINE') expect(e.offered_rooms).toBe(0);
+          if (e.decision === 'OFFER') expect(e.offered_rooms).toBe(requested);
+          if (e.decision === 'PARTIAL_OFFER') expect(e.offered_rooms).toBeLessThan(requested);
+          // Counter-offers must fit inventory too.
+          for (const o of e.counter_offers) {
+            if (o.rooms !== undefined && sellable !== null)
+              expect(o.rooms).toBeLessThanOrEqual(sellable);
+          }
+        },
+      ),
+      { numRuns: 300 },
     );
   });
 });

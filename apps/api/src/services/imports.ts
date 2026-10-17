@@ -37,6 +37,8 @@ export interface FileDeps extends ServiceDeps {
 }
 
 const UPLOAD_TTL_SEC = 15 * 60;
+/** 5000 rows of CSV are well under 1 MiB; anything far bigger is a mistake or abuse. */
+export const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 const CONTENT_TYPE = { csv: 'text/csv', json: 'application/json' } as const;
 
 export async function createUpload(
@@ -91,6 +93,30 @@ async function analyse(deps: FileDeps, rec: ImportRecord): Promise<Analysis> {
   if (!file)
     throw new ServiceError('INVALID_STATE', 'No file has been uploaded for this import yet');
   const sha = createHash('sha256').update(file).digest('hex');
+  if (file.length > MAX_IMPORT_BYTES) {
+    // Presigned uploads cannot cap size, so refuse oversized files before parsing them.
+    return {
+      accepted: [],
+      report: {
+        import_id: rec.import_id,
+        kind: rec.kind,
+        content_sha256: sha,
+        status: 'REJECTED',
+        rows_total: 0,
+        rows_accepted: 0,
+        rows_rejected: 0,
+        issues: [
+          {
+            row: 1,
+            field: '*',
+            code: 'OUT_OF_RANGE',
+            message: `The file is ${file.length} bytes; the limit is ${MAX_IMPORT_BYTES}`,
+            severity: 'error',
+          },
+        ],
+      },
+    };
+  }
   const parsed = parseImport(rec.kind, rec.format, file.toString('utf8'));
   const issues = [...parsed.issues];
   let accepted = parsed.rows.map((value, i) => ({ row: parsed.row_numbers[i] as number, value }));

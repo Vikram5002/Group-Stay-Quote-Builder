@@ -6,6 +6,7 @@ import { createQuote } from '../../src/services/create-quote.js';
 import { ServiceError } from '../../src/services/errors.js';
 import {
   commitImport,
+  MAX_IMPORT_BYTES,
   createUpload,
   validateImport,
   type FileDeps,
@@ -201,5 +202,16 @@ describe.skipIf(!hasDb)('imports (DynamoDB Local)', () => {
     ).rejects.toMatchObject({
       code: 'NOT_FOUND',
     });
+  });
+
+  it('an oversized file is REJECTED before parsing (bug bash)', async () => {
+    const h = await setup();
+    const row = '2026-11-01,standard,1\n';
+    const big =
+      'date,room_type,rooms\n' + row.repeat(Math.ceil(MAX_IMPORT_BYTES / row.length) + 10);
+    const id = await h.upload('inventory', big);
+    const r = await commitImport(h.deps, 'inventory', id);
+    expect(r).toMatchObject({ status: 'REJECTED', rows_accepted: 0 });
+    expect(r.issues[0]?.message).toMatch(/the limit is 2097152/);
   });
 });

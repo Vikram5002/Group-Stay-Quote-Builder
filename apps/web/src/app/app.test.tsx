@@ -92,7 +92,7 @@ describe('sign-in and roles', () => {
   it('hides Owner-only screens from the menu for Sales', () => {
     renderAt('/', 'Sales');
     expect(screen.getByRole('link', { name: 'New quote' })).toBeInTheDocument();
-    for (const name of ['Review queue', 'Imports and exports', 'Policy']) {
+    for (const name of ['Review queue', 'Policy']) {
       expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
     }
   });

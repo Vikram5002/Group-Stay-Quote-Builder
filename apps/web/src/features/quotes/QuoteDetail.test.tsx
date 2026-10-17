@@ -14,8 +14,16 @@ import { mockSession } from '../auth/auth';
 const BASE = 'http://api.test';
 const { server, store } = createTestApi();
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterAll(() => server.close());
+beforeAll(() => {
+  // Pin the date (not the timers) so the case dates in November 2026 stay in the future.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-20T06:00:00Z'));
+  server.listen({ onUnhandledRequest: 'error' });
+});
+afterAll(() => {
+  server.close();
+  vi.useRealTimers();
+});
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
   store.quotes.clear();
@@ -71,7 +79,7 @@ describe('quote detail', () => {
       .closest('section') as HTMLElement;
     expect(within(totals).getByText(/40,000/)).toBeInTheDocument();
     expect(within(totals).getByText(/24,000/)).toBeInTheDocument();
-    expect(screen.getByText(/20 room-nights, total 40000/)).toBeInTheDocument();
+    expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: 'Hold countdown' })).toBeInTheDocument();
     expect(screen.getByText(/2d 23h left|3d 0h left/)).toBeInTheDocument();

@@ -14,8 +14,16 @@ import { mockSession } from '../auth/auth';
 const BASE = 'http://api.test';
 const { server, store } = createTestApi();
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterAll(() => server.close());
+beforeAll(() => {
+  // Pin the date (not the timers) so the case dates in November 2026 stay in the future.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-20T06:00:00Z'));
+  server.listen({ onUnhandledRequest: 'error' });
+});
+afterAll(() => {
+  server.close();
+  vi.useRealTimers();
+});
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
   store.quotes.clear();

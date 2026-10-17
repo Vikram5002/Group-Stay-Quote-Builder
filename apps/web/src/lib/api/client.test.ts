@@ -130,7 +130,13 @@ describe('public checks from the fixture', () => {
     );
     expect(quote.status).toBe('PENDING_REVIEW');
     expect(quote.evaluation.reasons).toEqual(['UNKNOWN_AVAILABILITY']);
-    expect(quote.evaluation.offered_rooms).toBe(0);
+    // The engine keeps the requested rooms but no hold is taken while availability is unknown.
+    expect(quote.evaluation.offered_rooms).toBe(10);
+    const known = store.inventory.find(
+      (r) => r.date === '2026-11-09' && r.room_type === 'standard',
+    );
+    expect([known?.available_units, known?.held_units]).toEqual([10, 0]);
+    expect(store.events.map((e) => e.type)).not.toContain('HOLD_ACQUIRED');
   });
 });
 

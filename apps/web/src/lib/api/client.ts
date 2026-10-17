@@ -181,6 +181,24 @@ export function createApiClient(options: ApiClientOptions) {
         idempotencyKey: o.idempotencyKey,
       }),
 
+    /** PUT a file straight to the presigned upload URL. It is not an API route, so no token is sent. */
+    uploadFile: async (url: string, body: Blob | string, contentType: string): Promise<void> => {
+      const doFetch = options.fetchImpl ?? fetch;
+      let response: Response;
+      try {
+        response = await doFetch(url, {
+          method: 'PUT',
+          headers: { 'Content-Type': contentType },
+          body,
+        });
+      } catch {
+        throw new ApiError(localProblem('INTERNAL', 'The file could not be uploaded.'));
+      }
+      if (!response.ok) {
+        throw new ApiError(localProblem('INTERNAL', 'The file could not be uploaded.'));
+      }
+    },
+
     exportQuotes: (format: 'csv' | 'json') =>
       call({ method: 'GET', path: '/v1/exports/quotes', schema: ExportLink, query: { format } }),
     exportEvidence: () => call({ method: 'GET', path: '/v1/exports/evidence', schema: ExportLink }),

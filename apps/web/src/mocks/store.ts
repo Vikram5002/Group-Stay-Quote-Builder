@@ -1,6 +1,7 @@
 import { DEFAULT_POLICY, addDays } from '@c32/core';
 import type {
   Actor,
+  ImportKind,
   InventoryNight,
   Policy,
   Quote,
@@ -48,6 +49,14 @@ export interface StoredResponse {
   body: unknown;
 }
 
+export interface StoredUpload {
+  kind: ImportKind;
+  format: 'csv' | 'json';
+  fileName: string;
+  /** Set when the file has been PUT to the upload URL. */
+  text: string | null;
+}
+
 export interface MockStore {
   now: () => Date;
   policy: Policy;
@@ -56,6 +65,9 @@ export interface MockStore {
   quotes: Map<string, Quote>;
   events: QuoteEvent[];
   idempotency: Map<string, StoredResponse>;
+  uploads: Map<string, StoredUpload>;
+  /** Content hash of the last committed import per kind, so an identical file is a no-op. */
+  loaded: Partial<Record<ImportKind, string>>;
   nextId: () => string;
   addEvent: (
     quote: Quote,
@@ -126,6 +138,8 @@ export function createMockStore(now: () => Date = () => new Date()): MockStore {
     quotes: new Map(),
     events: [],
     idempotency: new Map(),
+    uploads: new Map(),
+    loaded: {},
     nextId: () => mockUlid(now().getTime(), ++counter),
     addEvent(quote, type, actor, reason, before = null, after = null) {
       store.events.push({

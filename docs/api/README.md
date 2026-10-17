@@ -28,28 +28,28 @@
 
 ## Routes
 
-| Method | Path                                     | Roles        |
-| ------ | ---------------------------------------- | ------------ |
-| GET    | `/health`                                | public       |
-| POST   | `/v1/quotes/preview`                     | Sales, Owner |
-| POST   | `/v1/quotes`                             | Sales, Owner |
-| GET    | `/v1/quotes`                             | all          |
-| GET    | `/v1/quotes/{id}`                        | all          |
-| POST   | `/v1/quotes/{id}/confirm`                | Sales, Owner |
-| POST   | `/v1/quotes/{id}/approve`                | Owner        |
-| POST   | `/v1/quotes/{id}/reject`                 | Owner        |
-| POST   | `/v1/quotes/{id}/extend`                 | Sales, Owner |
-| POST   | `/v1/quotes/{id}/amendments`             | Sales, Owner |
-| POST   | `/v1/quotes/{id}/cancel`                 | Sales, Owner |
-| GET    | `/v1/quotes/{id}/audit`                  | all          |
-| GET    | `/v1/availability`                       | all          |
-| POST   | `/v1/imports/{kind}/uploads`             | Owner        |
-| POST   | `/v1/imports/{kind}/{importId}/validate` | Owner        |
-| POST   | `/v1/imports/{kind}/{importId}/commit`   | Owner        |
-| GET    | `/v1/exports/quotes`                     | all          |
-| GET    | `/v1/exports/evidence`                   | all          |
-| GET    | `/v1/policy`                             | Owner        |
-| PUT    | `/v1/policy`                             | Owner        |
+| Method | Path                                     | Roles        | Status          |
+| ------ | ---------------------------------------- | ------------ | --------------- |
+| GET    | `/health`                                | public       | live            |
+| POST   | `/v1/quotes/preview`                     | Sales, Owner | live            |
+| POST   | `/v1/quotes`                             | Sales, Owner | live            |
+| GET    | `/v1/quotes`                             | all          | live            |
+| GET    | `/v1/quotes/{id}`                        | all          | live            |
+| POST   | `/v1/quotes/{id}/confirm`                | Sales, Owner | live            |
+| POST   | `/v1/quotes/{id}/approve`                | Owner        | planned (T1.10) |
+| POST   | `/v1/quotes/{id}/reject`                 | Owner        | planned (T1.10) |
+| POST   | `/v1/quotes/{id}/extend`                 | Sales, Owner | planned (T1.11) |
+| POST   | `/v1/quotes/{id}/amendments`             | Sales, Owner | planned (T1.11) |
+| POST   | `/v1/quotes/{id}/cancel`                 | Sales, Owner | planned (T1.11) |
+| GET    | `/v1/quotes/{id}/audit`                  | all          | live            |
+| GET    | `/v1/availability`                       | all          | live            |
+| POST   | `/v1/imports/{kind}/uploads`             | Owner        | planned (T1.12) |
+| POST   | `/v1/imports/{kind}/{importId}/validate` | Owner        | planned (T1.12) |
+| POST   | `/v1/imports/{kind}/{importId}/commit`   | Owner        | planned (T1.12) |
+| GET    | `/v1/exports/quotes`                     | all          | planned (T1.12) |
+| GET    | `/v1/exports/evidence`                   | all          | planned (T1.12) |
+| GET    | `/v1/policy`                             | Owner        | live            |
+| PUT    | `/v1/policy`                             | Owner        | live            |
 
 ## Changelog
 
@@ -62,3 +62,15 @@ First published contract. Differences from the blueprint text, all recorded in t
 - `stay` accepts `nights`, `check_out` or both (D-005).
 - Error codes add `IDEMPOTENCY_CONFLICT` (409), `PAYLOAD_TOO_LARGE` (413) and `UNSUPPORTED_MEDIA_TYPE` (415) (D-006).
 - Imports use three explicit routes per kind: uploads, validate, commit.
+
+## Run it locally
+
+```bash
+npm run db:up -w @c32/api      # DynamoDB Local on http://localhost:8100
+npm run seed -w @c32/api       # create the table, load the fixture (10 rooms, 2026-11-01 and -02)
+npm run dev -w @c32/api        # API on http://localhost:3000, CORS for http://localhost:5173
+curl -H 'x-dev-user: sales-1:Sales' -H 'content-type: application/json'   -d '{"organiser":{"name":"Fictional Events"},"stay":{"check_in":"2026-11-01","nights":2},"room_type":"standard","rooms":10,"rate_per_room_night_inr":2000}'   http://localhost:3000/v1/quotes
+```
+
+Locally the caller is set with `x-dev-user: <user_id>:<Sales|Owner|Viewer>`. In AWS the same
+routes take a Cognito JWT (`Authorization: Bearer ...`); the header is ignored there.

@@ -28,28 +28,28 @@
 
 ## Routes
 
-| Method | Path                                     | Roles        | Status          |
-| ------ | ---------------------------------------- | ------------ | --------------- |
-| GET    | `/health`                                | public       | live            |
-| POST   | `/v1/quotes/preview`                     | Sales, Owner | live            |
-| POST   | `/v1/quotes`                             | Sales, Owner | live            |
-| GET    | `/v1/quotes`                             | all          | live            |
-| GET    | `/v1/quotes/{id}`                        | all          | live            |
-| POST   | `/v1/quotes/{id}/confirm`                | Sales, Owner | live            |
-| POST   | `/v1/quotes/{id}/approve`                | Owner        | live            |
-| POST   | `/v1/quotes/{id}/reject`                 | Owner        | live            |
-| POST   | `/v1/quotes/{id}/extend`                 | Sales, Owner | live            |
-| POST   | `/v1/quotes/{id}/amendments`             | Sales, Owner | live            |
-| POST   | `/v1/quotes/{id}/cancel`                 | Sales, Owner | live            |
-| GET    | `/v1/quotes/{id}/audit`                  | all          | live            |
-| GET    | `/v1/availability`                       | all          | live            |
-| POST   | `/v1/imports/{kind}/uploads`             | Owner        | planned (T1.12) |
-| POST   | `/v1/imports/{kind}/{importId}/validate` | Owner        | planned (T1.12) |
-| POST   | `/v1/imports/{kind}/{importId}/commit`   | Owner        | planned (T1.12) |
-| GET    | `/v1/exports/quotes`                     | all          | planned (T1.12) |
-| GET    | `/v1/exports/evidence`                   | all          | planned (T1.12) |
-| GET    | `/v1/policy`                             | Owner        | live            |
-| PUT    | `/v1/policy`                             | Owner        | live            |
+| Method | Path                                     | Roles        | Status |
+| ------ | ---------------------------------------- | ------------ | ------ |
+| GET    | `/health`                                | public       | live   |
+| POST   | `/v1/quotes/preview`                     | Sales, Owner | live   |
+| POST   | `/v1/quotes`                             | Sales, Owner | live   |
+| GET    | `/v1/quotes`                             | all          | live   |
+| GET    | `/v1/quotes/{id}`                        | all          | live   |
+| POST   | `/v1/quotes/{id}/confirm`                | Sales, Owner | live   |
+| POST   | `/v1/quotes/{id}/approve`                | Owner        | live   |
+| POST   | `/v1/quotes/{id}/reject`                 | Owner        | live   |
+| POST   | `/v1/quotes/{id}/extend`                 | Sales, Owner | live   |
+| POST   | `/v1/quotes/{id}/amendments`             | Sales, Owner | live   |
+| POST   | `/v1/quotes/{id}/cancel`                 | Sales, Owner | live   |
+| GET    | `/v1/quotes/{id}/audit`                  | all          | live   |
+| GET    | `/v1/availability`                       | all          | live   |
+| POST   | `/v1/imports/{kind}/uploads`             | Owner        | live   |
+| POST   | `/v1/imports/{kind}/{importId}/validate` | Owner        | live   |
+| POST   | `/v1/imports/{kind}/{importId}/commit`   | Owner        | live   |
+| GET    | `/v1/exports/quotes`                     | all          | live   |
+| GET    | `/v1/exports/evidence`                   | all          | live   |
+| GET    | `/v1/policy`                             | Owner        | live   |
+| PUT    | `/v1/policy`                             | Owner        | live   |
 
 ## Changelog
 

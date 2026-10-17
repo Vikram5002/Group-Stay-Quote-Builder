@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1152.0",
+    "@aws-sdk/client-s3": "^3.1152.0",
     "@aws-sdk/lib-dynamodb": "^3.1152.0",
+    "@aws-sdk/s3-request-presigner": "^3.1152.0",
     "@c32/core": "0.1.0",
     "@codegenie/serverless-express": "^5.0.0",
     "express": "^5.3.0",

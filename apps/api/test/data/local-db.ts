@@ -1,9 +1,9 @@
 import { CreateTableCommand, DeleteTableCommand } from '@aws-sdk/client-dynamodb';
-import { ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { createLedger, type Booking, type InventoryNight, type LedgerState } from '@c32/core';
+import type { InventoryNight, LedgerState } from '@c32/core';
 import { randomUUID } from 'node:crypto';
-import { itemToInventory, type DataContext } from '../../src/data/catalog.js';
+import type { DataContext } from '../../src/data/catalog.js';
 import { createDocClient } from '../../src/data/client.js';
+import { readLedgerState } from '../../src/data/ledger.js';
 import { createTableInput } from '../../src/data/table.js';
 
 /**
@@ -37,41 +37,8 @@ export async function createTestTable(): Promise<{ ctx: DataContext; drop: () =>
   };
 }
 
-/** Read the whole table into the core ledger model, to compare and to run checkLedger. */
-export async function readLedger(ctx: DataContext): Promise<LedgerState> {
-  const items: Record<string, unknown>[] = [];
-  let start: Record<string, unknown> | undefined;
-  do {
-    const out = await ctx.doc.send(
-      new ScanCommand({
-        TableName: ctx.tableName,
-        ConsistentRead: true,
-        ...(start ? { ExclusiveStartKey: start } : {}),
-      }),
-    );
-    items.push(...((out.Items ?? []) as Record<string, unknown>[]));
-    start = out.LastEvaluatedKey;
-  } while (start);
-
-  const inventory: InventoryNight[] = items
-    .filter((i) => i['entity'] === 'INV')
-    .map(itemToInventory);
-  const state = createLedger(inventory);
-  const bookings = new Map<string, Booking>();
-  for (const line of items.filter((i) => i['entity'] === 'HOLD')) {
-    const id = line['quote_id'] as string;
-    const existing = bookings.get(id);
-    const date = line['date'] as string;
-    bookings.set(id, {
-      quote_id: id,
-      room_type: line['room_type'] as string,
-      dates: existing ? [...existing.dates, date].sort() : [date],
-      units: line['units'] as number,
-      state: line['state'] as Booking['state'],
-    });
-  }
-  return { nights: state.nights, bookings };
-}
+/** Read the stored ledger into the core model (same code the API uses). */
+export const readLedger = (ctx: DataContext): Promise<LedgerState> => readLedgerState(ctx);
 
 export const night = (
   date: string,

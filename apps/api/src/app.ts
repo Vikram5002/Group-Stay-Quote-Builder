@@ -2,6 +2,7 @@ import express, { type Express, type RequestHandler } from 'express';
 import { CONTRACT_VERSION, type HealthResponse } from '@c32/core';
 import type { Authenticate } from './auth.js';
 import { errorHandler, notFound, requestId } from './http.js';
+import { fileHandlers, type FileRouteOptions } from './routes/files.js';
 import { mountOperations, type Handlers } from './routes/operations.js';
 import { propertyHandlers } from './routes/property.js';
 import { quoteHandlers } from './routes/quotes.js';
@@ -14,6 +15,8 @@ export interface AppOptions {
   deps?: ServiceDeps;
   /** How a request becomes an actor: JWT claims in AWS, the dev header locally. */
   authenticate?: Authenticate;
+  /** Imports and exports: storage plus where Track 4's evidence files come from. */
+  files?: Omit<FileRouteOptions, 'appVersion'>;
   /** Browser origins allowed to call the API (the CloudFront domain, the Vite dev server). */
   corsOrigins?: readonly string[];
   /** Mounts extra routes before the 404 and error handlers (tests). */
@@ -83,7 +86,10 @@ export function createApp(opts: AppOptions = {}): Express {
 
   if (opts.deps) {
     if (!opts.authenticate) throw new Error('Business routes need an authenticate function');
-    mountOperations(app, { deps: opts.deps, authenticate: opts.authenticate, handlers: HANDLERS });
+    const handlers: Handlers = opts.files
+      ? { ...HANDLERS, ...fileHandlers({ ...opts.files, appVersion: version }) }
+      : HANDLERS;
+    mountOperations(app, { deps: opts.deps, authenticate: opts.authenticate, handlers });
   }
 
   opts.register?.(app);

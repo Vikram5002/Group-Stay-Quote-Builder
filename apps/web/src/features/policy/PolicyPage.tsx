@@ -14,7 +14,7 @@ import {
 } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatIst } from '../../lib/format';
-import { describeChanges, formFromPolicy, parsePolicy } from './policyForm';
+import { describeChanges, formFromPolicy, inactiveFloor, parsePolicy } from './policyForm';
 import type { FloorModeValue, PolicyForm } from './policyForm';
 import { POLICY_KEY } from './queries';
 
@@ -111,11 +111,14 @@ export function PolicyPage() {
     setErrors({});
   };
   const err = (path: string) => (errors[path] ? { error: errors[path] } : {});
+  // The floor the mode does not use is shown, kept and saved as it was, but not editable.
+  const unused = inactiveFloor(form.floorMode);
+  const UNUSED_HINT = 'Not used in this floor mode. Its value is kept.';
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!form) return;
-    const parsed = parsePolicy(form, policy.version);
+    const parsed = parsePolicy(form, policy);
     if (!parsed.ok) {
       setErrors(parsed.errors);
       return;
@@ -187,7 +190,12 @@ export function PolicyPage() {
               min={0}
               value={form.contributionFloor}
               onChange={(e) => set({ contributionFloor: e.target.value })}
-              hint="Minimum contribution for the whole package."
+              disabled={unused === 'contribution_floor_inr'}
+              hint={
+                unused === 'contribution_floor_inr'
+                  ? UNUSED_HINT
+                  : 'Minimum contribution for the whole package.'
+              }
               {...err('contribution_floor_inr')}
             />
             <TextField
@@ -197,7 +205,12 @@ export function PolicyPage() {
               min={0}
               value={form.floorPerRoomNight}
               onChange={(e) => set({ floorPerRoomNight: e.target.value })}
-              hint="Used when the mode is per room-night. Leave blank if unknown."
+              disabled={unused === 'floor_per_room_night_inr'}
+              hint={
+                unused === 'floor_per_room_night_inr'
+                  ? UNUSED_HINT
+                  : 'Minimum contribution per room-night, scaled by the number of room-nights.'
+              }
               {...err('floor_per_room_night_inr')}
             />
           </div>

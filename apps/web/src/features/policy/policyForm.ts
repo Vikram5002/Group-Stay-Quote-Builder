@@ -100,10 +100,28 @@ function friendly(issue: ValidationIssue): string {
 export type PolicyParse =
   { ok: true; value: ReturnType<typeof toUpdate> } | { ok: false; errors: Record<string, string> };
 
-/** Same schema as the server, so the checks cannot drift. */
-export function parsePolicy(form: PolicyForm, version: number): PolicyParse {
-  const body = toUpdate(form, version);
-  const result = parseWith(PolicyUpdateRequest, body);
+/** The floor field the mode does not use: it cannot be edited and is not checked. */
+export function inactiveFloor(
+  mode: FloorModeValue,
+): 'contribution_floor_inr' | 'floor_per_room_night_inr' {
+  return mode === 'absolute' ? 'floor_per_room_night_inr' : 'contribution_floor_inr';
+}
+
+/**
+ * Same schema as the server, so the checks cannot drift. Only the floor that applies to the mode
+ * is checked; if the other one holds something unusable, the saved value is sent unchanged.
+ */
+export function parsePolicy(form: PolicyForm, saved: Policy): PolicyParse {
+  let body = toUpdate(form, saved.version);
+  let result = parseWith(PolicyUpdateRequest, body);
+  const inactive = inactiveFloor(form.floorMode);
+  if (!result.ok && result.issues.some((i) => i.path === inactive)) {
+    body =
+      inactive === 'contribution_floor_inr'
+        ? { ...body, contribution_floor_inr: saved.contribution_floor_inr }
+        : { ...body, floor_per_room_night_inr: saved.floor_per_room_night_inr };
+    result = parseWith(PolicyUpdateRequest, body);
+  }
   if (result.ok) return { ok: true, value: body };
   const errors: Record<string, string> = {};
   for (const issue of result.issues) errors[issue.path] ??= friendly(issue);

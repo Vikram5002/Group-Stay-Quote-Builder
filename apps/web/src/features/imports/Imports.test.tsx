@@ -104,7 +104,7 @@ describe('importing a file', () => {
     ).toBeInTheDocument();
   });
 
-  it('lists every problem by row number and offers no import', async () => {
+  it('lists every problem by row number and imports only the good rows, like the real service', async () => {
     const u = userEvent.setup();
     renderPage();
     const bad = [
@@ -118,16 +118,31 @@ describe('importing a file', () => {
     await u.click(screen.getByRole('button', { name: 'Check file' }));
 
     expect(
-      await screen.findByText('The file has problems, so nothing can be imported'),
+      await screen.findByText('Some rows have errors and will be skipped'),
     ).toBeInTheDocument();
+    expect(screen.getByText(/1 row accepted|1 accepted/)).toBeInTheDocument();
     const table = screen.getByRole('table', { name: 'Problems found, by row' });
     const rows = within(table).getAllByRole('row').slice(1);
     const rowNumbers = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);
     expect(rowNumbers).toEqual(['2', '3', '4']);
     expect(within(rows[2] as HTMLElement).getByText(/Duplicate of row 1/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Import \d+ row/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/Fix the rows listed above/)).toBeInTheDocument();
+    expect(screen.getByText(/3 rows have errors and will not be imported/)).toBeInTheDocument();
     expect(store.inventory).toHaveLength(0);
+
+    await u.click(screen.getByRole('button', { name: 'Import 1 row' }));
+    expect(await screen.findByText('Imported')).toBeInTheDocument();
+    expect(store.inventory.map((r) => [r.date, r.total_units])).toEqual([['2026-11-01', 10]]);
+  });
+
+  it('offers no import when no row can be used', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    await pick(u, csv('date,room_type,rooms\n2026-11-01,standard,ten\n'));
+    await u.click(screen.getByRole('button', { name: 'Check file' }));
+    expect(
+      await screen.findByText('Some rows have errors and will be skipped'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import 0 rows' })).toBeDisabled();
   });
 
   it('refuses a file whose header is wrong before anything is uploaded', async () => {

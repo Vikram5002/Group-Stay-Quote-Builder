@@ -1,0 +1,21 @@
+id,claim,type,source,confidence,next_test
+E01,10 rooms x 2 nights x 2000 = 40000 room revenue; contribution 24000,Derived,"fixture.json; tests T01, S01; live dev API (02-final/public-checks-live.json)",High (arithmetic),n/a
+E02,The minimum safe rate on the fixture is 1800 (rounded up),Derived,"Formula; tests T03, T18, P4",High (arithmetic),n/a
+E03,"12 requested with 10 available gives a partial offer for 10 and never over-holds, even under 20 parallel requests",Observed,"Tests T02, T12 against DynamoDB Local; live dev API",High (tested),n/a
+E04,A below-floor quote cannot be confirmed until a different Owner approves it,Observed,"Tests T05, T16, T17; live dev API with Cognito users",High (tested),n/a
+E05,Expired quotes release their rooms exactly once,Observed,"Tests T13, T15, worker race test",High (tested),Watch ExpiredReleased on dev
+E06,The baseline (tag baseline-v0) would over-sell: it priced 12 rooms at 48000 with 10 available,Observed,evidence/00-baseline/baseline-run.json,High (reproducible),n/a
+E07,"Organisers respond faster to dated, itemised quotes (H6)",Not yet tested,Growth experiment designed; log.csv empty,Unknown,Run the role-play experiment
+E08,Small hotels quote groups manually and slowly (H1),Assumption,Case brief,Unknown,Discovery interviews and desk shadowing
+E09,Some past group discounts fell below an unseen floor (H2),Assumption,Team reasoning,Unknown,Interview question 7: count over the last 10 quotes
+E10,Double allocation of rooms happens (H3),Assumption,Team reasoning,Unknown,Interview question 8
+E11,Owners will pay a per-property monthly fee (H4),Assumption,README hypothesis; blueprint 16.3,Unknown,Price-probe cards and a pilot ask
+E12,Quote expiry reduces stale-price disputes (H5),Assumption,Team reasoning,Unknown,Interview question 9
+E13,AWS variable cost is under 1 INR per hotel per month at 100 quotes,Derived,Measured 18.6 ms per call on dev x approximate list prices (cost-to-serve.md),"Medium (small sample, list prices)",Cost Explorer with the project tag after a week
+E14,"Support time, not AWS, dominates cost to serve",Derived,E13 versus the assumed 1 hour a month of support,Medium,Measure support minutes in the pilot
+E15,At 1999 INR a month the gross margin is about 80 to 85% and break-even is 2 hotels,Derived,Unit-economics model (model/output.md) on assumed support and fixed costs,Low (assumption-driven),Replace assumptions with pilot data
+E16,Local p95 latency is about 11 ms for create and 4 ms for preview,Observed,"docs/testing/performance.md (local, DynamoDB Local)",Medium (local only),Measure p95 on AWS dev via CloudWatch
+E17,The floor is an absolute package floor,Assumption,Default reading of contribution_floor_inr (assumption A1),Unknown,"Case owners, open question 1"
+E18,Rates are ex-tax,Assumption,Assumption A7,Unknown,"Case owners, open question 6"
+E19,Quote validity of 72 hours and a 24-hour stay cutoff suit small hotels,Assumption,"Assumptions A2, A3",Unknown,Owner interviews and the pilot
+E20,The system is deployed and working on AWS dev,Observed,"02-final/deployment.md: live API, site, Cognito, smoke test on 2026-10-18",High,n/a

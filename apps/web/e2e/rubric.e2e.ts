@@ -62,7 +62,7 @@ test.describe('rubric flows', () => {
     await signIn(page, 'Asha', 'Sales');
     await buildQuote(page, { organiser: 'Discount Group', rate: '1700' });
     await expect(page.getByText('Owner review required')).toBeVisible();
-    await expect(page.getByText(/Below floor: review required/).first()).toBeVisible();
+    await expect(page.getByText(/Over the limit: owner review/).first()).toBeVisible();
     await issueQuote(page, 'Send for Owner review');
 
     await expect(page.getByText('Waiting for Owner approval')).toBeVisible();
@@ -83,7 +83,7 @@ test.describe('rubric flows', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Discount Group' })).toBeVisible();
     const comparison = page.getByRole('table', { name: /Requested terms compared/ });
     await expect(comparison).toContainText('1,700');
-    await expect(comparison).toContainText('2,000');
+    await expect(comparison).toContainText('1,800');
 
     await page.getByRole('button', { name: 'Approve…' }).click();
     const dialog = page.getByRole('dialog');

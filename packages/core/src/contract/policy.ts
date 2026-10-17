@@ -28,6 +28,8 @@ const PolicyFields = z.strictObject({
     .max(LIMITS.MAX_UNIT_INR * 100),
   /** Rooms the hotel has (owner setting). Divides the package floor; sets each night's total. */
   total_rooms_units: z.int().min(1).max(LIMITS.MAX_ROOMS),
+  /** Largest discount off the floor rate Sales may give without owner review (D-057). */
+  max_sales_discount_pct: z.int().min(0).max(100),
   validity_hours: hours(1),
   stay_cutoff_hours: hours(0),
   /** If the computed validity window is shorter than this, the quote is TOO_LATE_TO_QUOTE. */
@@ -73,6 +75,7 @@ export const DEFAULT_POLICY: Readonly<Policy> = Object.freeze({
   timezone: 'Asia/Kolkata', // A8
   contribution_floor_inr: 20000, // fixture; / 10 rooms = 2000 per room-night (D-056)
   total_rooms_units: 10, // fixture inventory
+  max_sales_discount_pct: 10, // owner setting: 2000 - 10% = 1800 minimum
   validity_hours: 72, // A2 (HYPOTHESIS)
   stay_cutoff_hours: 24, // A3 (HYPOTHESIS)
   min_validity_hours: 2, // A13 (HYPOTHESIS)

@@ -75,7 +75,7 @@ describe('P2 revenue is non-decreasing in rate, rooms and nights', () => {
     price({
       rooms: r,
       nights: flatNights(CHECK_IN, n, perNight, 0),
-      floor: { contribution_floor_inr: 0, total_rooms_units: 1 },
+      floor: { contribution_floor_inr: 0, total_rooms_units: 1, max_sales_discount_pct: 0 },
     }).totals.room_revenue_inr!;
 
   it('raising the rate never lowers revenue', () => {
@@ -116,6 +116,7 @@ describe('P2 revenue is non-decreasing in rate, rooms and nights', () => {
           const floor = {
             contribution_floor_inr: 0,
             total_rooms_units: 1,
+            max_sales_discount_pct: 0,
           };
           const before = price({ rooms: r, nights, floor }).totals.room_revenue_inr!;
           const bumped = nights.map((x, j) => (j === i ? { ...x, rate_inr: x.rate_inr! + d } : x));

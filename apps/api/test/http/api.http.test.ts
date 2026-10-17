@@ -99,7 +99,7 @@ describe.skipIf(!hasDb)('HTTP API (DynamoDB Local)', () => {
       const p = QuotePreviewResponse.parse(res.body);
       expect(p.evaluation.counter_offers[0]).toMatchObject({
         type: 'RAISE_RATE',
-        rate_per_room_night_inr: 2000,
+        rate_per_room_night_inr: 1800,
       });
       expect(p.terms_hash).toMatch(/^[0-9a-f]{64}$/);
       const list = QuoteList.parse((await get('/v1/quotes', VIEWER).expect(200)).body);

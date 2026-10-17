@@ -39,15 +39,15 @@ describe.skipIf(!hasDb)('amend, cancel and extend (DynamoDB Local)', () => {
     return confirmQuote(h.deps, q.quote_id, sales);
   }
 
-  /** 10 rooms at 1800 (below the 2000 floor rate), approved by the owner, then confirmed. */
+  /** 10 rooms at 1500 (25% off, over the Sales limit), approved by the owner, then confirmed. */
   async function confirmedDiscount(h: Awaited<ReturnType<typeof setup>>) {
-    const q = await createQuote(h.deps, request({ rate_per_room_night_inr: 1800 }), sales);
+    const q = await createQuote(h.deps, request({ rate_per_room_night_inr: 1500 }), sales);
     await approveQuote(h.deps, q.quote_id, owner, 'Long-standing corporate client');
     return confirmQuote(h.deps, q.quote_id, sales);
   }
 
   describe('T20 partial cancellation 10 to 7', () => {
-    it('at the floor rate: 6 room-nights released, contribution 16800 still meets the floor', async () => {
+    it('at full price: 6 room-nights released, contribution 16800 still clears the floor', async () => {
       const h = await setup();
       const c = await confirmed(h);
       const a = await amendQuote(h.deps, c.quote_id, sales, 7, 'Three guests dropped out');
@@ -57,7 +57,7 @@ describe.skipIf(!hasDb)('amend, cancel and extend (DynamoDB Local)', () => {
       expect(a.evaluation.totals).toMatchObject({
         room_nights: 14,
         contribution_inr: 16800,
-        contribution_floor_inr: 16800,
+        contribution_floor_inr: 14000, // 14 x 1800 - 11200
       });
       expect(a.evaluation.reasons).toEqual([]);
       expect(a.terms_hash).not.toBe(c.terms_hash);
@@ -78,14 +78,14 @@ describe.skipIf(!hasDb)('amend, cancel and extend (DynamoDB Local)', () => {
       expect(checkLedger(await readLedger(h.ctx))).toEqual([]);
     });
 
-    it('a booking approved below the floor rate is flagged for owner review after amending', async () => {
+    it('a booking approved over the Sales limit is flagged for owner review after amending', async () => {
       const h = await setup();
       const c = await confirmedDiscount(h);
       const a = await amendQuote(h.deps, c.quote_id, sales, 7, null);
       expect(a.review_required).toBe(true);
       expect(a.evaluation.reasons).toEqual(['FLOOR_BREACH']);
       expect(a.evaluation.trail.at(-1)).toBe(
-        'remaining contribution 14000 < 16800 floor, shortfall 2800: owner review',
+        'remaining contribution 9800 < 14000 floor, shortfall 4200: owner review',
       );
       // Rooms are released first even so (BR-16).
       expect(await counters(h)).toEqual([

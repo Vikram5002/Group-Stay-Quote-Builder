@@ -1,7 +1,7 @@
 /**
- * Golden pricing tests from the blueprint catalogue (section 14.2), under the floor rule of
- * D-056: floor rate = package floor 20000 / 10 rooms = 2000 per room-night, variable cost (800)
- * included. Fixture: rate 2000, cost 800.
+ * Golden pricing tests from the blueprint catalogue (section 14.2), under D-056 and D-057: full
+ * price (floor rate) = package floor 20000 / 10 rooms = 2000 per room-night, cost included; Sales
+ * may give up to 10% off, so the lowest rate is 1800. Fixture: rate 2000, cost 800.
  */
 import { describe, expect, it } from 'vitest';
 import {
@@ -41,7 +41,7 @@ describe('T01 fixture: 10 rooms x 2 nights x 2000', () => {
     expect(result.totals.contribution_inr).toBe(fixture.expected.contribution_inr); // 24000
   });
 
-  it('computes every total exactly: the rate is exactly the floor rate', () => {
+  it('computes every total exactly: full price, no discount', () => {
     expect(result.totals).toEqual({
       room_nights: 20,
       room_revenue_inr: 40000,
@@ -50,11 +50,15 @@ describe('T01 fixture: 10 rooms x 2 nights x 2000', () => {
       inclusions_cost_inr: 0,
       contribution_inr: 24000,
       contribution_margin_pct: 60,
-      contribution_floor_inr: 24000, // 20 x 2000 - 16000
+      contribution_floor_inr: 20000, // 20 x 1800 - 16000
       floor_rate_per_room_night_inr: 2000,
-      floor_headroom_inr: 0,
+      list_revenue_inr: 40000,
+      discount_pct: 0,
+      max_discount_pct: 10,
+      min_room_revenue_inr: 36000,
+      floor_headroom_inr: 4000,
       shortfall_inr: 0,
-      min_rate_per_room_night_inr: 2000,
+      min_rate_per_room_night_inr: 1800,
     });
     expect(result.floor_ok).toBe(true);
   });
@@ -64,69 +68,77 @@ describe('T01 fixture: 10 rooms x 2 nights x 2000', () => {
   });
 });
 
-describe('T03 to T05 rate sweep around the floor rate 2000 (BR-06)', () => {
-  it('T03 rate 2000: exactly the floor rate passes (equal passes)', () => {
-    const r = price(atRate(2000));
-    expect(r.totals).toMatchObject({ floor_headroom_inr: 0, shortfall_inr: 0 });
+describe('T03 to T05 rate sweep around the lowest Sales rate 1800 (BR-06)', () => {
+  it('T03 rate 1800 (10% off): exactly the lowest allowed rate passes', () => {
+    const r = price(atRate(1800));
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: 36000,
+      contribution_inr: 20000,
+      discount_pct: 10,
+      floor_headroom_inr: 0,
+      shortfall_inr: 0,
+    });
     expect(r.floor_ok).toBe(true);
   });
 
-  it('T04 rate 1999: one rupee under on 20 room-nights, shortfall 20', () => {
-    const r = price(atRate(1999));
+  it('T04 rate 1799: one rupee under on 20 room-nights, shortfall 20', () => {
+    const r = price(atRate(1799));
     expect(r.totals).toMatchObject({
-      room_revenue_inr: 39980,
-      contribution_inr: 23980,
-      contribution_floor_inr: 24000,
+      room_revenue_inr: 35980,
+      contribution_inr: 19980,
+      contribution_floor_inr: 20000,
       floor_headroom_inr: -20,
       shortfall_inr: 20,
-      min_rate_per_room_night_inr: 2000,
+      min_rate_per_room_night_inr: 1800,
     });
     expect(r.floor_ok).toBe(false);
   });
 
-  it('T05 rate 1500: shortfall 10000 (500 under on each of 20 room-nights)', () => {
+  it('T05 rate 1500 (25% off): over the Sales limit, shortfall 6000', () => {
     const r = price(atRate(1500));
     expect(r.totals).toMatchObject({
       room_revenue_inr: 30000,
       contribution_inr: 14000,
       contribution_margin_pct: 46.7,
-      contribution_floor_inr: 24000,
-      shortfall_inr: 10000,
-      min_rate_per_room_night_inr: 2000,
+      discount_pct: 25,
+      shortfall_inr: 6000,
+      min_rate_per_room_night_inr: 1800,
     });
     expect(r.floor_ok).toBe(false);
   });
 
-  it('1800, which passed under the old contribution floor, now needs review', () => {
-    expect(price(atRate(1800)).floor_ok).toBe(false);
-  });
-
-  it('the minimum safe rate is the floor rate whatever the quoted rate', () => {
-    for (const rate of [1, 1500, 1999, 2000, 50000]) {
-      expect(price(atRate(rate)).totals.min_rate_per_room_night_inr).toBe(2000);
+  it('the minimum safe rate is the lowest Sales rate whatever the quoted rate', () => {
+    for (const rate of [1, 1500, 1799, 2000, 50000]) {
+      expect(price(atRate(rate)).totals.min_rate_per_room_night_inr).toBe(1800);
     }
   });
 
+  it('the owner can widen or narrow the Sales limit', () => {
+    const at = (pct: number) => ({ ...DEFAULT_POLICY, max_sales_discount_pct: pct });
+    expect(price({ ...atRate(1700), floor: at(15) }).floor_ok).toBe(true); // 2000 - 15%
+    expect(price({ ...atRate(1900), floor: at(0) }).floor_ok).toBe(false); // no discount allowed
+  });
+
   it('the same rule holds for one room for one night (the small booking case)', () => {
-    const ok = price(atRate(2000, 1, 1));
-    expect(ok.totals).toMatchObject({ contribution_inr: 1200, contribution_floor_inr: 1200 });
+    const ok = price(atRate(1800, 1, 1));
+    expect(ok.totals).toMatchObject({ contribution_inr: 1000, contribution_floor_inr: 1000 });
     expect(ok.floor_ok).toBe(true);
-    expect(price(atRate(1999, 1, 1)).floor_ok).toBe(false);
+    expect(price(atRate(1799, 1, 1)).floor_ok).toBe(false);
   });
 });
 
 describe('T18 minimum safe rate rounds up (BR-20)', () => {
   const threeRooms = { ...DEFAULT_POLICY, total_rooms_units: 3 };
 
-  it('20000 / 3 rooms = 6666.67 rounds up to 6667', () => {
+  it('20000 / 3 rooms = 6667 full price; less 10% = 6000.3, rounded up to 6001', () => {
     const r = price({ ...atRate(1000, 3, 2), floor: threeRooms });
     expect(r.totals.floor_rate_per_room_night_inr).toBe(6667);
-    expect(r.totals.min_rate_per_room_night_inr).toBe(6667);
+    expect(r.totals.min_rate_per_room_night_inr).toBe(6001);
   });
 
   it('fails one rupee below the minimum and passes at it', () => {
-    expect(price({ ...atRate(6666, 3, 2), floor: threeRooms }).floor_ok).toBe(false);
-    expect(price({ ...atRate(6667, 3, 2), floor: threeRooms }).floor_ok).toBe(true);
+    expect(price({ ...atRate(6000, 3, 2), floor: threeRooms }).floor_ok).toBe(false);
+    expect(price({ ...atRate(6001, 3, 2), floor: threeRooms }).floor_ok).toBe(true);
   });
 
   it('is never negative when extras more than pay for themselves', () => {

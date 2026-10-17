@@ -1,6 +1,6 @@
 {
   "id": "S08",
-  "title": "10 then 8 rooms free: partial offer for 8 at the floor rate",
+  "title": "10 then 8 rooms free: partial offer for 8",
   "source": "T10, D-020",
   "synthetic": true,
   "policy": {},
@@ -39,7 +39,7 @@
     "offered_rooms": 8,
     "shortfall_rooms": 4,
     "totals": {
-      "contribution_floor_inr": 19200
+      "contribution_floor_inr": 16000
     }
   }
 }

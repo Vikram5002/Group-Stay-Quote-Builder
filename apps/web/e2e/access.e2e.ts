@@ -85,7 +85,7 @@ test.describe('accessibility (axe, WCAG 2.1 A and AA)', () => {
     await page.getByRole('button', { name: 'Next' }).click();
     await expectNoA11yViolations(page, 'quote builder, step 2');
     await page.getByRole('button', { name: 'Next' }).click();
-    await page.getByLabel('Rate per room per night (INR)').fill('1700');
+    await page.getByLabel('Or a fixed rate per room-night (INR)').fill('1700');
     await page.getByRole('button', { name: 'Add inclusion' }).click();
     await expectNoA11yViolations(page, 'quote builder, step 3 with an inclusion');
     await page.getByRole('button', { name: 'Remove inclusion 1' }).click();

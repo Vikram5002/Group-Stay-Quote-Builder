@@ -114,6 +114,7 @@ describe('stored policies from before D-056', () => {
     };
     expect(Policy.parse(upgradeStoredPolicy(legacy))).toMatchObject({
       total_rooms_units: 10,
+      max_sales_discount_pct: 10,
       version: 6,
       validity_hours: 24,
     });

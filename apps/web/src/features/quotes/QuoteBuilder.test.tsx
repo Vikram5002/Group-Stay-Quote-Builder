@@ -56,7 +56,7 @@ async function toReview(
     await u.type(screen.getByLabelText(/^Rooms/), opts.rooms);
   }
   await next(u);
-  if (opts.rate) await u.type(screen.getByLabelText(/Rate per room per night/), opts.rate);
+  if (opts.rate) await u.type(screen.getByLabelText(/fixed rate per room-night/), opts.rate);
   await next(u);
 }
 
@@ -72,7 +72,7 @@ describe('quote builder: the three rubric flows', () => {
       .closest('section') as HTMLElement;
     expect(within(totals).getByText(/40,000/)).toBeInTheDocument();
     expect(within(totals).getAllByText(/24,000/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Meets floor').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Within the Sales limit').length).toBeGreaterThan(0);
     expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
     // The button stays disabled while the server is still confirming the latest form.
@@ -104,10 +104,10 @@ describe('quote builder: the three rubric flows', () => {
     await toReview(u, { rate: '1700' });
 
     expect(await screen.findByText('Owner review required')).toBeInTheDocument();
-    expect(screen.getAllByText(/Below floor: review required/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Send for Owner review' })).toBeEnabled();
 
-    await u.click(screen.getByRole('button', { name: 'Use rate 2000' }));
+    await u.click(screen.getByRole('button', { name: 'Use rate 1800' }));
     expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Issue quote' })).toBeEnabled();
   });
@@ -124,8 +124,7 @@ describe('quote builder: the three rubric flows', () => {
       .closest('section') as HTMLElement;
     expect(within(totals).getAllByText('Unknown').length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText(/variable cost is unknown, so the contribution and its floor are unknown/)
-        .length,
+      screen.getAllByText(/A cost is unknown, so the price cannot be checked yet/).length,
     ).toBeGreaterThan(0);
   });
 });
@@ -156,11 +155,30 @@ describe('quote builder: forms and live meter', () => {
     // The plan rate is 2000, so the server answer arrives first.
     expect(await screen.findByText('Confirmed by the server.')).toBeInTheDocument();
 
-    await u.type(screen.getByLabelText(/Rate per room per night/), '1700');
+    await u.type(screen.getByLabelText(/fixed rate per room-night/), '1700');
     expect(await screen.findByText(/Estimate from your rate/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Below floor: review required/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByText('Confirmed by the server.')).toBeInTheDocument());
-    expect(screen.getAllByText(/Below floor: review required/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
+  });
+
+  it('Sales prices by a discount: within the limit is fine, over it goes to the owner', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    const discount = screen.getByLabelText(/Discount off full price/);
+    await u.clear(discount);
+    await u.type(discount, '5');
+    await waitFor(() => expect(screen.getByText('Confirmed by the server.')).toBeInTheDocument());
+    expect(screen.getAllByText('Within the Sales limit').length).toBeGreaterThan(0);
+    expect(screen.getByText('5%')).toBeInTheDocument();
+
+    await u.clear(discount);
+    await u.type(discount, '15');
+    await waitFor(() => expect(screen.getByText('15%')).toBeInTheDocument());
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
   });
 
   it('adds an inclusion with an unknown cost and sends it for review', async () => {

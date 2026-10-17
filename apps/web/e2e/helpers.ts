@@ -71,7 +71,7 @@ export async function buildQuote(page: Page, input: QuoteInput) {
   if (input.rooms) await page.getByLabel(/^Rooms/).fill(input.rooms);
   await page.getByRole('button', { name: 'Next' }).click();
 
-  if (input.rate) await page.getByLabel('Rate per room per night (INR)').fill(input.rate);
+  if (input.rate) await page.getByLabel('Or a fixed rate per room-night (INR)').fill(input.rate);
   await page.getByRole('button', { name: 'Next' }).click();
 }
 

@@ -1,6 +1,6 @@
 {
   "id": "S04",
-  "title": "One rupee below the floor rate breaches the floor",
+  "title": "One rupee below the lowest Sales rate breaches the floor",
   "source": "T04",
   "synthetic": true,
   "policy": {},
@@ -14,14 +14,14 @@
     },
     "room_type": "standard",
     "rooms": 10,
-    "rate_per_room_night_inr": 1999
+    "rate_per_room_night_inr": 1799
   },
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "REVIEW",
     "reasons": ["FLOOR_BREACH"],
     "totals": {
-      "contribution_inr": 23980,
+      "contribution_inr": 19980,
       "shortfall_inr": 20
     }
   }

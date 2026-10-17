@@ -97,6 +97,7 @@ export function verifyDerivedClaims(): ClaimCheck[] {
     floor: {
       contribution_floor_inr: quote.contribution_floor_inr,
       total_rooms_units: Math.max(...fixtureJson.records.inventory.map((r) => r.rooms ?? 0)),
+      max_sales_discount_pct: 10,
     },
   });
   return [
@@ -108,7 +109,7 @@ export function verifyDerivedClaims(): ClaimCheck[] {
     {
       id: 'E02',
       recomputed: `Minimum safe rate ${totals.min_rate_per_room_night_inr}`,
-      matches: totals.min_rate_per_room_night_inr === 2000,
+      matches: totals.min_rate_per_room_night_inr === 1800,
     },
   ];
 }

@@ -50,7 +50,10 @@ export function ContributionMeter({
       >
         {contribution !== null && (
           <div
-            className={cn('h-full rounded-full', below ? 'bg-danger' : 'bg-success')}
+            className={cn(
+              'h-full rounded-full transition-[width,background-color] duration-500 ease-out',
+              below ? 'bg-danger' : 'bg-success',
+            )}
             style={{ width: pct(contribution) }}
           />
         )}

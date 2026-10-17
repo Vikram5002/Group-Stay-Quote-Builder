@@ -73,7 +73,7 @@ describe('sign-in and roles', () => {
 
   it('asks for a name before signing in', async () => {
     const user = userEvent.setup();
-    renderAt('/', null);
+    renderAt('/sign-in', null);
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(screen.getByText(/Enter a name/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Your name/)).toHaveAttribute('aria-invalid', 'true');
@@ -90,10 +90,17 @@ describe('sign-in and roles', () => {
     expect(screen.getByText('Role: Viewer')).toBeInTheDocument();
   });
 
-  it('signs out and returns to sign-in', async () => {
+  it('signs out and returns to the front page, which leads to sign-in', async () => {
     const user = userEvent.setup();
     renderAt('/');
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: /Every group enquiry is a booking opportunity/,
+      }),
+    ).toBeInTheDocument();
+    await user.click(screen.getAllByRole('link', { name: /^Sign in$/ })[0] as HTMLElement);
     expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
   });
 
@@ -134,7 +141,7 @@ describe('accessibility (axe)', () => {
   });
 
   it('has no violations on the sign-in page', async () => {
-    const { container } = renderAt('/', null);
+    const { container } = renderAt('/sign-in', null);
     expect(await axe(container)).toHaveNoViolations();
   });
 });

@@ -12,3 +12,18 @@ afterEach(() => {
 // jsdom has no canvas; axe probes it for icon-font detection. Contrast is covered by the token test.
 HTMLCanvasElement.prototype.getContext = (() =>
   null) as typeof HTMLCanvasElement.prototype.getContext;
+
+// Tests behave like a visitor who asked for reduced motion: counters show their final value and
+// the tour does not auto-play, so nothing changes while a test is running.
+if (typeof window !== 'undefined') {
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('prefers-reduced-motion'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}

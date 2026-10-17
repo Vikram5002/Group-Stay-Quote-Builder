@@ -16,7 +16,13 @@ async function expectFits(page: Page, where: string) {
 // Runs in the "mobile" project (a phone-sized viewport with touch).
 test('every screen fits a phone without sideways scrolling', async ({ page }) => {
   test.setTimeout(120_000);
-  await openApp(page);
+  await openApp(page, '/');
+  await expectFits(page, 'landing page');
+  await page
+    .getByRole('link', { name: /^Sign in/ })
+    .first()
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
   await expectFits(page, 'sign-in');
 
   await signIn(page, 'Asha', 'Owner');

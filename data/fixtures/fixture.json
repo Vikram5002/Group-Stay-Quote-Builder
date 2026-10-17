@@ -1,0 +1,36 @@
+{
+  "case_id": "C32",
+  "synthetic": true,
+  "data_version": "v3.2",
+  "currency": "INR unless explicitly stated",
+  "missing_values": "null means unknown, never zero",
+  "records": {
+    "inventory": [
+      {
+        "date": "2026-11-01",
+        "rooms": 10,
+        "room_type": "standard"
+      },
+      {
+        "date": "2026-11-02",
+        "rooms": 10,
+        "room_type": "standard"
+      }
+    ],
+    "quote": {
+      "rooms": 10,
+      "nights": 2,
+      "rate_per_room_night_inr": 2000,
+      "variable_cost_per_room_night_inr": 800,
+      "contribution_floor_inr": 20000
+    },
+    "expected_revenue_inr": 40000,
+    "expected_contribution_inr": 24000
+  },
+  "public_checks": [
+    "Ten rooms for two nights at 2000 per room-night gives 40000 room revenue.",
+    "A request for 12 rooms when only 10 are available must offer a partial alternative or decline.",
+    "Discounts below the contribution floor require review and cannot auto-confirm."
+  ],
+  "limit": "Small teaching fixture for a bounded prototype. Market demand, willingness to pay and production performance remain unproven."
+}

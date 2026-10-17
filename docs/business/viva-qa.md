@@ -1,8 +1,8 @@
 # Viva preparation: likely questions and answers
 
-Everyone should know: **40000** revenue, **16000** cost, **24000** contribution, package floor
-**20000** over **10** rooms = floor rate **2000** per room-night (cost included), and that all
-data is synthetic.
+Everyone should know: **40000** revenue, **16000** cost, **24000** contribution; package floor
+**20000** over **10** rooms = full price **2000** per room-night (cost included); Sales may give up
+to **10%** off, so **1800** is the minimum safe rate; and all data is synthetic.
 
 ## Product and business (Track 4 leads)
 
@@ -34,9 +34,9 @@ tier. Role-play results are process evidence, not market demand.
 ## Engineering (Track 1 leads)
 
 **Walk me through the fixture quote.** 10 rooms x 2 nights = 20 room-nights; 20 x 2000 = 40000
-revenue; 20 x 800 = 16000 cost; 24000 contribution. The floor rate is 20000 / 10 rooms = 2000
-per room-night with the cost included, so the floor is 20 x 2000 - 16000 = 24000: the fixture
-sits exactly on it, and 2000 is the minimum safe rate.
+revenue at full price; 20 x 800 = 16000 cost; 24000 contribution. Full price is the package floor
+over the rooms (20000 / 10 = 2000). Sales may give up to 10% off, so the lowest rate is 1800 and
+the floor is 20 x 1800 - 16000 = 20000: the fixture has 4000 headroom.
 
 **What happens with 12 rooms?** Sellable rooms are the minimum over every night (10), so it is a
 partial offer for 10 with a shortfall of 2. It can never hold 12: holds are DynamoDB
@@ -50,13 +50,11 @@ wins, 19 are declined, nothing is over-held.
 **What does null mean?** Unknown, never zero. An unknown cost makes contribution unknown, and the
 quote goes to review. We never guess.
 
-**How does the floor work?** The owner sets a package floor and the hotel's total rooms; floor
-rate = package floor / total rooms (20000 / 10 = 2000 per room-night), and it already includes
-the variable cost. A quote passes when its rate meets the floor rate (bundled inclusions must also
-be covered), so one room for one night is judged as fairly as a large group. This replaced an
-absolute package floor that sent every small booking to review (D-056). We flag that the brief
-calls it a contribution floor: under the old rule 1800 passed on the fixture, under ours it needs
-review.
+**How does the floor work?** The owner sets a package floor, the hotel's total rooms and the
+largest discount Sales may give. Full price = package floor / total rooms (2000 a night, cost
+included). Sales enters a discount percent; up to the limit (10%) they confirm alone, beyond it
+the owner must approve (D-056, D-057). It is judged per room-night, so one room for one night is
+treated as fairly as a large group, and bundled extras must still be covered.
 
 **How is an approval protected?** It records the terms hash. Any change to rooms, dates, rate or
 inclusions changes the hash and voids the approval. The creator cannot approve their own quote.

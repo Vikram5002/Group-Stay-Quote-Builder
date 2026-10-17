@@ -18,7 +18,7 @@ and `http/` run against DynamoDB Local). All pass in CI on every push.
 | --- | ------------------------------------------------ | ------------------------------------------------------------- |
 | T01 | Fixture quote: 40000 revenue, 24000 contribution | `pricing.golden`, `evaluate.golden`, `services/create-quote`  |
 | T02 | 12 requested, 10 available: partial for 10       | `evaluate.golden`, `services/create-quote`, `data/holds`      |
-| T03 | Rate 2000: exactly at the floor rate passes      | `pricing.golden`                                              |
+| T03 | Rate 1800 (10% off): exactly the limit passes    | `pricing.golden`                                              |
 | T04 | Rate 1799: breach, shortfall 20                  | `pricing.golden`                                              |
 | T05 | Rate 1500: review, confirm is 409                | `pricing.golden`, `evaluate.golden`, `services/confirm-quote` |
 | T06 | Null cost: contribution null, REVIEW             | `unknowns`, `evaluate.golden`                                 |
@@ -29,7 +29,7 @@ and `http/` run against DynamoDB Local). All pass in CI on every push.
 | T11 | Nothing sellable: DECLINE                        | `evaluate.golden`                                             |
 | T12 | 20 parallel creates: exactly one holds           | `services/concurrency`                                        |
 | T13 | A holds all, B declined, A expires, B holds      | `services/concurrency`, `data/holds`                          |
-| T14 | Breakfast bundled: 18000, REVIEW, min rate 2300  | `evaluate.golden`                                             |
+| T14 | Breakfast bundled: 18000, REVIEW, min rate 2100  | `evaluate.golden`                                             |
 | T15 | Confirm after expiry: 410, rooms back            | `services/confirm-quote`, `http/api`                          |
 | T16 | Owner approves with reason, confirm succeeds     | `services/review`, `http/review`                              |
 | T17 | Terms changed after approval; self-approval 403  | `services/review`, `http/review`                              |

@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Tests never read a developer's .env.local (for example the real-API settings in the README).
+    env: { VITE_API_MODE: 'mock', VITE_AUTH_MODE: '', VITE_API_BASE_URL: '' },
     include: ['src/**/*.test.{ts,tsx}'],
     css: { include: [/index.css/] },
     setupFiles: ['./src/test/setup.ts'],

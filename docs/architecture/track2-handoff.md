@@ -46,7 +46,7 @@ npm run e2e:install -w @c32/web  # once: downloads Chromium
 npm run e2e -w @c32/web          # end-to-end tests (starts the dev server itself)
 ```
 
-To run against the real local API, see "Run against the real API" in the web README. That path is unit tested but has not been run against a live API yet; it needs Docker for DynamoDB Local.
+To run against the real local API, see "Run against the real API" in the web README. It was run live on 17 Oct 2026 against the local API and DynamoDB Local: the rubric flows, a smoke test and a data-changing test (policy, import, exports, extend, cancel) all pass.
 
 ## Guardrails the code enforces
 
@@ -67,4 +67,4 @@ To run against the real local API, see "Run against the real API" in the web REA
 | Where are the accessibility choices?                         | Labelled controls, text plus icon for status, contrast-checked tokens, focus moved to the content after navigation, a skip link, a focus-trapping dialog that returns focus, and axe on every screen in a real browser.    |
 | How do you handle an unknown value?                          | `null` renders as Unknown. Totals of open quotes count unknown contributions separately, and an empty import cell is stored as unknown, not zero.                                                                          |
 | How do you stop two people double-submitting?                | The button is disabled while a request is pending, and the idempotency key is kept per request, so a retry replays the same result.                                                                                        |
-| What is not proven?                                          | The app has not been run against a live API or Cognito. The experiment log, ledger and stages are not stored server-side. Everything uses synthetic data, so it shows process, not demand.                                 |
+| What is not proven?                                          | The app has been run against the local API but not against a deployed API or Cognito. The experiment log, ledger and stages are not stored server-side. Everything uses synthetic data, so it shows process, not demand.   |

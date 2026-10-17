@@ -38,7 +38,8 @@ export default defineConfig({
           url: `http://localhost:${PORT}`,
           reuseExistingServer: !process.env.CI,
           timeout: 60_000,
-          env: { VITE_API_MODE: 'mock' },
+          // Pinned so a developer's .env.local (real-API settings) never changes what the tests run against.
+          env: { VITE_API_MODE: 'mock', VITE_AUTH_MODE: '', VITE_API_BASE_URL: '' },
         },
       }),
 });

@@ -188,6 +188,14 @@ describe('quote builder: forms and live meter', () => {
     await waitFor(() => expect(screen.getByText('Confirmed by the server.')).toBeInTheDocument());
     expect(screen.getAllByText('Within the Sales limit').length).toBeGreaterThan(0);
     expect(screen.getByText('5%')).toBeInTheDocument();
+    const card = screen.getByRole('complementary', { name: 'Live price check' });
+    // 10 rooms x 2 nights: 24000 at full price; 5% off takes 2000, leaving 22000.
+    expect(within(card).getByText('Contribution before discount').nextSibling).toHaveTextContent(
+      '24,000',
+    );
+    expect(
+      within(card).getByText('Contribution after discount', { selector: 'dt' }).nextSibling,
+    ).toHaveTextContent('22,000');
 
     await u.clear(discount);
     await u.type(discount, '15');

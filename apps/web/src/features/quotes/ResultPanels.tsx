@@ -11,45 +11,61 @@ import {
   Unknown,
 } from '../../components';
 import { formatIst } from '../../lib/format';
-import type { LiveTotals } from './usePreview';
+import type { LiveMeterState } from './usePreview';
 
-/** Always-visible contribution meter. Shows Unknown, never zero, when a cost is missing. */
-export function LiveMeter({ live, updating }: { live: LiveTotals | null; updating: boolean }) {
-  if (!live) {
+const METER_NOTE: Record<LiveMeterState['kind'], string> = {
+  start:
+    'Fill in the group, dates and rooms. The contribution against the floor will appear here and update as you change the rate.',
+  invalid: 'Enter valid values to see the contribution.',
+  error: 'The server could not check these values, so no contribution is shown.',
+  checking: 'Checking with the server…',
+  estimate: 'Estimate from your rate. The server confirms it next.',
+  server: 'Confirmed by the server.',
+};
+
+/**
+ * Always-visible contribution meter. Shows Unknown, never zero, when a cost is missing. It says
+ * "Confirmed by the server" only for the server's answer to exactly the current form.
+ */
+export function LiveMeter({ state }: { state: LiveMeterState }) {
+  const note = (
+    <p className="mt-3 text-xs text-ink-muted" role="status">
+      {METER_NOTE[state.kind]}
+    </p>
+  );
+  if (!('totals' in state) || !state.totals) {
     return (
-      <Card title="Live contribution">
-        <p className="text-sm text-ink-muted">
-          Fill in the group, dates and rooms. The contribution against the floor will appear here
-          and update as you change the rate.
-        </p>
+      <Card title="Live contribution" aria-busy={state.kind === 'checking' || undefined}>
+        {state.kind === 'start' ? (
+          <p className="text-sm text-ink-muted">{METER_NOTE.start}</p>
+        ) : (
+          note
+        )}
       </Card>
     );
   }
-  const { totals, source } = live;
+  const { totals } = state;
+  const checking = state.kind === 'checking';
   return (
-    <Card title="Live contribution" aria-busy={updating || undefined}>
-      <ContributionMeter
-        contribution={totals.contribution_inr}
-        floor={totals.contribution_floor_inr}
-        max={Math.max(totals.room_revenue_inr ?? 0, totals.contribution_floor_inr * 2)}
-      />
-      <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
-        <dt>Contribution</dt>
-        <dd className="font-semibold">
-          <Money value={totals.contribution_inr} />
-        </dd>
-        <dt>Minimum safe rate per room-night</dt>
-        <dd className="font-semibold">
-          <Money value={totals.min_rate_per_room_night_inr} />
-        </dd>
-      </dl>
-      <p className="mt-3 text-xs text-ink-muted" role="status">
-        {source === 'estimate'
-          ? 'Estimate from your rate. The server confirms it next.'
-          : updating
-            ? 'Checking with the server…'
-            : 'Confirmed by the server.'}
-      </p>
+    <Card title="Live contribution" aria-busy={checking || undefined}>
+      <div className={checking ? 'opacity-60' : undefined}>
+        <ContributionMeter
+          contribution={totals.contribution_inr}
+          floor={totals.contribution_floor_inr}
+          max={Math.max(totals.room_revenue_inr ?? 0, totals.contribution_floor_inr * 2)}
+        />
+        <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+          <dt>Contribution</dt>
+          <dd className="font-semibold">
+            <Money value={totals.contribution_inr} />
+          </dd>
+          <dt>Minimum safe rate per room-night</dt>
+          <dd className="font-semibold">
+            <Money value={totals.min_rate_per_room_night_inr} />
+          </dd>
+        </dl>
+      </div>
+      {note}
     </Card>
   );
 }

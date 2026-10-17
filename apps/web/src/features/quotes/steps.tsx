@@ -6,7 +6,10 @@ import type { InclusionBasisValue, InclusionForm, QuoteForm } from './form';
 interface StepProps {
   form: QuoteForm;
   patch: (changes: Partial<QuoteForm>) => void;
-  /** Field errors by request path. Only shown after the person tries to continue. */
+  /**
+   * Field errors by request path, for fields the person has changed or left, or all of them
+   * after they try to continue. Each input's name is its request path.
+   */
   errors: Record<string, string>;
 }
 
@@ -19,6 +22,7 @@ export function GroupStep({ form, patch, errors }: StepProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <TextField
           label="Organiser name"
+          name="organiser.name"
           required
           value={form.organiser}
           onChange={(e) => patch({ organiser: e.target.value })}
@@ -27,12 +31,14 @@ export function GroupStep({ form, patch, errors }: StepProps) {
         />
         <TextField
           label="Reference (optional)"
+          name="organiser.reference"
           value={form.reference}
           onChange={(e) => patch({ reference: e.target.value })}
           {...err(errors, 'organiser.reference')}
         />
         <TextField
           label="Check-in date"
+          name="stay.check_in"
           type="date"
           required
           value={form.checkIn}
@@ -41,6 +47,7 @@ export function GroupStep({ form, patch, errors }: StepProps) {
         />
         <TextField
           label="Nights"
+          name="stay.nights"
           type="number"
           inputMode="numeric"
           min={1}
@@ -62,6 +69,7 @@ export function RoomsStep({ form, patch, errors }: StepProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <SelectField
           label="Room type"
+          name="room_type"
           required
           value={form.roomType}
           onChange={(e) => patch({ roomType: e.target.value })}
@@ -75,6 +83,7 @@ export function RoomsStep({ form, patch, errors }: StepProps) {
         </SelectField>
         <TextField
           label="Rooms"
+          name="rooms"
           type="number"
           inputMode="numeric"
           min={1}
@@ -114,6 +123,7 @@ function InclusionRow({
       <div className="grid gap-4 md:grid-cols-2">
         <TextField
           label={`Inclusion ${index + 1} name`}
+          name={path('name')}
           required
           value={inclusion.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -122,6 +132,7 @@ function InclusionRow({
         />
         <SelectField
           label="Charged"
+          name={path('basis')}
           value={inclusion.basis}
           onChange={(e) => onChange({ basis: e.target.value as InclusionBasisValue })}
         >
@@ -133,6 +144,7 @@ function InclusionRow({
         </SelectField>
         <TextField
           label="Cost to the hotel per unit (INR)"
+          name={path('unit_cost_inr')}
           type="number"
           inputMode="numeric"
           min={0}
@@ -144,6 +156,7 @@ function InclusionRow({
         <div className="flex flex-col justify-end gap-3">
           <CheckboxField
             label="Cost is not known yet"
+            name={path('unit_cost_inr')}
             hint="The quote will need Owner review. It is never treated as zero."
             checked={inclusion.costUnknown}
             onChange={(e) => onChange({ costUnknown: e.target.checked })}
@@ -151,12 +164,14 @@ function InclusionRow({
         </div>
         <CheckboxField
           label="Already included in the room rate"
+          name={path('price_inr')}
           checked={inclusion.includedInRate}
           onChange={(e) => onChange({ includedInRate: e.target.checked })}
         />
         {!inclusion.includedInRate && (
           <TextField
             label="Extra price charged per unit (INR)"
+            name={path('price_inr')}
             type="number"
             inputMode="numeric"
             min={0}
@@ -182,6 +197,7 @@ export function PricingStep({ form, patch, errors }: StepProps) {
         <div className="grid gap-4 md:grid-cols-2">
           <TextField
             label="Rate per room per night (INR)"
+            name="rate_per_room_night_inr"
             type="number"
             inputMode="numeric"
             min={0}
@@ -192,6 +208,7 @@ export function PricingStep({ form, patch, errors }: StepProps) {
           />
           <TextField
             label="Guests per room"
+            name="guests_per_room_units"
             type="number"
             inputMode="numeric"
             min={1}

@@ -36,46 +36,54 @@ export function usePreview(request: QuoteRequest | null, debounceMs = 350) {
     preview: query.data,
     /** The request the shown preview answers. */
     basis: shown.current,
-    error: query.error,
+    /** True only when the shown result is the server's answer to exactly the current form. */
+    current: key !== null && key === settledKey && query.isSuccess && !query.isPlaceholderData,
+    /** The server refused or failed the current form (not an older one). */
+    error: key !== null && key === settledKey ? query.error : null,
     /** True while the shown result is older than the current form, or a request is running. */
     stale: key !== settledKey || query.isFetching || query.isPlaceholderData,
     refetch: query.refetch,
   };
 }
 
-export interface LiveTotals {
-  totals: QuoteTotals;
-  /** "server" is authoritative; "estimate" is computed in the browser until the server answers. */
-  source: 'server' | 'estimate';
-}
+/**
+ * What the live meter may show. Numbers are labelled as the server's only when they answer the
+ * current form exactly; otherwise they are an estimate, a previous answer being re-checked, or
+ * nothing at all.
+ */
+export type LiveMeterState =
+  /** Nothing valid has been entered yet. */
+  | { kind: 'start' }
+  /** The form has an invalid or missing value, so no request is sent. */
+  | { kind: 'invalid' }
+  /** The server could not price the current form. */
+  | { kind: 'error' }
+  /** Waiting for the server; an older answer, if any, is shown dimmed and never as confirmed. */
+  | { kind: 'checking'; totals?: QuoteTotals; evaluation?: Evaluation }
+  /** Computed in the browser from the new rate until the server answers. */
+  | { kind: 'estimate'; totals: QuoteTotals; evaluation: Evaluation }
+  /** The server's answer to exactly the current form. */
+  | { kind: 'server'; totals: QuoteTotals; evaluation: Evaluation };
 
 /**
  * Instant contribution while the server call is still in flight. It reuses the shared pricing
  * function with the cost per room-night the server last reported, so the meter moves as soon
- * as the rate changes. Inclusions are not estimated; with them the last server answer stays.
+ * as the rate changes. Inclusions are not estimated; with them the meter waits for the server.
  */
-export function liveTotals(
-  request: QuoteRequest | null,
-  basis: QuoteRequest | null,
-  evaluation: Evaluation | undefined,
-  stale: boolean,
-): LiveTotals | null {
-  if (!evaluation) return null;
+export function estimateTotals(
+  request: QuoteRequest,
+  basis: QuoteRequest,
+  evaluation: Evaluation,
+): QuoteTotals | null {
   const onlyRateChanged =
-    request !== null &&
-    basis !== null &&
     JSON.stringify({ ...request, rate_per_room_night_inr: 0 }) ===
-      JSON.stringify({ ...basis, rate_per_room_night_inr: 0 });
-  if (!stale || !request || !onlyRateChanged || (request.inclusions?.length ?? 0) > 0) {
-    return { totals: evaluation.totals, source: 'server' };
-  }
+    JSON.stringify({ ...basis, rate_per_room_night_inr: 0 });
+  if (!onlyRateChanged || (request.inclusions?.length ?? 0) > 0) return null;
   const last = evaluation.totals;
   const rate = request.rate_per_room_night_inr;
-  if (rate === undefined || last.room_nights === 0 || last.variable_cost_inr === null) {
-    return { totals: last, source: 'server' };
-  }
+  if (rate === undefined || last.room_nights === 0 || last.variable_cost_inr === null) return null;
   const costPerRoomNight = last.variable_cost_inr / last.room_nights;
-  if (!Number.isInteger(costPerRoomNight)) return { totals: last, source: 'server' };
+  if (!Number.isInteger(costPerRoomNight)) return null;
 
   const stay = resolveStay(request.stay);
   const { totals } = price({
@@ -87,5 +95,25 @@ export function liveTotals(
       floor_per_room_night_inr: null,
     },
   });
-  return { totals, source: 'estimate' };
+  return totals;
+}
+
+export function liveMeterState(
+  request: QuoteRequest | null,
+  preview: {
+    basis: QuoteRequest | null;
+    evaluation: Evaluation | undefined;
+    current: boolean;
+    error: unknown;
+  },
+): LiveMeterState {
+  const { basis, evaluation, current, error } = preview;
+  if (!request) return basis ? { kind: 'invalid' } : { kind: 'start' };
+  if (error) return { kind: 'error' };
+  if (!evaluation || !basis) return { kind: 'checking' };
+  if (current) return { kind: 'server', totals: evaluation.totals, evaluation };
+  const estimate = estimateTotals(request, basis, evaluation);
+  return estimate
+    ? { kind: 'estimate', totals: estimate, evaluation }
+    : { kind: 'checking', totals: evaluation.totals, evaluation };
 }

@@ -15,7 +15,7 @@ import {
   ValidUntil,
 } from './ResultPanels';
 import { GroupStep, PricingStep, RoomsStep } from './steps';
-import { liveTotals, usePreview } from './usePreview';
+import { liveMeterState, usePreview } from './usePreview';
 
 const LAST = STEPS.length - 1;
 
@@ -26,6 +26,8 @@ export function QuoteBuilderPage() {
   const [form, setForm] = useState<QuoteForm>(initialForm);
   const [step, setStep] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
+  // Fields the person has changed or left; their errors show at once, the rest after Next.
+  const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const patch = (changes: Partial<QuoteForm>) => setForm((f) => ({ ...f, ...changes }));
@@ -35,8 +37,13 @@ export function QuoteBuilderPage() {
   const issues = parsed.ok ? [] : parsed.issues;
   const errors = issuesByPath(issues);
 
-  const { preview, basis, stale, error: previewError, refetch } = usePreview(request);
-  const live = liveTotals(request, basis, preview?.evaluation, stale);
+  const { preview, basis, current, stale, error: previewError, refetch } = usePreview(request);
+  const live = liveMeterState(request, {
+    basis,
+    evaluation: preview?.evaluation,
+    current,
+    error: previewError,
+  });
 
   // One key per user intent: a double click or a retry of the same request replays the same quote.
   const intent = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -76,7 +83,13 @@ export function QuoteBuilderPage() {
     goTo(step + 1);
   }
 
-  const visibleErrors = showErrors ? errors : {};
+  const visibleErrors = showErrors
+    ? errors
+    : Object.fromEntries(Object.entries(errors).filter(([path]) => touched.has(path)));
+  const touch = (target: EventTarget) => {
+    const { name } = target as HTMLInputElement;
+    if (name && !touched.has(name)) setTouched(new Set(touched).add(name));
+  };
   const evaluation = preview?.evaluation;
   const canIssue =
     request !== null && !stale && evaluation !== undefined && evaluation.decision !== 'DECLINE';
@@ -98,6 +111,8 @@ export function QuoteBuilderPage() {
         <form
           className="flex flex-col gap-6"
           noValidate
+          onChange={(e) => touch(e.target)}
+          onBlur={(e) => touch(e.target)}
           onSubmit={(e) => {
             e.preventDefault();
             if (step < LAST) next();
@@ -176,7 +191,7 @@ export function QuoteBuilderPage() {
         </form>
 
         <aside aria-label="Live contribution" className="lg:sticky lg:top-4 lg:self-start">
-          <LiveMeter live={live} updating={stale && request !== null} />
+          <LiveMeter state={live} />
         </aside>
       </div>
     </div>

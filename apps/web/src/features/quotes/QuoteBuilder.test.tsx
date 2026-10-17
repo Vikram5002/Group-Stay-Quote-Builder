@@ -197,6 +197,67 @@ describe('quote builder: forms and live meter', () => {
   });
 });
 
+describe('quote builder: the live meter never shows stale numbers as confirmed', () => {
+  const meter = () => screen.getByRole('complementary', { name: 'Live contribution' });
+  const rateField = () => screen.getByLabelText(/Rate per room per night/);
+
+  /** Step 3 with the rate at 1500: 20 room-nights x (1500 - 800) = 14000. */
+  async function atRate1500(u: ReturnType<typeof user>) {
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    await u.type(rateField(), '1500');
+    await waitFor(() =>
+      expect(within(meter()).getByText('Confirmed by the server.')).toBeInTheDocument(),
+    );
+    expect(within(meter()).getByText('₹14,000')).toBeInTheDocument();
+  }
+
+  it.each([
+    ['a negative rate', '-100'],
+    ['a rate above the limit', '99999999'],
+  ])('%s shows the field error at once and a neutral meter', async (_label, rate) => {
+    const u = user();
+    await atRate1500(u);
+    await u.clear(rateField());
+    await u.type(rateField(), rate);
+
+    expect(screen.getByText('Must be between 0 and 10,00,000')).toBeInTheDocument();
+    expect(rateField()).toHaveAttribute('aria-invalid', 'true');
+    expect(within(meter()).getByText('Enter valid values to see the contribution.')).toBeVisible();
+    expect(within(meter()).queryByText('Confirmed by the server.')).not.toBeInTheDocument();
+    expect(within(meter()).queryByText('₹14,000')).not.toBeInTheDocument();
+  });
+
+  it('clearing the rate prices the stay from the rate plan again', async () => {
+    const u = user();
+    await atRate1500(u);
+    await u.clear(rateField());
+
+    // Rate plan 2000: 20 x (2000 - 800) = 24000.
+    await waitFor(() => expect(within(meter()).getByText('₹24,000')).toBeInTheDocument());
+    expect(within(meter()).getByText('Confirmed by the server.')).toBeInTheDocument();
+  });
+
+  it('an inclusion without a name or cost makes the meter neutral', async () => {
+    const u = user();
+    await atRate1500(u);
+    await u.click(screen.getByRole('button', { name: 'Add inclusion' }));
+
+    expect(within(meter()).getByText('Enter valid values to see the contribution.')).toBeVisible();
+    expect(within(meter()).queryByText('Confirmed by the server.')).not.toBeInTheDocument();
+  });
+
+  it('blurring an empty required field shows its error without pressing Next', async () => {
+    const u = user();
+    renderBuilder();
+    await u.click(screen.getByLabelText(/Organiser name/));
+    await u.tab();
+    expect(screen.getByText('Enter a name')).toBeInTheDocument();
+  });
+});
+
 describe('quote builder: accessibility (axe)', () => {
   it('has no violations on each step', async () => {
     const u = user();

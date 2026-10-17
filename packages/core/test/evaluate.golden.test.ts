@@ -177,3 +177,24 @@ describe('T11 no rooms sellable', () => {
     expect(e).toMatchObject({ decision: 'DECLINE', reasons: ['NO_CAPACITY'], offered_rooms: 0 });
   });
 });
+
+describe('T06 variable cost is null: completed by the decision engine', () => {
+  const ratePlan = fx.ratePlan.map((r) => ({ ...r, variable_cost_per_room_night_inr: null }));
+  const { evaluation: e } = run({}, ctx({ ratePlan }));
+
+  it('contribution is null (not 0) and the decision is REVIEW with UNKNOWN_COST', () => {
+    expect(e.totals.contribution_inr).toBeNull();
+    expect(e.totals.contribution_margin_pct).toBeNull();
+    expect(e).toMatchObject({
+      decision: 'REVIEW',
+      reasons: ['UNKNOWN_COST'],
+      offered_rooms: 10,
+      auto_confirm_allowed: false,
+    });
+  });
+
+  it('never reports a floor breach it cannot know about', () => {
+    expect(e.reasons).not.toContain('FLOOR_BREACH');
+    expect(e.trail).toContain('contribution unknown, so the floor cannot be checked');
+  });
+});

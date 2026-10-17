@@ -218,3 +218,62 @@ describe('T05 public check 3: a discount below the floor needs review', () => {
     });
   });
 });
+
+describe('T14 breakfast bundled at 150 per guest-night (assumption A6), 2 guests per room', () => {
+  const { evaluation: e } = run({
+    inclusions: [
+      { name: 'Breakfast', basis: 'per_guest_night', unit_cost_inr: 150, included_in_rate: true },
+    ],
+  });
+
+  it('cost 6000 drops contribution to 18000: REVIEW with FLOOR_BREACH, shortfall 2000', () => {
+    expect(e.totals).toMatchObject({
+      room_revenue_inr: 40000,
+      variable_cost_inr: 16000,
+      inclusions_cost_inr: 6000,
+      inclusions_revenue_inr: 0,
+      contribution_inr: 18000,
+      shortfall_inr: 2000,
+    });
+    expect(e).toMatchObject({
+      decision: 'REVIEW',
+      reasons: ['FLOOR_BREACH'],
+      auto_confirm_allowed: false,
+    });
+  });
+
+  it('minimum safe rate is (20000 + 16000 + 6000) / 20 = 2100', () => {
+    expect(e.totals.min_rate_per_room_night_inr).toBe(2100);
+    expect(e.trail).toContain(
+      'Breakfast: 10 rooms x 2 guests x 2 nights = 40 guest-nights x 150 = 6000 cost, included in the rate',
+    );
+  });
+});
+
+describe('T19 breakfast charged separately at 200 per guest-night (assumption)', () => {
+  const { evaluation: e } = run({
+    inclusions: [
+      {
+        name: 'Breakfast',
+        basis: 'per_guest_night',
+        unit_cost_inr: 150,
+        included_in_rate: false,
+        price_inr: 200,
+      },
+    ],
+  });
+
+  it('revenue 48000, cost 22000, contribution 26000: OFFER', () => {
+    expect(e.totals).toMatchObject({
+      room_revenue_inr: 40000,
+      inclusions_revenue_inr: 8000,
+      variable_cost_inr: 16000,
+      inclusions_cost_inr: 6000,
+      contribution_inr: 26000,
+    });
+    // total revenue 48000 and total cost 22000, as stated in the blueprint
+    expect(e.totals.room_revenue_inr! + e.totals.inclusions_revenue_inr!).toBe(48000);
+    expect(e.totals.variable_cost_inr! + e.totals.inclusions_cost_inr!).toBe(22000);
+    expect(e).toMatchObject({ decision: 'OFFER', reasons: [], auto_confirm_allowed: true });
+  });
+});

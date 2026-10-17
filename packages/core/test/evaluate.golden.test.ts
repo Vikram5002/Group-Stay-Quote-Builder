@@ -198,3 +198,23 @@ describe('T06 variable cost is null: completed by the decision engine', () => {
     expect(e.trail).toContain('contribution unknown, so the floor cannot be checked');
   });
 });
+
+describe('T05 public check 3: a discount below the floor needs review', () => {
+  it('rate 1500 is REVIEW with FLOOR_BREACH and no auto-confirm', () => {
+    const { evaluation: e } = run({ rate_per_room_night_inr: 1500 });
+    expect(e).toMatchObject({
+      decision: 'REVIEW',
+      reasons: ['FLOOR_BREACH'],
+      offered_rooms: 10,
+      auto_confirm_allowed: false,
+    });
+    expect(e.totals).toMatchObject({ contribution_inr: 14000, shortfall_inr: 6000 });
+  });
+
+  it('rate exactly at the minimum safe rate (1800) is a clean OFFER', () => {
+    expect(run({ rate_per_room_night_inr: 1800 }).evaluation).toMatchObject({
+      decision: 'OFFER',
+      auto_confirm_allowed: true,
+    });
+  });
+});

@@ -1,0 +1,40 @@
+{
+  "evaluation": {
+    "decision": "OFFER",
+    "reasons": [],
+    "check_in": "2026-12-10",
+    "check_out": "2026-12-12",
+    "nights": 2,
+    "requested_rooms": 10,
+    "offered_rooms": 10,
+    "shortfall_rooms": 0,
+    "auto_confirm_allowed": true,
+    "totals": {
+      "room_nights": 20,
+      "room_revenue_inr": 40000,
+      "inclusions_revenue_inr": 8000,
+      "variable_cost_inr": 16000,
+      "inclusions_cost_inr": 6000,
+      "contribution_inr": 26000,
+      "contribution_margin_pct": 54.2,
+      "contribution_floor_inr": 20000,
+      "floor_headroom_inr": 6000,
+      "shortfall_inr": 0,
+      "min_rate_per_room_night_inr": 1700
+    },
+    "counter_offers": [],
+    "trail": [
+      "10 rooms sellable on every night (2026-12-10, 2026-12-11): 10 requested fit",
+      "10 rooms x 2 nights = 20 room-nights",
+      "20 x 2000 = 40000 room revenue",
+      "20 x 800 = 16000 variable cost",
+      "Breakfast: 10 rooms x 2 guests x 2 nights = 40 guest-nights x 150 = 6000 cost, charged separately 40 x 200 = 8000 revenue",
+      "inclusions revenue 8000, inclusions cost 6000",
+      "40000 + 8000 - 16000 - 6000 = 26000 contribution >= 20000 floor, headroom 6000",
+      "minimum safe rate ceil((20000 + 16000 + 6000 - 8000) / 20) = 1700",
+      "decision OFFER, auto-confirm allowed"
+    ]
+  },
+  "valid_until": "2026-10-20T19:02:08.651Z",
+  "terms_hash": "920c712c413616d4945d42aaf4443e56ecf5884ab36993db01dc82e04527de4f"
+}

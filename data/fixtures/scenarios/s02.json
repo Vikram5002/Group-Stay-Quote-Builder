@@ -1,0 +1,27 @@
+{
+  "id": "S02",
+  "title": "12 requested, 10 available: partial offer for 10",
+  "source": "rubric 10 pts, T02",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 12
+  },
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "PARTIAL_OFFER",
+    "reasons": [
+      "PARTIAL_AVAILABILITY"
+    ],
+    "offered_rooms": 10,
+    "shortfall_rooms": 2
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "S12",
+  "title": "Enquiry after the stay cutoff: too late to quote",
+  "source": "T25",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 10
+  },
+  "now": "2026-10-31T12:00:00+05:30",
+  "expect": {
+    "decision": "DECLINE",
+    "reasons": [
+      "TOO_LATE_TO_QUOTE"
+    ]
+  }
+}

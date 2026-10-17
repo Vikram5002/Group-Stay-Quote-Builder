@@ -1,0 +1,43 @@
+{
+  "id": "S13",
+  "title": "Availability unknown for a night: review, no hold",
+  "source": "null policy",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 10
+  },
+  "inventory": [
+    {
+      "date": "2026-11-01",
+      "room_type": "standard",
+      "total_units": 10,
+      "available_units": 10,
+      "held_units": 0,
+      "confirmed_units": 0
+    },
+    {
+      "date": "2026-11-02",
+      "room_type": "standard",
+      "total_units": null,
+      "available_units": null,
+      "held_units": 0,
+      "confirmed_units": 0
+    }
+  ],
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "REVIEW",
+    "reasons": [
+      "UNKNOWN_AVAILABILITY"
+    ]
+  }
+}

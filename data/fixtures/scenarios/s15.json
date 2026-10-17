@@ -1,0 +1,75 @@
+{
+  "id": "S15",
+  "title": "Corporate offsite: 4 rooms x 2 nights at 3000 under the absolute floor",
+  "source": "business scenario (illustrative numbers)",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Tech Offsite"
+    },
+    "stay": {
+      "check_in": "2026-12-03",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 4
+  },
+  "inventory": [
+    {
+      "date": "2026-12-03",
+      "room_type": "standard",
+      "total_units": 10,
+      "available_units": 10,
+      "held_units": 0,
+      "confirmed_units": 0
+    },
+    {
+      "date": "2026-12-04",
+      "room_type": "standard",
+      "total_units": 10,
+      "available_units": 10,
+      "held_units": 0,
+      "confirmed_units": 0
+    }
+  ],
+  "rate_plan": [
+    {
+      "date": "2026-12-03",
+      "room_type": "standard",
+      "rate_per_room_night_inr": 3000,
+      "variable_cost_per_room_night_inr": 800,
+      "rack_rate_inr": null
+    },
+    {
+      "date": "2026-12-04",
+      "room_type": "standard",
+      "rate_per_room_night_inr": 3000,
+      "variable_cost_per_room_night_inr": 800,
+      "rack_rate_inr": null
+    }
+  ],
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "REVIEW",
+    "reasons": [
+      "FLOOR_BREACH"
+    ],
+    "totals": {
+      "room_revenue_inr": 24000,
+      "variable_cost_inr": 6400,
+      "contribution_inr": 17600,
+      "min_rate_per_room_night_inr": 3300
+    },
+    "counter_offers": [
+      {
+        "type": "RAISE_RATE",
+        "rate_per_room_night_inr": 3300
+      },
+      {
+        "type": "CHANGE_VOLUME",
+        "rooms": 5
+      }
+    ]
+  }
+}

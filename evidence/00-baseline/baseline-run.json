@@ -1,0 +1,102 @@
+{
+  "baseline": "baseline-v0 (git tag T1.02, commit e9f20b3)",
+  "generated_by": "packages/core price() at that commit",
+  "what_it_can_do": ["revenue, cost, contribution, margin", "floor check, minimum safe rate"],
+  "what_it_cannot_do": [
+    "no room-night availability check: 12 rooms are priced although only 10 exist",
+    "no quote expiry: a quote never goes stale",
+    "no holds, no decisions (offer / partial / review / decline)"
+  ],
+  "runs": [
+    {
+      "label": "public check 1: 10 rooms x 2 nights at 2000",
+      "input": {
+        "rooms": 10,
+        "nights": 2,
+        "rate_per_room_night_inr": 2000,
+        "variable_cost_per_room_night_inr": 800
+      },
+      "totals": {
+        "room_nights": 20,
+        "room_revenue_inr": 40000,
+        "inclusions_revenue_inr": 0,
+        "variable_cost_inr": 16000,
+        "inclusions_cost_inr": 0,
+        "contribution_inr": 24000,
+        "contribution_margin_pct": 60,
+        "contribution_floor_inr": 20000,
+        "floor_headroom_inr": 4000,
+        "shortfall_inr": 0,
+        "min_rate_per_room_night_inr": 1800
+      },
+      "floor_ok": true,
+      "trail": [
+        "10 rooms x 2 nights = 20 room-nights",
+        "20 x 2000 = 40000 room revenue",
+        "20 x 800 = 16000 variable cost",
+        "40000 - 16000 = 24000 contribution >= 20000 floor, headroom 4000",
+        "minimum safe rate ceil((20000 + 16000) / 20) = 1800"
+      ]
+    },
+    {
+      "label": "public check 2: 12 rooms requested, 10 available (baseline cannot see availability)",
+      "input": {
+        "rooms": 12,
+        "nights": 2,
+        "rate_per_room_night_inr": 2000,
+        "variable_cost_per_room_night_inr": 800
+      },
+      "totals": {
+        "room_nights": 24,
+        "room_revenue_inr": 48000,
+        "inclusions_revenue_inr": 0,
+        "variable_cost_inr": 19200,
+        "inclusions_cost_inr": 0,
+        "contribution_inr": 28800,
+        "contribution_margin_pct": 60,
+        "contribution_floor_inr": 20000,
+        "floor_headroom_inr": 8800,
+        "shortfall_inr": 0,
+        "min_rate_per_room_night_inr": 1634
+      },
+      "floor_ok": true,
+      "trail": [
+        "12 rooms x 2 nights = 24 room-nights",
+        "24 x 2000 = 48000 room revenue",
+        "24 x 800 = 19200 variable cost",
+        "48000 - 19200 = 28800 contribution >= 20000 floor, headroom 8800",
+        "minimum safe rate ceil((20000 + 19200) / 24) = 1634"
+      ]
+    },
+    {
+      "label": "public check 3: rate 1500 below the floor",
+      "input": {
+        "rooms": 10,
+        "nights": 2,
+        "rate_per_room_night_inr": 1500,
+        "variable_cost_per_room_night_inr": 800
+      },
+      "totals": {
+        "room_nights": 20,
+        "room_revenue_inr": 30000,
+        "inclusions_revenue_inr": 0,
+        "variable_cost_inr": 16000,
+        "inclusions_cost_inr": 0,
+        "contribution_inr": 14000,
+        "contribution_margin_pct": 46.7,
+        "contribution_floor_inr": 20000,
+        "floor_headroom_inr": -6000,
+        "shortfall_inr": 6000,
+        "min_rate_per_room_night_inr": 1800
+      },
+      "floor_ok": false,
+      "trail": [
+        "10 rooms x 2 nights = 20 room-nights",
+        "20 x 1500 = 30000 room revenue",
+        "20 x 800 = 16000 variable cost",
+        "30000 - 16000 = 14000 contribution < 20000 floor, shortfall 6000",
+        "minimum safe rate ceil((20000 + 16000) / 20) = 1800"
+      ]
+    }
+  ]
+}

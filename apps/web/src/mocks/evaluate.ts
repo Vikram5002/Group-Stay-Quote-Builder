@@ -1,4 +1,4 @@
-import { evaluate as coreEvaluate, resolveStay } from '@c32/core';
+import { evaluate as coreEvaluate, validateQuoteRequest } from '@c32/core';
 import type {
   EvaluationResult,
   InventoryNight,
@@ -27,6 +27,8 @@ export function evaluate({
   ratePlan,
   nowMs,
 }: EvaluateInput): EvaluationResult {
-  const resolved = { ...request, stay: resolveStay(request.stay) };
-  return coreEvaluate(resolved, { inventory, ratePlan, policy, nowMs });
+  // Resolve exactly like the server (stay plus any extra lines, D-058).
+  const resolved = validateQuoteRequest(request);
+  if (!resolved.ok) throw new Error(resolved.problem.detail ?? 'Invalid quote request');
+  return coreEvaluate(resolved.value, { inventory, ratePlan, policy, nowMs });
 }

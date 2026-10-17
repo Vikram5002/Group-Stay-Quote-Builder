@@ -1,4 +1,6 @@
 import {
+  amend,
+  cancel,
   checkLedger,
   confirm,
   createLedger,
@@ -10,18 +12,24 @@ import {
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { putInventory } from '../../src/data/catalog.js';
-import { acquireHolds, confirmHolds, releaseHolds } from '../../src/data/holds.js';
+import {
+  acquireHolds,
+  amendHolds,
+  cancelHolds,
+  confirmHolds,
+  releaseHolds,
+} from '../../src/data/holds.js';
 import { createTestTable, hasDb, night, readLedger } from './local-db.js';
 
 /**
  * Model-based test (D-028): the DynamoDB repository and the pure ledger model in @c32/core must
- * agree after every step of a random sequence. Amend and cancel join in T1.11.
+ * agree after every step of a random sequence of hold, release, confirm, amend and cancel.
  */
 
 const DATES = stayNights('2026-11-01', 4);
 
 const op = fc.record({
-  kind: fc.constantFrom('hold', 'release', 'confirm'),
+  kind: fc.constantFrom('hold', 'release', 'confirm', 'amend', 'cancel'),
   quote: fc.constantFrom('Q1', 'Q2', 'Q3'),
   units: fc.integer({ min: 1, max: 8 }),
   from: fc.nat(3),
@@ -39,7 +47,7 @@ function snapshot(s: LedgerState) {
 }
 
 describe.skipIf(!hasDb)('holds repository matches the core ledger model', () => {
-  it('after every step of random hold, release and confirm sequences', async () => {
+  it('after every step of random hold, release, confirm, amend and cancel sequences', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.array(fc.integer({ min: 0, max: 10 }), { minLength: 4, maxLength: 4 }),
@@ -70,12 +78,21 @@ describe.skipIf(!hasDb)('holds repository matches the core ledger model', () => 
               } else if (o.kind === 'release') {
                 next = release(model, o.quote);
                 dbOk = (await releaseHolds(ctx, o.quote)).released;
-              } else {
+              } else if (o.kind === 'confirm') {
                 next = confirm(model, o.quote);
                 dbOk = await confirmHolds(ctx, o.quote).then(
                   () => true,
                   () => false,
                 );
+              } else if (o.kind === 'amend') {
+                next = amend(model, o.quote, o.units);
+                dbOk = await amendHolds(ctx, o.quote, o.units).then(
+                  () => true,
+                  () => false,
+                );
+              } else {
+                next = cancel(model, o.quote);
+                dbOk = (await cancelHolds(ctx, o.quote)).released;
               }
               expect(dbOk).toBe(next.ok); // both accept or both refuse
               if (next.ok) model = next.state;

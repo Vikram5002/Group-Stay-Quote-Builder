@@ -3,7 +3,9 @@ import type { InventoryNight, RatePlanNight } from '../contract/inventory.js';
 import type { Policy } from '../contract/policy.js';
 import type { Evaluation } from '../contract/quote.js';
 import { sellableRooms, type Availability } from './availability.js';
+import { counterOffers } from './counter-offers.js';
 import { decide, planRooms, type DecisionOutcome, type RoomPlan } from './decision.js';
+import { inclusionExtras } from './inclusions.js';
 import { NO_EXTRAS, nightsFromRatePlan, price, type PricingExtras } from './pricing.js';
 import type { ResolvedQuoteRequest } from './request.js';
 import { formatInZone } from './timezone.js';
@@ -12,9 +14,10 @@ import { computeValidity, type Validity } from './validity.js';
 
 /**
  * The evaluation pipeline (blueprint 6.2), steps 2 to 7, for one validated request:
- * validity -> availability -> room plan -> nightly prices -> pricing -> decision -> trail.
- * Pure: everything it needs is passed in, including "now". Counter-offers arrive in T1.05;
- * the terms hash and hold commit belong to the service layer.
+ * validity -> availability -> room plan -> nightly prices -> pricing -> decision -> trail
+ * -> counter-offers.
+ * Pure: everything it needs is passed in, including "now". The terms hash and the hold commit
+ * belong to the service layer.
  */
 
 export interface EvaluationContext {
@@ -31,14 +34,19 @@ export interface EvaluationResult {
 }
 
 /**
- * Package extras from the request's inclusions. Until the inclusions model lands (T1.05), any
- * inclusion makes the extras unknown, so the quote goes to REVIEW instead of silently ignoring
- * a cost such as breakfast.
+ * Package extras from the request's inclusions, priced for the offered rooms (blueprint 5.6).
+ * Guests per room come from the request, else the policy default; unknown stays unknown.
  */
-function extrasFor(request: ResolvedQuoteRequest): PricingExtras {
-  return request.inclusions !== undefined && request.inclusions.length > 0
-    ? { revenue_inr: null, cost_inr: null }
-    : NO_EXTRAS;
+function extrasFor(request: ResolvedQuoteRequest, rooms: number, policy: Policy): PricingExtras {
+  const inclusions = request.inclusions ?? [];
+  if (inclusions.length === 0) return NO_EXTRAS;
+  const guests = request.guests_per_room_units ?? policy.guests_per_room_units;
+  const x = inclusionExtras(inclusions, rooms, request.stay.nights, guests);
+  return {
+    revenue_inr: x.revenue_inr,
+    cost_inr: x.cost_inr,
+    detail: x.lines.map((l) => l.explain),
+  };
 }
 
 function availabilityLine(
@@ -70,7 +78,13 @@ function decisionLine(outcome: DecisionOutcome): string {
   return `decision ${outcome.decision}${why}${auto}`;
 }
 
-export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
+interface Assessment extends EvaluationResult {
+  /** Rooms sellable on every night, or null when availability is not known. */
+  sellable: number | null;
+}
+
+/** Steps 2 to 6 without counter-offers; also what the counter-offer generator re-runs. */
+function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessment {
   const { policy } = ctx;
   const { stay } = request;
 
@@ -90,7 +104,7 @@ export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext):
     ctx.ratePlan,
     request.rate_per_room_night_inr,
   );
-  const extras = plan.final === null ? extrasFor(request) : NO_EXTRAS;
+  const extras = plan.final === null ? extrasFor(request, plan.offered_rooms, policy) : NO_EXTRAS;
   const pricing = price({ rooms: plan.offered_rooms, nights, floor: policy, extras });
 
   const pricingReasons: ReasonCode[] =
@@ -115,6 +129,7 @@ export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext):
 
   return {
     validity,
+    sellable: availability.kind === 'known' ? availability.sellable : null,
     evaluation: {
       decision: outcome.decision,
       reasons: outcome.reasons,
@@ -128,6 +143,19 @@ export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext):
       totals: pricing.totals,
       counter_offers: [],
       trail,
+    },
+  };
+}
+
+/** Evaluate a validated request: decision, totals, trail and floor-safe counter-offers. */
+export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
+  const { evaluation, validity, sellable } = assess(request, ctx);
+  const reassess = (r: ResolvedQuoteRequest) => assess(r, ctx).evaluation;
+  return {
+    validity,
+    evaluation: {
+      ...evaluation,
+      counter_offers: counterOffers(request, evaluation, reassess, sellable),
     },
   };
 }

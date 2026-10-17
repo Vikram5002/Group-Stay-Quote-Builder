@@ -287,3 +287,15 @@ describe('arithmetic trail (explainable decisions)', () => {
     expect(r.trail).toContain('inclusions revenue unknown, inclusions cost unknown');
   });
 });
+
+describe('extras detail lines', () => {
+  it('prints each detail line before the extras totals', () => {
+    const r = price({
+      ...pkg(10),
+      extras: { revenue_inr: 0, cost_inr: 6000, detail: ['Breakfast: ... = 6000 cost'] },
+    });
+    const at = r.trail.indexOf('Breakfast: ... = 6000 cost');
+    expect(at).toBeGreaterThan(0);
+    expect(r.trail[at + 1]).toBe('inclusions revenue 0, inclusions cost 6000');
+  });
+});

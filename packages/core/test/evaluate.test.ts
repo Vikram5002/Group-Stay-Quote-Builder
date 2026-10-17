@@ -88,15 +88,35 @@ describe('too late to quote (TOO_LATE_TO_QUOTE)', () => {
   });
 });
 
-describe('inclusions before the inclusions model (T1.05)', () => {
-  it('any inclusion makes cost unknown, so the quote goes to REVIEW instead of ignoring it', () => {
-    const { evaluation: e } = run({
-      inclusions: [
-        { name: 'Breakfast', basis: 'per_guest_night', unit_cost_inr: 150, included_in_rate: true },
-      ],
-    });
+describe('inclusions in the pipeline', () => {
+  const breakfast = {
+    name: 'Breakfast',
+    basis: 'per_guest_night' as const,
+    unit_cost_inr: 150,
+    included_in_rate: true,
+  };
+
+  it('guests per room come from the request before the policy default', () => {
+    // 10 rooms x 3 guests x 2 nights x 150 = 9000; 24000 - 9000 = 15000 < 20000
+    const { evaluation: e } = run({ inclusions: [breakfast], guests_per_room_units: 3 });
+    expect(e.totals.inclusions_cost_inr).toBe(9000);
+    expect(e.trail).toContain(
+      'Breakfast: 10 rooms x 3 guests x 2 nights = 60 guest-nights x 150 = 9000 cost, included in the rate',
+    );
+  });
+
+  it('unknown guests per room (no request value, policy null) is REVIEW with UNKNOWN_COST', () => {
+    const policy = { ...fx.policy, guests_per_room_units: null };
+    const { evaluation: e } = run({ inclusions: [breakfast] }, ctx({ policy }));
     expect(e).toMatchObject({ decision: 'REVIEW', reasons: ['UNKNOWN_COST'] });
     expect(e.totals.contribution_inr).toBeNull();
+  });
+
+  it('inclusions are priced for the offered rooms on a partial offer', () => {
+    // 12 requested, 10 offered: 10 x 2 x 2 x 150 = 6000, not 7200
+    const { evaluation: e } = run({ rooms: 12, inclusions: [breakfast] });
+    expect(e.offered_rooms).toBe(10);
+    expect(e.totals.inclusions_cost_inr).toBe(6000);
   });
 
   it('an empty inclusions list is the same as none', () => {

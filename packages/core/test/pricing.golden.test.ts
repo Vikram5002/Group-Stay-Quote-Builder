@@ -61,3 +61,49 @@ describe('T01 fixture: 10 rooms x 2 nights x 2000', () => {
     expect(price(atRate(2000)).totals).toEqual(result.totals);
   });
 });
+
+describe('T03 to T05 rate sweep around the floor (BR-06)', () => {
+  it('T03 rate 1800: contribution 20000 equals the floor and passes', () => {
+    const r = price(atRate(1800));
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: 36000,
+      contribution_inr: 20000,
+      contribution_margin_pct: 55.6,
+      floor_headroom_inr: 0,
+      shortfall_inr: 0,
+    });
+    expect(r.floor_ok).toBe(true);
+  });
+
+  it('T04 rate 1799: contribution 19980 breaches the floor, shortfall 20', () => {
+    const r = price(atRate(1799));
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: 35980,
+      contribution_inr: 19980,
+      contribution_margin_pct: 55.5,
+      floor_headroom_inr: -20,
+      shortfall_inr: 20,
+      min_rate_per_room_night_inr: 1800,
+    });
+    expect(r.floor_ok).toBe(false);
+  });
+
+  it('T05 rate 1500: contribution 14000 breaches the floor, shortfall 6000', () => {
+    const r = price(atRate(1500));
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: 30000,
+      contribution_inr: 14000,
+      contribution_margin_pct: 46.7,
+      floor_headroom_inr: -6000,
+      shortfall_inr: 6000,
+      min_rate_per_room_night_inr: 1800,
+    });
+    expect(r.floor_ok).toBe(false);
+  });
+
+  it('the minimum safe rate does not depend on the quoted rate', () => {
+    for (const rate of [1, 1500, 1799, 1800, 2000, 50000]) {
+      expect(price(atRate(rate)).totals.min_rate_per_room_night_inr).toBe(1800);
+    }
+  });
+});

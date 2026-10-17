@@ -51,3 +51,52 @@ describe('floor modes (decision G1, blueprint 5.8)', () => {
     expect(price(pkg(20)).totals.min_rate_per_room_night_inr).toBe(1300); // (20000 + 32000) / 40
   });
 });
+
+describe('unknown values propagate (BR-07, null means unknown, never zero)', () => {
+  const withNight2 = (rate: number | null, cost: number | null): PricingInput => ({
+    rooms: 10,
+    nights: [
+      { date: '2026-11-01', rate_inr: 2000, variable_cost_inr: 800 },
+      { date: '2026-11-02', rate_inr: rate, variable_cost_inr: cost },
+    ],
+    floor: DEFAULT_POLICY,
+  });
+
+  it('T06 unknown cost on one night: contribution, margin and floor are unknown, not 0', () => {
+    const r = price(withNight2(2000, null));
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: 40000,
+      variable_cost_inr: null,
+      contribution_inr: null,
+      contribution_margin_pct: null,
+      floor_headroom_inr: null,
+      shortfall_inr: null,
+      min_rate_per_room_night_inr: null,
+    });
+    expect(r.floor_ok).toBeNull();
+  });
+
+  it('unknown rate: revenue and contribution are unknown, but the minimum safe rate is still known', () => {
+    const r = price(withNight2(null, 800));
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: null,
+      variable_cost_inr: 16000,
+      contribution_inr: null,
+      min_rate_per_room_night_inr: 1800,
+    });
+    expect(r.floor_ok).toBeNull();
+  });
+
+  it('unknown inclusion cost makes contribution unknown', () => {
+    const r = price({ ...withNight2(2000, 800), extras: { revenue_inr: 0, cost_inr: null } });
+    expect(r.totals.inclusions_cost_inr).toBeNull();
+    expect(r.totals.contribution_inr).toBeNull();
+    expect(r.totals.min_rate_per_room_night_inr).toBeNull();
+  });
+
+  it('unknown inclusion revenue makes contribution and minimum rate unknown', () => {
+    const r = price({ ...withNight2(2000, 800), extras: { revenue_inr: null, cost_inr: 0 } });
+    expect(r.totals.contribution_inr).toBeNull();
+    expect(r.totals.min_rate_per_room_night_inr).toBeNull();
+  });
+});

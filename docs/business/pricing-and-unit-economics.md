@@ -2,7 +2,7 @@
 
 Everything numeric here is a probe or a model, not a finding (blueprint 16). The model is
 executable: change [`model/inputs.json`](model/inputs.json) and run
-`node docs/business/model/unit-economics.mjs > docs/business/model/output.md`.
+`node docs/business/model/unit-economics.mjs > docs/business/model/output.md && npx prettier --write docs/business/model/output.md`.
 Current output: [model/output.md](model/output.md).
 
 ## Customer and value hypothesis
@@ -52,12 +52,14 @@ unknown** and is what interview question 7 measures.
 
 ## Model summary (see [model/output.md](model/output.md))
 
-- With an assumed ₹300 to ₹800 AWS cost and an hour of support a month, ₹1,999 keeps a gross
-  margin of 45% to 70% and breaks even at 3 to 4 properties against ₹3,000 of fixed costs.
-- ₹999 loses money per property if AWS cost reaches ₹800, so it is only viable if the measured
-  cost to serve is low (T4.07).
-- The per-group fee earns ₹960 to ₹3,840 per property per month at 2 to 8 confirmed groups,
-  but it ties revenue to volume the hotel controls.
+- Measured AWS cost is under ₹1 per hotel per month ([cost-to-serve.md](cost-to-serve.md)), so
+  cost to serve is dominated by support time (assumed 1 hour a month, ₹300).
+- At ₹1,999 the gross margin is about 80% to 85% and break-even is 2 hotels against ₹3,000 of
+  fixed costs; even ₹999 keeps about 60% to 70% and breaks even at 5 to 6 hotels.
+- The per-group fee earns ₹960 to ₹3,840 per hotel per month at 2 to 8 confirmed groups, but it
+  ties our revenue to volume the hotel controls.
+- So price is limited by **what owners will pay**, not by our costs. That is exactly what the
+  price probes must find out.
 
 **Working recommendation to test (not a conclusion):** lead with the ₹1,999 subscription and a
 free 30-day shadow pilot; fall back to the hybrid if owners resist a fixed fee.
@@ -77,4 +79,5 @@ AWS cost per property is measured in [cost-to-serve.md](cost-to-serve.md).
 - Owners say discounts below cost never happen and double bookings are rare: the safety value
   collapses; position on speed, or stop.
 - No owner agrees to a free pilot at any price card: no evidence of demand; record it and stop.
-- Measured cost to serve is above ₹800 per property: drop the ₹999 option.
+- Support takes far more than an hour a month per hotel: cost to serve rises and ₹999 stops
+  being viable.

@@ -31,9 +31,9 @@
     "source": "Unknown; interview Q2"
   },
   "aws_cost_per_property_inr": {
-    "value": [100, 300, 800],
-    "type": "Assumption",
-    "source": "Pay-per-use estimate band until T4.07 measures it"
+    "value": [1, 10, 100],
+    "type": "Derived",
+    "source": "Measured dev usage (18.6 ms per call) x approximate list prices: under ₹1 at 100 quotes/month; 10x and 100x bands for safety (cost-to-serve.md)"
   },
   "support_minutes_per_property": {
     "value": 60,

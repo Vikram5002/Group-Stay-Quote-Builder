@@ -52,7 +52,11 @@ export const errorHandler: ErrorRequestHandler = (err: unknown, req, res, _next)
   }
   const known = knownError(err);
   if (known) {
-    sendProblem(res, known.code, { detail: known.detail, instance: req.path });
+    sendProblem(res, known.code, {
+      detail: known.detail,
+      instance: req.path,
+      ...(known.errors ? { errors: known.errors } : {}),
+    });
     return;
   }
   log('error', 'unhandled_error', {

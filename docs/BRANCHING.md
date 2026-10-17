@@ -1,34 +1,36 @@
-# Branching and phases
+# Branching
 
-## Model
+## Rule
 
-- `main` is the integration branch. It only receives merges from finished phase branches. Nobody commits feature work to `main` directly.
-- Each track works in **phase branches** named `track-<n>/phase-<m>-<short-name>`, cut from the latest `main`.
-- Every meaningful change is committed and pushed to the phase branch straight away.
-- No pull requests. When a phase's exit criteria pass (`npm run verify`), the owner merges the phase branch into `main` with `git merge --no-ff` and pushes. The next phase branch is then cut from the updated `main`.
+- One branch per work package, named after its ID: `T<track>.<nn>`.
+  Work package `T1-01` lives on branch `T1.01`, `T2-03` on `T2.03`, and so on.
+- `main` is the integration branch. It only receives merges from finished work-package branches.
+- Each branch is cut from the latest `main`.
+- Every meaningful change is committed and pushed to the branch straight away.
+- No pull requests. When the work package's "done when" line passes (`npm run verify`), the owner merges the branch into `main` with `git merge --no-ff` and pushes.
 - Commit messages are short and lowercase, for example `core: add quote request schema`.
-- Changes to `packages/core` should be walked through with someone from a different track before the phase merge.
+- Changes to `packages/core` should be walked through with someone from a different track before merging.
 
-## Track 1: Core Engine and API (owner: Track 1)
+## Track 1: Core Engine and API
 
-| Phase | Branch | Work packages | Weeks | Exit criteria |
-|---|---|---|---|---|
-| 1 | `track-1/phase-1-foundations` | T1-01 | 1 | Monorepo builds; lint, typecheck and tests green; contract v0.1 published (schemas, codes, OpenAPI); API `/health` skeleton for Track 3 (milestone M0) |
-| 2 | `track-1/phase-2-pricing-engine` | T1-02 | 1 to 2 | T01, T03, T04, T05, T18 pass |
-| 3 | `track-1/phase-3-decision-engine` | T1-03, T1-04 | 2 to 3 | T02, T06 to T11, T25 pass; core v0.1 tagged (M1) |
-| 4 | `track-1/phase-4-counter-offers` | T1-05, T1-06 | 3 to 4 | T14, T19 pass; property tests P1 to P6 green; coverage gate met |
-| 5 | `track-1/phase-5-holds` | T1-07, T1-08 | 4 to 5 | Transactional holds in DynamoDB Local; T12, T13, T24 pass |
-| 6 | `track-1/phase-6-api` | T1-09, T1-10, T1-11 | 5 to 7 | Thin slice on dev (M2); T15, T16, T17, T20 pass; full route set |
-| 7 | `track-1/phase-7-import-export-worker` | T1-12, T1-13 | 7 to 8 | T21 to T23 pass; worker releases holds exactly once; zero drift |
-| 8 | `track-1/phase-8-hardening` | T1-14 | 9 to 10 | No open critical bugs; release candidate (M4) |
+| Branch | Work package | Weeks | Done when |
+|---|---|---|---|
+| `T1.01` | Monorepo, tooling, contract freeze (Zod schemas, error codes, OpenAPI) | 1 | Repo builds; lint, typecheck, tests green; contract v0.1 published; API `/health` skeleton (M0) |
+| `T1.02` | Core pricing engine: revenue, cost, contribution, margin, floor, minimum safe rate | 1 to 2 | T01, T03, T04, T05, T18 pass |
+| `T1.03` | Null and unknown policy, validation, calendar semantics, expiry maths, injected clock | 2 to 3 | T06 to T08, T25 pass |
+| `T1.04` | Availability, sellable rooms, partial offer, decline, decision engine, reason codes | 2 to 3 | T02, T09 to T11 pass; core v0.1 tagged (M1) |
+| `T1.05` | Inclusions model and counter-offer generator | 3 to 4 | T14, T19 pass |
+| `T1.06` | Property-based tests P1 to P6 | 3 to 4 | P1 to P6 green; coverage gate met |
+| `T1.07` | DynamoDB repositories: single table, transactional holds, release, confirm | 4 to 5 | Holds via transactions in DynamoDB Local |
+| `T1.08` | Concurrency and idempotency tests | 5 | T12, T13, T24 pass |
+| `T1.09` | Express API: routes, RBAC, services, problem+json, Lambda adapter | 5 to 7 | Thin slice on dev (M2); full route set |
+| `T1.10` | Approvals, four-eyes rule, terms hash, audit events | 6 | T16, T17 pass |
+| `T1.11` | Amendments (partial cancellation), extend, cancel | 7 | T15, T20 pass |
+| `T1.12` | CSV and JSON import/export; evidence bundle generator | 7 to 8 | T21 to T23 pass |
+| `T1.13` | Expiry worker and nightly reconciliation | 8 | Holds released exactly once; zero drift |
+| `T1.14` | Hardening, optional mutation testing, bug bash | 9 to 10 | No open critical bugs; release candidate (M4) |
 
-## Other tracks (phase 1 branches created; owners define later phases)
-
-| Track | Phase 1 branch | Work packages |
-|---|---|---|
-| 2 Frontend | `track-2/phase-1-design-system` | T2-01 |
-| 3 AWS and DevOps | `track-3/phase-1-aws-foundations` | T3-01 |
-| 4 Business and Evidence | `track-4/phase-1-case-analysis` | T4-01 |
+Other tracks follow the same rule with their own IDs (`T2.01` to `T2.09`, `T3.01` to `T3.11`, `T4.01` to `T4.09`).
 
 ## Tags
 

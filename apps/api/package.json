@@ -9,7 +9,8 @@
     "dev": "tsx watch src/local.ts",
     "start": "tsx src/local.ts",
     "db:up": "docker run -d --rm --name c32-dynamodb -p 8100:8000 public.ecr.aws/aws-dynamodb-local/aws-dynamodb-local:3.3.2 -jar DynamoDBLocal.jar -inMemory -sharedDb",
-    "db:down": "docker stop c32-dynamodb"
+    "db:down": "docker stop c32-dynamodb",
+    "seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1152.0",

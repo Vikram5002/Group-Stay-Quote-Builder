@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Button } from '../components';
+import { useAuth } from '../features/auth/auth';
 import { cn } from '../lib/cn';
 import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 
@@ -13,6 +15,11 @@ export function AppShell() {
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const previousPath = useRef(pathname);
+  const { session, signOut } = useAuth();
+  const role = session?.user.role;
+  const items = NAV_ITEMS.filter(
+    (item) => !item.roles || (role !== undefined && item.roles.includes(role)),
+  );
 
   // Move focus to the page content after navigation so keyboard and screen reader users
   // start at the top of the new screen instead of in the sidebar.
@@ -39,7 +46,7 @@ export function AppShell() {
         </div>
         <nav aria-label="Primary" className="px-2 pb-4">
           <ul className="flex flex-wrap gap-1 md:flex-col">
-            {NAV_ITEMS.map((item) => (
+            {items.map((item) => (
               <li key={item.path}>
                 <NavLink to={item.path} end={item.path === '/'} className={linkClass}>
                   {item.label}
@@ -53,6 +60,15 @@ export function AppShell() {
             </li>
           </ul>
         </nav>
+        {session && (
+          <div className="border-t border-border p-4 text-sm">
+            <p className="font-semibold">{session.displayName}</p>
+            <p className="text-ink-muted">Role: {session.user.role}</p>
+            <Button variant="secondary" className="mt-3" onClick={signOut}>
+              Sign out
+            </Button>
+          </div>
+        )}
       </header>
       <main id="main" ref={mainRef} tabIndex={-1} className="p-4 focus:outline-none md:p-8">
         <Outlet />

@@ -1,9 +1,13 @@
+import type { Role } from '@c32/core';
+
 export interface NavItem {
   path: string;
   label: string;
   /** Work package that fills the screen in. */
   workPackage: string;
   description: string;
+  /** Roles allowed to see the screen. Omitted means every signed-in role. */
+  roles?: readonly Role[];
 }
 
 /** Screens from blueprint section 10.2. Bodies arrive in later work packages. */
@@ -16,12 +20,14 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/quotes/new',
+    roles: ['Sales', 'Owner'],
     label: 'New quote',
     workPackage: 'T2-03',
     description: 'Quote builder wizard with a live contribution meter.',
   },
   {
     path: '/review',
+    roles: ['Owner'],
     label: 'Review queue',
     workPackage: 'T2-05',
     description: 'Floor breaches and unknowns awaiting an Owner decision.',
@@ -34,12 +40,14 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/imports',
+    roles: ['Owner'],
     label: 'Imports and exports',
     workPackage: 'T2-07',
     description: 'CSV or JSON upload and download with row-level reports.',
   },
   {
     path: '/policy',
+    roles: ['Owner'],
     label: 'Policy',
     workPackage: 'T2-06',
     description: 'Floor mode and amounts, validity and cutoff.',

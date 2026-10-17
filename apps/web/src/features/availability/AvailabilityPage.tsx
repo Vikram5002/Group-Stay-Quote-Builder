@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { daysBetween, LIMITS, stayNights } from '@c32/core';
+import { addDays, daysBetween, DEFAULT_POLICY, LIMITS, localDate, stayNights } from '@c32/core';
 import type { InventoryNight, Quote } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
 import {
@@ -17,15 +17,15 @@ import {
 } from '../../components';
 import { ApiError } from '../../lib/api';
 import { cn } from '../../lib/cn';
+import { usePolicy } from '../policy/queries';
 import { ROOM_TYPES } from '../quotes/form';
 import { STATUS_LABEL } from '../quotes/labels';
 import { useQuoteList } from '../quotes/queries';
 import { StatusBadge } from '../quotes/StatusBadge';
 import { counted } from '../../lib/plural';
 
-/** Case fixture dates: the seeded inventory starts on 1 November 2026. */
-const DEFAULT_FROM = '2026-11-01';
-const DEFAULT_TO = '2026-11-14';
+/** The page opens on today and the 13 nights after it, so current holds are in view. */
+const DEFAULT_NIGHTS = 14;
 
 const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-IN', {
@@ -222,8 +222,14 @@ function rangeError(from: string, to: string): string | undefined {
 export function AvailabilityPage() {
   const api = useApi();
   const [roomType, setRoomType] = useState<string>(ROOM_TYPES[0].code);
-  const [from, setFrom] = useState(DEFAULT_FROM);
-  const [to, setTo] = useState(DEFAULT_TO);
+  // Today in the property time zone: the policy's for an Owner, else the documented default (IST).
+  const policy = usePolicy();
+  const today = localDate(Date.now(), policy.data?.timezone ?? DEFAULT_POLICY.timezone);
+  // Null until the person picks a date, so the default follows the zone once the policy loads.
+  const [fromInput, setFrom] = useState<string | null>(null);
+  const [toInput, setTo] = useState<string | null>(null);
+  const from = fromInput ?? today;
+  const to = toInput ?? addDays(today, DEFAULT_NIGHTS - 1);
   const [selected, setSelected] = useState<string | null>(null);
 
   const problem = rangeError(from, to);
@@ -267,7 +273,6 @@ export function AvailabilityPage() {
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            hint="The case data starts on 1 Nov 2026."
           />
           <TextField
             label="Last night"

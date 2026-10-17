@@ -17,7 +17,10 @@ export interface Session {
 export interface AuthContextValue {
   session: Session | null;
   signInMock: (role: Role, displayName: string) => void;
-  signOut: () => void;
+  /** A manual sign-out starts clean; anything else (an expired session) returns to the same page. */
+  signOut: (reason?: 'manual') => void;
+  /** How the last sign-out happened, or null while signed in. */
+  signedOutBy: 'manual' | 'expired' | null;
   getToken: () => string | null;
 }
 
@@ -70,23 +73,27 @@ export function AuthProvider({
     initialSession === undefined ? load() : initialSession,
   );
 
+  const [signedOutBy, setSignedOutBy] = useState<'manual' | 'expired' | null>(null);
+
   const signInMock = useCallback((role: Role, displayName: string) => {
     const next = mockSession(role, displayName);
     persist(next);
     setSession(next);
+    setSignedOutBy(null);
   }, []);
 
-  const signOut = useCallback(() => {
+  const signOut = useCallback((reason?: 'manual') => {
     persist(null);
     setSession(null);
+    setSignedOutBy(reason ?? 'expired');
   }, []);
 
   const token = session?.token ?? null;
   const getToken = useCallback(() => token, [token]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, signInMock, signOut, getToken }),
-    [session, signInMock, signOut, getToken],
+    () => ({ session, signInMock, signOut, signedOutBy, getToken }),
+    [session, signInMock, signOut, signedOutBy, getToken],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

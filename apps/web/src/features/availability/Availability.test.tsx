@@ -69,27 +69,25 @@ const night = (pattern: RegExp) => screen.findByRole('button', { name: pattern }
 describe('availability calendar', () => {
   it('shows each night with available, held and confirmed room counts', async () => {
     renderPage();
-    expect(
-      await night(/\b0?1 Nov.*10 rooms, 10 available, 0 held, 0 confirmed/),
-    ).toBeInTheDocument();
+    expect(await night(/\b0?1 Nov.*10 of 10 free.*Held 0.*Confirmed 0/)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { pressed: false }).length).toBe(14);
   });
 
   it('shows held rooms and then confirmed rooms, kept apart', async () => {
     const quote = await create();
     const { unmount } = renderPage();
-    expect(await night(/\b0?1 Nov.*0 available, 10 held, 0 confirmed/)).toBeInTheDocument();
+    expect(await night(/\b0?1 Nov.*0 of 10 free.*Held 10.*Confirmed 0/)).toBeInTheDocument();
     unmount();
 
     await sales.confirmQuote(quote.quote_id, { idempotencyKey: newIdempotencyKey() });
     renderPage();
-    expect(await night(/\b0?1 Nov.*0 available, 0 held, 10 confirmed/)).toBeInTheDocument();
-    expect(await night(/\b0?3 Nov.*10 available, 0 held, 0 confirmed/)).toBeInTheDocument();
+    expect(await night(/\b0?1 Nov.*0 of 10 free.*Held 0.*Confirmed 10/)).toBeInTheDocument();
+    expect(await night(/\b0?3 Nov.*10 of 10 free.*Held 0.*Confirmed 0/)).toBeInTheDocument();
   });
 
   it('shows a night with unknown availability as Unknown, never as zero', async () => {
     renderPage();
-    const unknown = await night(/10 Nov.*availability unknown/);
+    const unknown = await night(/10 Nov.*Unknown/);
     expect(within(unknown).getByText('Unknown')).toBeInTheDocument();
     expect(unknown).not.toHaveTextContent(/0 of/);
   });
@@ -99,7 +97,7 @@ describe('availability calendar', () => {
     const u = userEvent.setup();
     renderPage();
 
-    await u.click(await night(/\b0?1 Nov.*10 held/));
+    await u.click(await night(/\b0?1 Nov.*Held 10/));
     const detail = (await screen.findByRole('heading', { name: /Night of/ })).closest(
       'section',
     ) as HTMLElement;
@@ -109,23 +107,23 @@ describe('availability calendar', () => {
     const link = await within(detail).findByRole('link', { name: 'Holding Group' });
     expect(link).toHaveAttribute('href', `/quotes/${quote.quote_id}`);
 
-    await u.click(await night(/\b0?5 Nov.*10 available/));
+    await u.click(await night(/\b0?5 Nov.*10 of 10 free/));
     expect(await screen.findByText('No quote holds rooms on this night.')).toBeInTheDocument();
   });
 
   it('explains a night with unknown availability when chosen', async () => {
     const u = userEvent.setup();
     renderPage();
-    await u.click(await night(/10 Nov.*unknown/));
+    await u.click(await night(/10 Nov.*Unknown/));
     expect(await screen.findByText(/no rooms can be held on it/)).toBeInTheDocument();
   });
 
   it('switches room type', async () => {
     const u = userEvent.setup();
     renderPage();
-    await night(/\b0?1 Nov.*10 rooms/);
+    await night(/\b0?1 Nov.*10 of 10 free/);
     await u.selectOptions(screen.getByLabelText('Room type'), 'deluxe');
-    expect(await night(/\b0?1 Nov.*4 rooms, 4 available/)).toBeInTheDocument();
+    expect(await night(/\b0?1 Nov.*4 of 4 free/)).toBeInTheDocument();
   });
 
   it('checks the date range before asking the server', async () => {

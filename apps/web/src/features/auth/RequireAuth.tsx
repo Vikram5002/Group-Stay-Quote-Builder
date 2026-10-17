@@ -3,8 +3,12 @@ import { useAuth } from './auth';
 
 /** Sends signed-out visitors to the sign-in page and brings them back afterwards. */
 export function RequireAuth() {
-  const { session } = useAuth();
+  const { session, signedOutBy } = useAuth();
   const location = useLocation();
-  if (!session) return <Navigate to="/sign-in" replace state={{ from: location.pathname }} />;
+  if (!session) {
+    // After a deliberate sign-out the next person starts at the beginning, not on this page.
+    const from = signedOutBy === 'manual' ? '/' : location.pathname;
+    return <Navigate to="/sign-in" replace state={{ from }} />;
+  }
   return <Outlet />;
 }

@@ -1,7 +1,9 @@
 import type { RatePlanNight } from '../contract/inventory.js';
 import type { QuoteTotals } from '../contract/quote.js';
+import { LIMITS } from '../contract/primitives.js';
 import { stayNights } from './calendar.js';
-import type { FloorPolicy } from './floor.js';
+import { floorFor, type FloorPolicy } from './floor.js';
+import { assertInt, ceilDiv, percentOneDecimal, sumKnown } from './money.js';
 
 /**
  * Pricing engine (blueprint 5.5, BR-01, BR-06, BR-07, BR-20). Pure and integer-only.
@@ -90,4 +92,64 @@ export function nightsFromRatePlan(
       variable_cost_inr: row?.variable_cost_per_room_night_inr ?? null,
     };
   });
+}
+
+function validate(input: PricingInput, extras: PricingExtras): void {
+  assertInt('rooms', input.rooms, 0, LIMITS.MAX_ROOMS);
+  if (input.nights.length > LIMITS.MAX_NIGHTS) {
+    throw new RangeError(`A stay can be at most ${LIMITS.MAX_NIGHTS} nights`);
+  }
+  for (const n of input.nights) {
+    if (n.rate_inr !== null) assertInt(`rate on ${n.date}`, n.rate_inr, 0, LIMITS.MAX_UNIT_INR);
+    if (n.variable_cost_inr !== null) {
+      assertInt(`variable cost on ${n.date}`, n.variable_cost_inr, 0, LIMITS.MAX_UNIT_INR);
+    }
+  }
+  if (extras.revenue_inr !== null) assertInt('extras revenue', extras.revenue_inr);
+  if (extras.cost_inr !== null) assertInt('extras cost', extras.cost_inr);
+}
+
+/** Compute all money totals for a package. Pure; never throws for valid integer inputs. */
+export function priceTotals(input: PricingInput): QuoteTotals {
+  const extras = input.extras ?? NO_EXTRAS;
+  validate(input, extras);
+
+  const { rooms } = input;
+  const roomNights = rooms * input.nights.length;
+  const roomRevenue = sumKnown(
+    input.nights.map((n) => (n.rate_inr === null ? null : rooms * n.rate_inr)),
+  );
+  const variableCost = sumKnown(
+    input.nights.map((n) => (n.variable_cost_inr === null ? null : rooms * n.variable_cost_inr)),
+  );
+
+  const totalRevenue = sumKnown([roomRevenue, extras.revenue_inr]);
+  const totalCost = sumKnown([variableCost, extras.cost_inr]);
+  const contribution =
+    totalRevenue === null || totalCost === null ? null : totalRevenue - totalCost;
+  const floor = floorFor(input.floor, roomNights);
+
+  // Minimum flat room rate that meets the floor (BR-20: rounded up, never down). It needs every
+  // cost and the extras revenue known, and at least one room-night to spread over.
+  const minRate =
+    totalCost === null || extras.revenue_inr === null || roomNights === 0
+      ? null
+      : Math.max(0, ceilDiv(floor + totalCost - extras.revenue_inr, roomNights));
+
+  return {
+    room_nights: roomNights,
+    room_revenue_inr: roomRevenue,
+    inclusions_revenue_inr: extras.revenue_inr,
+    variable_cost_inr: variableCost,
+    inclusions_cost_inr: extras.cost_inr,
+    contribution_inr: contribution,
+    contribution_margin_pct:
+      contribution === null || totalRevenue === null
+        ? null
+        : percentOneDecimal(contribution, totalRevenue),
+    contribution_floor_inr: floor,
+    floor_headroom_inr: contribution === null ? null : contribution - floor,
+    shortfall_inr: contribution === null ? null : Math.max(0, floor - contribution),
+    min_rate_per_room_night_inr: minRate,
+  };
 }

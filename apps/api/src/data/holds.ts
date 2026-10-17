@@ -14,8 +14,9 @@ import {
 import { keys } from './table.js';
 
 /**
- * Room-night holds as DynamoDB transactions (blueprint 8.2, BR-13 to BR-15). Mirrors the pure
- * ledger model in @c32/core (`hold`, `release`, `confirm`) and is tested against it.
+ * Room-night holds as DynamoDB transactions (blueprint 8.2, BR-13 to BR-16). Mirrors the pure
+ * ledger model in @c32/core (`hold`, `release`, `confirm`, `amend`, `cancel`) and is tested
+ * against it.
  *
  * Inventory items keep total = available + held + confirmed. Condition expressions cannot do
  * arithmetic on stored attributes, so available_units is stored explicitly and every move
@@ -311,4 +312,138 @@ export async function confirmHolds(
     throw new Error(`Inventory counters for ${dateAt(lines, i)} are inconsistent`);
   });
   return lines.map((l) => ({ ...l, state: 'confirmed' }));
+}
+
+/**
+ * Partial cancellation of a confirmed booking (BR-16): lower every line to `newUnits` and give
+ * the difference back to inventory, together with `extra` (the amended quote and its event).
+ * Each line is conditioned on its current units, so two amendments cannot both apply.
+ */
+export async function amendHolds(
+  ctx: DataContext,
+  quoteId: string,
+  newUnits: number,
+  extra: TxItem[] = [],
+): Promise<{ released_units: number; lines: HoldLine[] }> {
+  const lines = await getHoldLines(ctx, quoteId);
+  if (lines.length === 0 || lines.some((l) => l.state !== 'confirmed'))
+    throw new NotHeldError(quoteId);
+  const units = lines[0]?.units ?? 0;
+  if (!Number.isSafeInteger(newUnits) || newUnits < 1 || newUnits >= units) {
+    throw new RangeError(`An amendment must reduce rooms below ${units} and keep at least 1`);
+  }
+  checkSize(lines.length, extra.length);
+  const freed = units - newUnits;
+
+  const items: TxItem[] = [];
+  for (const line of lines) {
+    items.push({
+      Update: {
+        TableName: ctx.tableName,
+        Key: holdKey(quoteId, line.room_type, line.date),
+        UpdateExpression: 'SET units = :new',
+        ConditionExpression: '#state = :confirmed AND units = :old',
+        ExpressionAttributeNames: { '#state': 'state' },
+        ExpressionAttributeValues: { ':new': newUnits, ':old': units, ':confirmed': 'confirmed' },
+      },
+    });
+    items.push({
+      Update: {
+        TableName: ctx.tableName,
+        Key: inventoryKey(ctx, line.room_type, line.date),
+        UpdateExpression:
+          'SET available_units = available_units + :n, confirmed_units = confirmed_units - :n, version = version + :one',
+        ConditionExpression: 'attribute_exists(available_units) AND confirmed_units >= :n',
+        ExpressionAttributeValues: { ':n': freed, ':one': 1 },
+      },
+    });
+  }
+  items.push(...extra);
+
+  await transact(ctx, items, (reasons) => {
+    const i = reasons.findIndex((r) => r.Code === 'ConditionalCheckFailed');
+    if (i >= lines.length * 2) throw new TransactionConditionError(i - lines.length * 2);
+    if (i % 2 === 0) throw new NotHeldError(quoteId);
+    throw new Error(`Inventory counters for ${dateAt(lines, i)} are inconsistent`);
+  });
+  return { released_units: freed, lines: lines.map((l) => ({ ...l, units: newUnits })) };
+}
+
+/**
+ * Full cancellation: release every line, held or confirmed, and remove the hold-set marker,
+ * together with `extra`. Returns released = false when the quote holds nothing.
+ */
+export async function cancelHolds(
+  ctx: DataContext,
+  quoteId: string,
+  extra: TxItem[] = [],
+): Promise<ReleaseResult> {
+  const lines = await getHoldLines(ctx, quoteId);
+  if (lines.length === 0) return { released: false, lines: [] };
+  checkSize(lines.length, extra.length + 1);
+
+  const items: TxItem[] = [];
+  for (const line of lines) {
+    const counter = line.state === 'held' ? 'held_units' : 'confirmed_units';
+    items.push({
+      Delete: {
+        TableName: ctx.tableName,
+        Key: holdKey(quoteId, line.room_type, line.date),
+        ConditionExpression: '#state = :state AND units = :n',
+        ExpressionAttributeNames: { '#state': 'state' },
+        ExpressionAttributeValues: { ':state': line.state, ':n': line.units },
+      },
+    });
+    items.push({
+      Update: {
+        TableName: ctx.tableName,
+        Key: inventoryKey(ctx, line.room_type, line.date),
+        UpdateExpression: `SET available_units = available_units + :n, ${counter} = ${counter} - :n, version = version + :one`,
+        ConditionExpression: `attribute_exists(available_units) AND ${counter} >= :n`,
+        ExpressionAttributeValues: { ':n': line.units, ':one': 1 },
+      },
+    });
+  }
+  items.push({ Delete: { TableName: ctx.tableName, Key: holdSetKey(quoteId) } });
+  items.push(...extra);
+
+  const marker = lines.length * 2;
+  await transact(ctx, items, (reasons) => {
+    const i = reasons.findIndex((r) => r.Code === 'ConditionalCheckFailed');
+    if (i > marker) throw new TransactionConditionError(i - marker - 1);
+    if (i % 2 === 0) throw new NotHeldError(quoteId);
+    throw new Error(`Inventory counters for ${dateAt(lines, i)} are inconsistent`);
+  });
+  return { released: true, lines };
+}
+
+/** Move the expiry of a quote's held lines to `expiresAt`, together with `extra`. */
+export async function extendHolds(
+  ctx: DataContext,
+  quoteId: string,
+  expiresAt: string,
+  extra: TxItem[] = [],
+): Promise<HoldLine[]> {
+  const lines = (await getHoldLines(ctx, quoteId)).filter((l) => l.state === 'held');
+  if (lines.length === 0) throw new NotHeldError(quoteId);
+  if (lines.length + extra.length > MAX_TRANSACTION_ITEMS) throw new RangeError('Too many lines');
+
+  const items: TxItem[] = lines.map((line) => ({
+    Update: {
+      TableName: ctx.tableName,
+      Key: holdKey(quoteId, line.room_type, line.date),
+      UpdateExpression: 'SET expires_at = :at',
+      ConditionExpression: '#state = :held',
+      ExpressionAttributeNames: { '#state': 'state' },
+      ExpressionAttributeValues: { ':at': expiresAt, ':held': 'held' },
+    },
+  }));
+  items.push(...extra);
+
+  await transact(ctx, items, (reasons) => {
+    const i = reasons.findIndex((r) => r.Code === 'ConditionalCheckFailed');
+    if (i >= lines.length) throw new TransactionConditionError(i - lines.length);
+    throw new NotHeldError(quoteId);
+  });
+  return lines.map((l) => ({ ...l, expires_at: expiresAt }));
 }

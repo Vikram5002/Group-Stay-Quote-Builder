@@ -42,6 +42,8 @@ export type ImportRow = InventoryImportRow | RateImportRow;
 export interface ParsedImport<R extends ImportRow = ImportRow> {
   /** Accepted rows, in file order. */
   rows: R[];
+  /** The 1-based data row number of each accepted row, for later row-level issues. */
+  row_numbers: number[];
   issues: ImportRowIssue[];
   rows_total: number;
   /** True when the file as a whole is unusable (header, syntax, JSON, size). */
@@ -57,7 +59,7 @@ const issue = (
 ): ImportRowIssue => ({ row, field, code, message, severity });
 
 function fileRejected(issues: ImportRowIssue[], total = 0): ParsedImport {
-  return { rows: [], issues, rows_total: total, rejected: true };
+  return { rows: [], row_numbers: [], issues, rows_total: total, rejected: true };
 }
 
 /** CSV cell -> value. '' -> null for numbers; integers only; anything else is kept for Zod. */
@@ -78,6 +80,7 @@ function schemaFor(kind: ImportKind): z.ZodType<ImportRow> {
 function validateRows(kind: ImportKind, candidates: unknown[]): ParsedImport {
   const schema = schemaFor(kind);
   const rows: ImportRow[] = [];
+  const rowNumbers: number[] = [];
   const issues: ImportRowIssue[] = [];
   const seen = new Map<string, number>();
 
@@ -111,8 +114,9 @@ function validateRows(kind: ImportKind, candidates: unknown[]): ParsedImport {
       }
     }
     rows.push(r);
+    rowNumbers.push(rowNo);
   });
-  return { rows, issues, rows_total: candidates.length, rejected: false };
+  return { rows, row_numbers: rowNumbers, issues, rows_total: candidates.length, rejected: false };
 }
 
 function parseCsvImport(kind: ImportKind, text: string): ParsedImport {

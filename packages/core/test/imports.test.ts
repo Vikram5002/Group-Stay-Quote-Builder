@@ -38,6 +38,7 @@ describe('T22 bad rows are listed with row numbers; good rows still import', () 
     ].join('\n');
     const r = parseImport('inventory', 'csv', csv);
     expect(r.rows.map((x) => x.date)).toEqual(['2026-11-01', '2026-11-07']);
+    expect(r.row_numbers).toEqual([1, 7]);
     expect(codes(r)).toEqual([
       '2:date:INVALID_DATE:error',
       '3:rooms:NOT_INTEGER:error',

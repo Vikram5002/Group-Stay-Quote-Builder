@@ -1,4 +1,6 @@
+import type { RatePlanNight } from '../contract/inventory.js';
 import type { QuoteTotals } from '../contract/quote.js';
+import { stayNights } from './calendar.js';
 import type { FloorPolicy } from './floor.js';
 
 /**
@@ -50,3 +52,42 @@ export interface PricingResult {
 }
 
 export const NO_EXTRAS: Readonly<PricingExtras> = Object.freeze({ revenue_inr: 0, cost_inr: 0 });
+
+/** Flat rate and cost on every night of a stay (the fixture case, and the test oracle). */
+export function flatNights(
+  checkIn: string,
+  nights: number,
+  rateInr: number | null,
+  variableCostInr: number | null,
+): NightPrice[] {
+  return stayNights(checkIn, nights).map((date) => ({
+    date,
+    rate_inr: rateInr,
+    variable_cost_inr: variableCostInr,
+  }));
+}
+
+/**
+ * Per-night prices from the rate plan for one room type (BR-08). A missing plan row leaves that
+ * night's rate and cost unknown. An explicit override rate replaces the plan rate on every night;
+ * cost always comes from the plan.
+ */
+export function nightsFromRatePlan(
+  checkIn: string,
+  nights: number,
+  roomType: string,
+  plan: readonly RatePlanNight[],
+  overrideRateInr?: number,
+): NightPrice[] {
+  const byDate = new Map(
+    plan.filter((p) => p.room_type === roomType).map((p) => [p.date, p] as const),
+  );
+  return stayNights(checkIn, nights).map((date) => {
+    const row = byDate.get(date);
+    return {
+      date,
+      rate_inr: overrideRateInr ?? row?.rate_per_room_night_inr ?? null,
+      variable_cost_inr: row?.variable_cost_per_room_night_inr ?? null,
+    };
+  });
+}

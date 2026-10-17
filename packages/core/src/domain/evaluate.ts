@@ -8,6 +8,7 @@ import { decide, planRooms, type DecisionOutcome, type RoomPlan } from './decisi
 import { inclusionExtras } from './inclusions.js';
 import { NO_EXTRAS, nightsFromRatePlan, price, type PricingExtras } from './pricing.js';
 import type { ResolvedQuoteRequest } from './request.js';
+import { discountedRate } from './floor.js';
 import { formatInZone } from './timezone.js';
 import { unknownPricingReasons } from './unknowns.js';
 import { computeValidity, type Validity } from './validity.js';
@@ -97,7 +98,10 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Evaluati
     stay.nights,
     request.room_type,
     ctx.ratePlan,
-    request.rate_per_room_night_inr,
+    // Sales gives a discount off the floor rate (D-057); otherwise an explicit rate or the plan.
+    request.discount_pct === undefined
+      ? request.rate_per_room_night_inr
+      : discountedRate(policy, request.discount_pct),
   );
   const extras = plan.final === null ? extrasFor(request, plan.offered_rooms, policy) : NO_EXTRAS;
   const pricing = price({ rooms: plan.offered_rooms, nights, floor: policy, extras });

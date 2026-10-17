@@ -82,8 +82,8 @@
       "variable_cost_inr": 16200,
       "inclusions_cost_inr": 5400,
       "contribution_inr": 23400,
-      "contribution_floor_inr": 19800,
-      "floor_headroom_inr": 3600
+      "contribution_floor_inr": 16200,
+      "floor_headroom_inr": 7200
     }
   }
 }

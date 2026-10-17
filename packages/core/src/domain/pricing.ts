@@ -2,7 +2,7 @@ import type { RatePlanNight } from '../contract/inventory.js';
 import type { QuoteTotals } from '../contract/quote.js';
 import { LIMITS } from '../contract/primitives.js';
 import { stayNights } from './calendar.js';
-import { floorFor, floorPasses, floorRate, type FloorPolicy } from './floor.js';
+import { floorFor, floorPasses, floorRate, minimumRate, type FloorPolicy } from './floor.js';
 import { assertInt, ceilDiv, percentOneDecimal, sumKnown } from './money.js';
 
 /**
@@ -12,12 +12,13 @@ import { assertInt, ceilDiv, percentOneDecimal, sumKnown } from './money.js';
  *   room_revenue_inr   = sum over nights of rooms x rate
  *   variable_cost_inr  = sum over nights of rooms x variable cost
  *   contribution_inr   = room revenue + extras revenue - variable cost - extras cost
- *   floor_rate         = ceil(package floor / total rooms)       (D-056; cost included)
- *   floor              = floor_rate x room_nights - variable cost
+ *   floor_rate         = ceil(package floor / total rooms)       (D-056; full price, cost included)
+ *   minimum_rate       = floor_rate less the max Sales discount  (D-057)
+ *   floor              = minimum_rate x room_nights - variable cost
  *   floor_ok           = contribution >= floor                    (equal passes)
  *   shortfall_inr      = max(0, floor - contribution)
  *   headroom_inr       = contribution - floor                     (can be negative)
- *   min_rate_inr       = ceil((floor_rate x room_nights + extras cost - extras revenue) / room_nights)
+ *   min_rate_inr       = ceil((minimum_rate x room_nights + extras cost - extras revenue) / room_nights)
  *
  * Any unknown (null) input makes every value that depends on it null. Unknown is never zero.
  */
@@ -160,18 +161,20 @@ export function completeTotals(base: TotalsBase, floorPolicy: FloorPolicy): Quot
   const contribution =
     totalRevenue === null || totalCost === null ? null : totalRevenue - totalCost;
   const rate = floorRate(floorPolicy);
+  const lowest = minimumRate(floorPolicy);
   const floor = floorFor(floorPolicy, roomNights, base.variable_cost_inr);
+  const listRevenue = rate * roomNights;
 
-  // Minimum flat room rate that meets the floor (BR-20: rounded up, never down): the floor rate,
-  // plus whatever bundled inclusions cost beyond what they bring in, per room-night. The variable
-  // cost is already inside the floor rate, so it is not needed here.
+  // Minimum flat room rate that meets the floor (BR-20: rounded up, never down): the lowest rate
+  // Sales may give, plus whatever bundled inclusions cost beyond what they bring in, per
+  // room-night. The variable cost is already inside the floor rate, so it is not needed here.
   const minRate =
     base.inclusions_cost_inr === null || base.inclusions_revenue_inr === null || roomNights === 0
       ? null
       : Math.max(
           0,
           ceilDiv(
-            rate * roomNights + base.inclusions_cost_inr - base.inclusions_revenue_inr,
+            lowest * roomNights + base.inclusions_cost_inr - base.inclusions_revenue_inr,
             roomNights,
           ),
         );
@@ -186,6 +189,13 @@ export function completeTotals(base: TotalsBase, floorPolicy: FloorPolicy): Quot
         : percentOneDecimal(contribution, totalRevenue),
     contribution_floor_inr: floor,
     floor_rate_per_room_night_inr: rate,
+    list_revenue_inr: listRevenue,
+    discount_pct:
+      base.room_revenue_inr === null || listRevenue === 0
+        ? null
+        : percentOneDecimal(listRevenue - base.room_revenue_inr, listRevenue),
+    max_discount_pct: floorPolicy.max_sales_discount_pct,
+    min_room_revenue_inr: lowest * roomNights,
     floor_headroom_inr: known ? contribution - floor : null,
     shortfall_inr: known ? Math.max(0, floor - contribution) : null,
     min_rate_per_room_night_inr: minRate,
@@ -234,15 +244,24 @@ export function explainPricing(input: PricingInput, t: QuoteTotals): string[] {
     );
   }
 
+  const lowest = minimumRate(input.floor);
   trail.push(
-    `floor rate ${input.floor.contribution_floor_inr} / ${input.floor.total_rooms_units} rooms = ${t.floor_rate_per_room_night_inr} per room-night, variable cost included`,
+    `full price ${input.floor.contribution_floor_inr} / ${input.floor.total_rooms_units} rooms = ${t.floor_rate_per_room_night_inr} per room-night (floor rate, variable cost included)`,
+  );
+  if (t.discount_pct !== null) {
+    trail.push(
+      `${t.room_nights} x ${t.floor_rate_per_room_night_inr} = ${t.list_revenue_inr} full revenue; discount ${t.discount_pct}% (Sales limit ${t.max_discount_pct}%)`,
+    );
+  }
+  trail.push(
+    `lowest Sales rate ${t.floor_rate_per_room_night_inr} less ${t.max_discount_pct}% = ${lowest}, so at least ${t.min_room_revenue_inr} room revenue`,
   );
 
   if (t.contribution_inr === null || t.contribution_floor_inr === null) {
     trail.push(`contribution unknown, so the floor cannot be checked`);
   } else {
     trail.push(
-      `floor ${t.room_nights} x ${t.floor_rate_per_room_night_inr} - ${t.variable_cost_inr} = ${t.contribution_floor_inr} contribution`,
+      `floor ${t.room_nights} x ${lowest} - ${t.variable_cost_inr} = ${t.contribution_floor_inr} contribution`,
     );
     const parts = hasExtras
       ? `${t.room_revenue_inr} + ${t.inclusions_revenue_inr} - ${t.variable_cost_inr} - ${t.inclusions_cost_inr}`
@@ -257,8 +276,8 @@ export function explainPricing(input: PricingInput, t: QuoteTotals): string[] {
   if (t.min_rate_per_room_night_inr !== null) {
     trail.push(
       hasExtras
-        ? `minimum safe rate ceil((${t.floor_rate_per_room_night_inr} x ${t.room_nights} + ${t.inclusions_cost_inr} - ${t.inclusions_revenue_inr}) / ${t.room_nights}) = ${t.min_rate_per_room_night_inr}`
-        : `minimum safe rate = floor rate ${t.min_rate_per_room_night_inr}`,
+        ? `minimum safe rate ceil((${lowest} x ${t.room_nights} + ${t.inclusions_cost_inr} - ${t.inclusions_revenue_inr}) / ${t.room_nights}) = ${t.min_rate_per_room_night_inr}`
+        : `minimum safe rate = lowest Sales rate ${t.min_rate_per_room_night_inr}`,
     );
   }
   return trail;

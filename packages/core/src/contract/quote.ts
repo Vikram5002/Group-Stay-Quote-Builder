@@ -118,6 +118,11 @@ export const QuoteRequest = z.strictObject({
   rooms: z.int().min(LIMITS.MIN_ROOMS).max(LIMITS.MAX_ROOMS),
   /** Explicit override rate. When omitted, the rate plan is used per night (BR-08). */
   rate_per_room_night_inr: UnitInr.optional(),
+  /**
+   * Discount off the floor rate, in whole percent (D-057). The rate becomes floor rate x
+   * (100 - discount) / 100, rounded up. Give this or a rate, not both.
+   */
+  discount_pct: z.int().min(0).max(100).optional(),
   /** Overrides the policy default for per-guest inclusions. */
   guests_per_room_units: z.int().min(1).max(LIMITS.MAX_GUESTS_PER_ROOM).optional(),
   inclusions: z.array(InclusionInput).max(LIMITS.MAX_INCLUSIONS).optional(),
@@ -142,8 +147,16 @@ export const QuoteTotals = z.strictObject({
   contribution_margin_pct: Pct.nullable(),
   /** Floor rate x room-nights - variable cost (D-056); null when the variable cost is unknown. */
   contribution_floor_inr: Inr.nullable(),
-  /** Minimum rate per room-night: package floor / total rooms, variable cost included. */
+  /** Full price per room-night: package floor / total rooms, variable cost included. */
   floor_rate_per_room_night_inr: Inr,
+  /** Room revenue at the full price, before any discount: floor rate x room-nights. */
+  list_revenue_inr: Inr,
+  /** Discount off the full price in percent, display only; null when revenue is unknown. */
+  discount_pct: Pct.nullable(),
+  /** The owner's limit for Sales, from the policy. */
+  max_discount_pct: Pct,
+  /** Lowest room revenue Sales may agree to alone: minimum safe rate x room-nights. */
+  min_room_revenue_inr: Inr,
   floor_headroom_inr: Inr.nullable(),
   shortfall_inr: Inr.nullable(),
   min_rate_per_room_night_inr: Inr.nullable(),

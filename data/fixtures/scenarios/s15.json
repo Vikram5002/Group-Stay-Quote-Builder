@@ -1,6 +1,6 @@
 {
   "id": "S15",
-  "title": "Corporate offsite: 4 rooms x 2 nights at 3000, above the floor rate",
+  "title": "Corporate offsite: 4 rooms x 2 nights at 3000, above full price",
   "source": "business scenario (illustrative numbers)",
   "synthetic": true,
   "policy": {},
@@ -57,8 +57,8 @@
       "room_revenue_inr": 24000,
       "variable_cost_inr": 6400,
       "contribution_inr": 17600,
-      "contribution_floor_inr": 9600,
-      "floor_headroom_inr": 8000
+      "contribution_floor_inr": 8000,
+      "floor_headroom_inr": 9600
     },
     "counter_offers": []
   }

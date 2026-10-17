@@ -1,6 +1,6 @@
 {
   "id": "S03",
-  "title": "Rate exactly at the floor rate (2000) passes",
+  "title": "Rate at the lowest Sales rate (1800, 10% off) passes",
   "source": "T03",
   "synthetic": true,
   "policy": {},
@@ -14,15 +14,16 @@
     },
     "room_type": "standard",
     "rooms": 10,
-    "rate_per_room_night_inr": 2000
+    "rate_per_room_night_inr": 1800
   },
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "OFFER",
     "totals": {
-      "contribution_inr": 24000,
-      "contribution_floor_inr": 24000,
-      "floor_headroom_inr": 0
+      "contribution_inr": 20000,
+      "contribution_floor_inr": 20000,
+      "floor_headroom_inr": 0,
+      "discount_pct": 10
     }
   }
 }

@@ -28,14 +28,14 @@ describe.skipIf(!hasDb)('amend, extend and cancel over HTTP (DynamoDB Local)', (
     return q.quote_id;
   }
 
-  it('T20: amend 10 to 7 flags owner review and frees 3 rooms per night', async () => {
+  it('T20: amend 10 to 7 at the floor rate frees 3 rooms per night with no review', async () => {
     const id = await confirmed();
     const res = await post(`/v1/quotes/${id}/amendments`, {
       rooms: 7,
       reason: 'Smaller group',
     }).expect(200);
     expect(Quote.parse(res.body)).toMatchObject({
-      review_required: true,
+      review_required: false,
       evaluation: { offered_rooms: 7 },
     });
     const avail = await request(app)

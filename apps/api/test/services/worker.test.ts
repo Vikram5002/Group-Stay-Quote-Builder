@@ -1,9 +1,7 @@
 import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { DEFAULT_POLICY } from '@c32/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getInventory } from '../../src/data/catalog.js';
 import { getHoldLines } from '../../src/data/holds.js';
-import { savePolicy } from '../../src/data/policy.js';
 import { getEvents, getQuote } from '../../src/data/quotes.js';
 import { keys } from '../../src/data/table.js';
 import { MemoryFileStore } from '../../src/files/store.js';
@@ -77,8 +75,7 @@ describe.skipIf(!hasDb)('expiry worker and reconciliation (DynamoDB Local)', () 
 
   it('the sweeper expires only open quotes that are due', async () => {
     const h = await setup();
-    // Per-room-night floor, so 2-, 7- and 1-room quotes are all clean offers.
-    await savePolicy(h.ctx, { ...DEFAULT_POLICY, floor_mode: 'per_room_night', version: 0 });
+    // At the floor rate, so 2-, 7- and 1-room quotes are all clean offers.
     const early = await createQuote(h.deps, request({ rooms: 2 }), sales);
     const confirmed = await createQuote(h.deps, request({ rooms: 7 }), sales);
     await confirmQuote(h.deps, confirmed.quote_id, sales);

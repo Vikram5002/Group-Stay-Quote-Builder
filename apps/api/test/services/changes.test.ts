@@ -1,15 +1,15 @@
-import { DEFAULT_POLICY, checkLedger } from '@c32/core';
+import { checkLedger } from '@c32/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getInventory } from '../../src/data/catalog.js';
 import { getHoldLines } from '../../src/data/holds.js';
-import { savePolicy } from '../../src/data/policy.js';
 import { getEvents, getQuote } from '../../src/data/quotes.js';
 import { amendQuote, cancelQuote, extendQuote } from '../../src/services/changes.js';
 import { confirmQuote } from '../../src/services/confirm-quote.js';
 import { createQuote } from '../../src/services/create-quote.js';
+import { approveQuote } from '../../src/services/review.js';
 import { ServiceError } from '../../src/services/errors.js';
 import { hasDb, readLedger } from '../data/local-db.js';
-import { request, sales, serviceHarness } from './harness.js';
+import { owner, request, sales, serviceHarness } from './harness.js';
 
 const codeOf = (p: Promise<unknown>) =>
   p.then(
@@ -39,21 +39,29 @@ describe.skipIf(!hasDb)('amend, cancel and extend (DynamoDB Local)', () => {
     return confirmQuote(h.deps, q.quote_id, sales);
   }
 
+  /** 10 rooms at 1800 (below the 2000 floor rate), approved by the owner, then confirmed. */
+  async function confirmedDiscount(h: Awaited<ReturnType<typeof setup>>) {
+    const q = await createQuote(h.deps, request({ rate_per_room_night_inr: 1800 }), sales);
+    await approveQuote(h.deps, q.quote_id, owner, 'Long-standing corporate client');
+    return confirmQuote(h.deps, q.quote_id, sales);
+  }
+
   describe('T20 partial cancellation 10 to 7', () => {
-    it('absolute floor: 6 room-nights released, contribution 16800, owner review flagged', async () => {
+    it('at the floor rate: 6 room-nights released, contribution 16800 still meets the floor', async () => {
       const h = await setup();
       const c = await confirmed(h);
       const a = await amendQuote(h.deps, c.quote_id, sales, 7, 'Three guests dropped out');
 
-      expect(a).toMatchObject({ status: 'CONFIRMED', version: 3, review_required: true });
+      expect(a).toMatchObject({ status: 'CONFIRMED', version: 3, review_required: false });
       expect(a.evaluation.offered_rooms).toBe(7);
-      expect(a.evaluation.totals).toMatchObject({ room_nights: 14, contribution_inr: 16800 });
-      expect(a.evaluation.reasons).toEqual(['FLOOR_BREACH']);
+      expect(a.evaluation.totals).toMatchObject({
+        room_nights: 14,
+        contribution_inr: 16800,
+        contribution_floor_inr: 16800,
+      });
+      expect(a.evaluation.reasons).toEqual([]);
       expect(a.terms_hash).not.toBe(c.terms_hash);
-      expect(a.evaluation.trail.slice(-2)).toEqual([
-        'amended 10 to 7 rooms: 6 room-nights released',
-        'remaining contribution 16800 < 20000 floor, shortfall 3200: owner review',
-      ]);
+      expect(a.evaluation.trail.at(-2)).toBe('amended 10 to 7 rooms: 6 room-nights released');
 
       expect(await counters(h)).toEqual([
         [3, 0, 7],
@@ -65,19 +73,25 @@ describe.skipIf(!hasDb)('amend, cancel and extend (DynamoDB Local)', () => {
         type: 'AMENDED',
         reason: 'Three guests dropped out',
         before: { rooms: 10, contribution_inr: 24000 },
-        after: { rooms: 7, contribution_inr: 16800, review_required: true },
+        after: { rooms: 7, contribution_inr: 16800, review_required: false },
       });
       expect(checkLedger(await readLedger(h.ctx))).toEqual([]);
     });
 
-    it('per-room-night floor: the same amendment passes, no review', async () => {
+    it('a booking approved below the floor rate is flagged for owner review after amending', async () => {
       const h = await setup();
-      await savePolicy(h.ctx, { ...DEFAULT_POLICY, floor_mode: 'per_room_night', version: 0 });
-      const c = await confirmed(h);
+      const c = await confirmedDiscount(h);
       const a = await amendQuote(h.deps, c.quote_id, sales, 7, null);
-      expect(a.review_required).toBe(false);
-      expect(a.evaluation.reasons).toEqual([]);
-      expect(a.evaluation.totals.contribution_floor_inr).toBe(14000);
+      expect(a.review_required).toBe(true);
+      expect(a.evaluation.reasons).toEqual(['FLOOR_BREACH']);
+      expect(a.evaluation.trail.at(-1)).toBe(
+        'remaining contribution 14000 < 16800 floor, shortfall 2800: owner review',
+      );
+      // Rooms are released first even so (BR-16).
+      expect(await counters(h)).toEqual([
+        [3, 0, 7],
+        [3, 0, 7],
+      ]);
     });
   });
 

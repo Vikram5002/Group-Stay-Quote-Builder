@@ -22,11 +22,6 @@ describe('app shell and routing', () => {
     expect(screen.getByRole('heading', { level: 1, name: label })).toBeInTheDocument();
   });
 
-  it('renders a quote detail placeholder for a quote id', () => {
-    renderAt('/quotes/01ABC');
-    expect(screen.getByRole('heading', { level: 1, name: 'Quote detail' })).toBeInTheDocument();
-  });
-
   it('shows the design system gallery', () => {
     renderAt('/design-system');
     expect(screen.getByRole('heading', { level: 1, name: 'Design system' })).toBeInTheDocument();

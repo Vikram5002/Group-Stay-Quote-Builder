@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { RouterProvider } from 'react-router-dom';
+import { problem } from '@c32/core';
 import type { Role } from '@c32/core';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -200,9 +201,27 @@ describe('importing a file', () => {
     renderPage();
     await pick(u, csv(GOOD));
     await u.click(screen.getByRole('button', { name: 'Check file' }));
-    expect(await screen.findByText('That did not work')).toBeInTheDocument();
-    expect(screen.getByText(/Something went wrong on our side/)).toBeInTheDocument();
+    expect(await screen.findByText('Could not check the file')).toBeInTheDocument();
+    expect(screen.getByText('The file could not be uploaded.')).toBeInTheDocument();
     expect(screen.queryByText('The file passed the check')).not.toBeInTheDocument();
+  });
+
+  it("explains a refused import in the server's own words", async () => {
+    server.use(
+      http.post('*/v1/imports/:kind/:id/commit', () =>
+        HttpResponse.json(
+          problem('INVALID_STATE', { detail: 'No file has been uploaded for this import yet' }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+    const u = userEvent.setup();
+    renderPage();
+    await pick(u, csv(GOOD));
+    await u.click(screen.getByRole('button', { name: 'Check file' }));
+    await u.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
+    expect(await screen.findByText('Could not import the file')).toBeInTheDocument();
+    expect(screen.getByText('No file has been uploaded for this import yet')).toBeInTheDocument();
   });
 
   it('offers a template with the right columns', () => {

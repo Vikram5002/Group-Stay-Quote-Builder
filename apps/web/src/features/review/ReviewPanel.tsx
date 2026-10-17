@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ApproveRequest, REASON_DESCRIPTIONS, RejectRequest, parseWith } from '@c32/core';
 import type { Quote } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Badge, Button, Card, Dialog, TextAreaField } from '../../components';
+import { Alert, Badge, Button, Card, Dialog, ProblemAlert, TextAreaField } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatCountdown, formatIst } from '../../lib/format';
 import { REASON_LABEL } from '../quotes/labels';
@@ -164,9 +164,12 @@ export function ReviewPanel({
         </p>
         {error && (
           <div className="mb-3">
-            <Alert tone="danger" title={error.friendly.title}>
-              {error.friendly.message} {error.friendly.nextStep}
-            </Alert>
+            <ProblemAlert
+              error={error}
+              title={
+                open === 'approve' ? 'Could not approve the quote' : 'Could not reject the quote'
+              }
+            />
           </div>
         )}
         <TextAreaField

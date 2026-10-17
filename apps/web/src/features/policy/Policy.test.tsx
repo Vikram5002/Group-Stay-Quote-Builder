@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import type { Role } from '@c32/core';
-import { DEFAULT_POLICY } from '@c32/core';
+import { DEFAULT_POLICY, problem } from '@c32/core';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { axe } from 'vitest-axe';
 import { Providers } from '../../app/Providers';
@@ -154,6 +155,24 @@ describe('policy screen', () => {
     expect(await screen.findByText(/Version 2\./)).toBeInTheDocument();
     expect(screen.getByLabelText(/Quote validity/)).toHaveValue(96);
     expect(screen.queryByText('The policy was changed by someone else')).not.toBeInTheDocument();
+  });
+
+  it("explains a refused save in the server's own words", async () => {
+    server.use(
+      http.put('*/v1/policy', () =>
+        HttpResponse.json(
+          problem('INVALID_STATE', { detail: 'Policy changes are paused during the audit' }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+    const u = userEvent.setup();
+    renderPage();
+    await setValue(u, /Quote validity/, '10');
+    await u.click(save());
+
+    expect(await screen.findByText('Could not save the policy')).toBeInTheDocument();
+    expect(screen.getByText('Policy changes are paused during the audit')).toBeInTheDocument();
   });
 
   it('is honest that change history lasts only for the visit', async () => {

@@ -3,13 +3,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FLOOR_MODES } from '@c32/core';
 import type { Policy } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Card, SelectField, Spinner, TextField } from '../../components';
+import {
+  Alert,
+  Button,
+  Card,
+  ProblemAlert,
+  SelectField,
+  Spinner,
+  TextField,
+} from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatIst } from '../../lib/format';
 import { describeChanges, formFromPolicy, parsePolicy } from './policyForm';
 import type { FloorModeValue, PolicyForm } from './policyForm';
-
-const POLICY_KEY = ['policy'] as const;
+import { POLICY_KEY } from './queries';
 
 const MODE_LABEL: Record<FloorModeValue, string> = {
   absolute: 'One floor for the whole package',
@@ -153,9 +160,7 @@ export function PolicyPage() {
       )}
       {failure && (
         <div className="mt-4">
-          <Alert tone="danger" title={failure.friendly.title}>
-            {failure.friendly.message} {failure.friendly.nextStep}
-          </Alert>
+          <ProblemAlert error={failure} title="Could not save the policy" />
         </div>
       )}
 

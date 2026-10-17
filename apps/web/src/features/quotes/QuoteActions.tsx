@@ -1,15 +1,39 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ExtendRequest, LIMITS, parseWith } from '@c32/core';
-import type { Quote, Role } from '@c32/core';
+import { ExtendRequest, LIMITS, parseWith, startOfDayUtc } from '@c32/core';
+import type { Policy, Quote, Role } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Dialog, TextAreaField, TextField } from '../../components';
+import { Alert, Button, Dialog, ProblemAlert, TextAreaField, TextField } from '../../components';
 import { ApiError } from '../../lib/api';
+import { usePolicy } from '../policy/queries';
 import { friendlyIssue } from './form';
 import { OPEN_STATUSES } from './labels';
 import { useQuoteAction } from './queries';
 
 const WRITE_ROLES: readonly Role[] = ['Sales', 'Owner'];
+const HOUR_MS = 3_600_000;
+
+/**
+ * The most hours the server accepts for this quote (apps/api extendQuote): one validity window
+ * per call, and never past the stay cutoff. Null when the policy cannot be read by this role.
+ */
+export function maxExtensionHours(quote: Quote, policy: Policy | undefined): number | null {
+  if (!policy || quote.valid_until === null) return null;
+  const cutoffMs =
+    startOfDayUtc(quote.request.stay.check_in, policy.timezone) -
+    policy.stay_cutoff_hours * HOUR_MS;
+  const toCutoff = Math.floor((cutoffMs - Date.parse(quote.valid_until)) / HOUR_MS);
+  return Math.min(policy.validity_hours, toCutoff);
+}
+
+/** A link to start again when the hold is gone; the refusal itself says why. */
+function requoteLink(error: unknown) {
+  return error instanceof ApiError && error.friendly.action === 're-quote' ? (
+    <Link to="/quotes/new" className="font-semibold text-brand underline">
+      Start a new quote
+    </Link>
+  ) : undefined;
+}
 
 function downloadJson(quote: Quote) {
   const blob = new Blob([JSON.stringify(quote, null, 2)], { type: 'application/json' });
@@ -39,11 +63,14 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
   const [hoursError, setHoursError] = useState<string | undefined>();
   const [reason, setReason] = useState('');
 
-  const failed = [confirm, extend, cancel].find((m) => m.error instanceof ApiError);
-  const error = failed?.error instanceof ApiError ? failed.error : null;
+  const policy = usePolicy();
+  const maxHours = maxExtensionHours(quote, policy.data);
+  const cannotExtend = maxHours !== null && maxHours < 1;
+  const hoursLimit = maxHours ?? LIMITS.MAX_POLICY_HOURS;
 
   function close() {
     setDialog(null);
+    setHoursError(undefined);
     extend.reset();
     cancel.reset();
   }
@@ -52,13 +79,15 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
     const parsed = parseWith(ExtendRequest, {
       hours: hours.trim() === '' ? undefined : Number(hours),
     });
-    if (!parsed.ok) {
+    const tooMany = parsed.ok && parsed.value.hours > hoursLimit;
+    if (!parsed.ok || tooMany) {
+      const issue = parsed.ok ? undefined : parsed.issues[0];
       setHoursError(
-        parsed.issues[0]
-          ? parsed.issues[0].code === 'OUT_OF_RANGE'
-            ? `Must be between 1 and ${LIMITS.MAX_POLICY_HOURS}`
-            : friendlyIssue(parsed.issues[0])
-          : 'Check this value',
+        tooMany || issue?.code === 'OUT_OF_RANGE'
+          ? `Must be between 1 and ${hoursLimit}`
+          : issue
+            ? friendlyIssue(issue)
+            : 'Check this value',
       );
       return;
     }
@@ -68,22 +97,11 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {error && (
-        <Alert
-          tone="danger"
-          title={error.friendly.title}
-          action={
-            error.friendly.action === 're-quote' ? (
-              <Link to="/quotes/new" className="font-semibold text-brand underline">
-                Start a new quote
-              </Link>
-            ) : undefined
-          }
-        >
-          {error.friendly.message} {error.friendly.nextStep}
-          {error.requestId && <span className="block text-xs">Request id: {error.requestId}</span>}
-        </Alert>
-      )}
+      <ProblemAlert
+        error={confirm.error}
+        title="Could not confirm the quote"
+        action={requoteLink(confirm.error)}
+      />
 
       {!canWrite && (
         <p className="text-sm text-ink-muted">Your role can view this quote but not change it.</p>
@@ -132,23 +150,41 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
             <Button variant="secondary" onClick={close}>
               Keep as is
             </Button>
-            <Button loading={extend.isPending} onClick={submitExtend}>
+            <Button loading={extend.isPending} disabled={cannotExtend} onClick={submitExtend}>
               Extend
             </Button>
           </>
         }
       >
-        <TextField
-          label="Extra hours"
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={LIMITS.MAX_POLICY_HOURS}
-          value={hours}
-          onChange={(e) => setHours(e.target.value)}
-          hint="Rooms stay held for this long after the current expiry. The server re-checks availability."
-          {...(hoursError ? { error: hoursError } : {})}
-        />
+        <div className="flex flex-col gap-3">
+          <ProblemAlert
+            error={extend.error}
+            title="Could not extend the validity"
+            action={requoteLink(extend.error)}
+          />
+          {cannotExtend ? (
+            <Alert tone="info" title="This quote cannot be extended">
+              Its hold already runs to the stay cutoff, {policy.data?.stay_cutoff_hours} hours
+              before check-in.
+            </Alert>
+          ) : (
+            <TextField
+              label="Extra hours"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={hoursLimit}
+              value={hours}
+              onChange={(e) => setHours(e.target.value)}
+              hint={
+                maxHours === null
+                  ? 'Rooms stay held for this long after the current expiry. The server checks the policy limit and availability.'
+                  : `Rooms stay held for this long after the current expiry, up to ${maxHours} hours under the policy. The server re-checks availability.`
+              }
+              {...(hoursError ? { error: hoursError } : {})}
+            />
+          )}
+        </div>
       </Dialog>
 
       <Dialog
@@ -172,6 +208,11 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
           </>
         }
       >
+        {cancel.error && (
+          <div className="mb-3">
+            <ProblemAlert error={cancel.error} title="Could not cancel the quote" />
+          </div>
+        )}
         <p className="mb-3 text-sm">
           The held or confirmed rooms are released. This cannot be undone.
         </p>

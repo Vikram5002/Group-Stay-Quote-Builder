@@ -119,6 +119,15 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * What to tell the person when an action fails: the server's own explanation (problem+json
+ * detail), else its title. Anything that is not an API error is never shown as it is.
+ */
+export function problemText(error: unknown): string {
+  if (error instanceof ApiError) return error.problem.detail ?? error.problem.title;
+  return 'Something went wrong. Try again.';
+}
+
 export function isErrorCode(value: unknown): value is ErrorCode {
   return typeof value === 'string' && (ERROR_CODES as readonly string[]).includes(value);
 }

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Card, Spinner, Stepper } from '../../components';
+import { Alert, Button, Card, ProblemAlert, Spinner, Stepper } from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
 import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
 import { initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
@@ -158,21 +158,17 @@ export function QuoteBuilderPage() {
                   </Card>
                 </div>
               )}
-              {issueError && (
-                <Alert
-                  tone="danger"
-                  title={issueError.friendly.title}
-                  action={
-                    issueError.friendly.action === 're-quote' ? (
-                      <Button variant="secondary" onClick={() => void refetch()}>
-                        Re-quote
-                      </Button>
-                    ) : undefined
-                  }
-                >
-                  {issueError.friendly.message} {issueError.friendly.nextStep}
-                </Alert>
-              )}
+              <ProblemAlert
+                error={issueError}
+                title="Could not issue the quote"
+                action={
+                  issueError?.friendly.action === 're-quote' ? (
+                    <Button variant="secondary" onClick={() => void refetch()}>
+                      Re-quote
+                    </Button>
+                  ) : undefined
+                }
+              />
             </>
           )}
 

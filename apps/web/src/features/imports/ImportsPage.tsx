@@ -3,8 +3,8 @@ import type { ChangeEvent } from 'react';
 import { IMPORT_KINDS } from '@c32/core';
 import type { ImportKind, ImportReport } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Card, SelectField, TextField } from '../../components';
-import { ApiError, newIdempotencyKey } from '../../lib/api';
+import { Alert, Button, Card, ProblemAlert, SelectField, TextField } from '../../components';
+import { newIdempotencyKey } from '../../lib/api';
 import {
   fileFormat,
   MAX_IMPORT_BYTES,
@@ -27,11 +27,6 @@ interface Picked {
   parsed: ParsedImport;
 }
 
-function describeFailure(error: unknown): string {
-  if (error instanceof ApiError) return `${error.friendly.message} ${error.friendly.nextStep}`;
-  return 'Something went wrong. Try again.';
-}
-
 export function ImportsPage() {
   const api = useApi();
   const { session } = useAuth();
@@ -43,7 +38,7 @@ export function ImportsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [importId, setImportId] = useState<string | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ title: string; error: unknown } | null>(null);
   const commitKey = useRef(newIdempotencyKey());
 
   function resetResult() {
@@ -109,7 +104,7 @@ export function ImportsPage() {
       setImportId(upload.import_id);
       setReport(checked);
     } catch (error) {
-      setFailure(describeFailure(error));
+      setFailure({ title: 'Could not check the file', error });
     } finally {
       setBusy(null);
     }
@@ -123,7 +118,7 @@ export function ImportsPage() {
       // Not optimistic: the report only changes once the server confirms.
       setReport(await api.commitImport(kind, importId, { idempotencyKey: commitKey.current }));
     } catch (error) {
-      setFailure(describeFailure(error));
+      setFailure({ title: 'Could not import the file', error });
     } finally {
       setBusy(null);
     }
@@ -205,9 +200,7 @@ export function ImportsPage() {
 
             {failure && (
               <div className="mt-4">
-                <Alert tone="danger" title="That did not work">
-                  {failure}
-                </Alert>
+                <ProblemAlert error={failure.error} title={failure.title} />
               </div>
             )}
             {report && (

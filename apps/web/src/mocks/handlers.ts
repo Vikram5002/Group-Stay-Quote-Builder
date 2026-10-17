@@ -197,6 +197,13 @@ export function createHandlers(store: MockStore) {
 
   const notFound = (id: string) =>
     problemResponse('NOT_FOUND', { detail: `Quote ${id} was not found.` });
+  // The API's own wording, so the screens show what the real server says.
+  const expiredResponse = (quote: Quote) =>
+    problemResponse('QUOTE_EXPIRED', { detail: `Quote expired at ${String(quote.valid_until)}` });
+  const notReviewable = (quote: Quote) =>
+    problemResponse('INVALID_STATE', {
+      detail: `Only a PENDING_REVIEW quote can be reviewed, not ${quote.status}`,
+    });
 
   return [
     http.get('*/health', () =>
@@ -317,9 +324,13 @@ export function createHandlers(store: MockStore) {
       return idempotent(request, actor, () => {
         const quote = find(String(params.id));
         if (!quote) return notFound(String(params.id));
-        if (quote.status === 'EXPIRED') return problemResponse('QUOTE_EXPIRED');
+        if (quote.status === 'EXPIRED') return expiredResponse(quote);
         if (quote.status === 'PENDING_REVIEW') return problemResponse('APPROVAL_REQUIRED');
-        if (quote.status !== 'OFFERED') return problemResponse('INVALID_STATE');
+        if (quote.status !== 'OFFERED') {
+          return problemResponse('INVALID_STATE', {
+            detail: `Cannot confirm a ${quote.status} quote`,
+          });
+        }
         if (
           !quote.evaluation.auto_confirm_allowed &&
           quote.evaluation.decision !== 'PARTIAL_OFFER' &&
@@ -340,7 +351,7 @@ export function createHandlers(store: MockStore) {
         if (body.error) return body.error;
         const quote = find(String(params.id));
         if (!quote) return notFound(String(params.id));
-        if (quote.status !== 'PENDING_REVIEW') return problemResponse('INVALID_STATE');
+        if (quote.status !== 'PENDING_REVIEW') return notReviewable(quote);
         if (quote.created_by.user_id === actor.user_id) {
           return problemResponse('FORBIDDEN', {
             detail: 'You cannot approve your own quote (four-eyes rule).',
@@ -367,7 +378,7 @@ export function createHandlers(store: MockStore) {
         if (body.error) return body.error;
         const quote = find(String(params.id));
         if (!quote) return notFound(String(params.id));
-        if (quote.status !== 'PENDING_REVIEW') return problemResponse('INVALID_STATE');
+        if (quote.status !== 'PENDING_REVIEW') return notReviewable(quote);
         moveRooms(quote, heldRooms(quote), 'held', 'available');
         store.addEvent(quote, 'HOLD_RELEASED', actor);
         return HttpResponse.json(
@@ -384,9 +395,18 @@ export function createHandlers(store: MockStore) {
         if (body.error) return body.error;
         const quote = find(String(params.id));
         if (!quote) return notFound(String(params.id));
-        if (quote.status === 'EXPIRED') return problemResponse('QUOTE_EXPIRED');
-        if (!OPEN.includes(quote.status) || quote.valid_until === null)
-          return problemResponse('INVALID_STATE');
+        if (quote.status === 'EXPIRED') return expiredResponse(quote);
+        if (!OPEN.includes(quote.status) || quote.valid_until === null) {
+          return problemResponse('INVALID_STATE', {
+            detail: `Only an open quote can be extended, not ${quote.status}`,
+          });
+        }
+        // The same limit as the API: at most one validity window per extension.
+        if (body.value.hours > store.policy.validity_hours) {
+          return problemResponse('INVALID_STATE', {
+            detail: `An extension can be at most ${store.policy.validity_hours} hours`,
+          });
+        }
         const until = new Date(
           new Date(quote.valid_until).getTime() + body.value.hours * 3_600_000,
         ).toISOString();
@@ -446,8 +466,11 @@ export function createHandlers(store: MockStore) {
         if (body.error) return body.error;
         const quote = find(String(params.id));
         if (!quote) return notFound(String(params.id));
-        if (quote.status !== 'CONFIRMED' && !OPEN.includes(quote.status))
-          return problemResponse('INVALID_STATE');
+        if (quote.status !== 'CONFIRMED' && !OPEN.includes(quote.status)) {
+          return problemResponse('INVALID_STATE', {
+            detail: `Cannot cancel a ${quote.status} quote`,
+          });
+        }
         moveRooms(
           quote,
           heldRooms(quote),

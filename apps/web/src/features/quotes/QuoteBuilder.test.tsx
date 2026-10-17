@@ -75,7 +75,10 @@ describe('quote builder: the three rubric flows', () => {
     expect(screen.getAllByText('Meets floor').length).toBeGreaterThan(0);
     expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
-    await u.click(screen.getByRole('button', { name: 'Issue quote' }));
+    // The button stays disabled while the server is still confirming the latest form.
+    const issue = screen.getByRole('button', { name: 'Issue quote' });
+    await waitFor(() => expect(issue).toBeEnabled());
+    await u.click(issue);
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' }),
     ).toBeInTheDocument();

@@ -72,7 +72,7 @@ export const ReasonCode = z.enum(REASON_CODES);
 export type ReasonCode = z.infer<typeof ReasonCode>;
 
 export const REASON_DESCRIPTIONS: Readonly<Record<ReasonCode, string>> = {
-  FLOOR_BREACH: 'Contribution is below the contribution floor.',
+  FLOOR_BREACH: 'The rate is below the floor rate (package floor divided by total rooms).',
   UNKNOWN_COST: 'A required cost is unknown (null), so contribution cannot be computed.',
   UNKNOWN_RATE: 'The rate plan has no rate for a night and no override rate was given.',
   UNKNOWN_AVAILABILITY: 'Room-night availability is unknown for at least one night.',
@@ -165,11 +165,6 @@ export type ValidationIssueCode = z.infer<typeof ValidationIssueCode>;
 export const ROLES = ['Sales', 'Owner', 'Viewer'] as const;
 export const Role = z.enum(ROLES);
 export type Role = z.infer<typeof Role>;
-
-/** Blueprint decision G1: absolute package floor (default) or scaled per room-night. */
-export const FLOOR_MODES = ['absolute', 'per_room_night'] as const;
-export const FloorMode = z.enum(FLOOR_MODES);
-export type FloorMode = z.infer<typeof FloorMode>;
 
 export const INCLUSION_BASES = ['per_guest_night', 'per_room_night'] as const;
 export const InclusionBasis = z.enum(INCLUSION_BASES);

@@ -271,7 +271,14 @@ export function QuoteBuilderPage() {
                   <DecisionSummary
                     evaluation={evaluation}
                     onUseRate={(rate) => {
-                      patch({ rate: String(rate) });
+                      // At or below full price, say it as a discount; above it, as a fixed rate.
+                      const full = evaluation.totals.floor_rate_per_room_night_inr;
+                      const pct = ((full - rate) * 100) / full;
+                      if (rate <= full && Number.isInteger(pct)) {
+                        patch({ discount: String(pct), rate: '' });
+                      } else {
+                        patch({ rate: String(rate) });
+                      }
                     }}
                     onUseRooms={(rooms) => patch({ rooms: String(rooms) })}
                   />
@@ -310,7 +317,7 @@ export function QuoteBuilderPage() {
           </div>
         </form>
 
-        <aside aria-label="Live contribution" className="lg:sticky lg:top-4 lg:self-start">
+        <aside aria-label="Live price check" className="lg:sticky lg:top-4 lg:self-start">
           <LiveMeter state={live} />
         </aside>
       </div>

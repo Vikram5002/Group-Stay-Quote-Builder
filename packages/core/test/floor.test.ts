@@ -1,35 +1,67 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_POLICY, floorFor, floorPasses, type FloorPolicy } from '../src/index.js';
+import {
+  DEFAULT_POLICY,
+  discountedRate,
+  floorFor,
+  floorPasses,
+  floorRate,
+  minimumRate,
+} from '../src/index.js';
 
-const absolute: FloorPolicy = DEFAULT_POLICY;
-const perRoomNight: FloorPolicy = { ...DEFAULT_POLICY, floor_mode: 'per_room_night' };
-
-describe('floorFor (decision G1)', () => {
-  it('absolute mode returns the package floor whatever the volume', () => {
-    expect(floorFor(absolute, 20)).toBe(20000);
-    expect(floorFor(absolute, 14)).toBe(20000);
-    expect(floorFor(absolute, 0)).toBe(20000);
+describe('floorRate (D-056: package floor / total rooms, cost included)', () => {
+  it('fixture: 20000 / 10 rooms = 2000 per room-night', () => {
+    expect(floorRate(DEFAULT_POLICY)).toBe(2000);
   });
 
-  it('per-room-night mode scales with volume (1000 per room-night)', () => {
-    expect(floorFor(perRoomNight, 20)).toBe(20000); // fixture: 10 rooms x 2 nights
-    expect(floorFor(perRoomNight, 14)).toBe(14000); // 7 rooms x 2 nights (blueprint 5.8)
-    expect(floorFor(perRoomNight, 0)).toBe(0);
+  it('follows the owner-set number of rooms', () => {
+    expect(floorRate({ ...DEFAULT_POLICY, total_rooms_units: 20 })).toBe(1000);
+    expect(floorRate({ ...DEFAULT_POLICY, total_rooms_units: 1 })).toBe(20000);
   });
 
-  it('rejects a missing per-room-night floor and a bad volume', () => {
-    expect(() => floorFor({ ...perRoomNight, floor_per_room_night_inr: null }, 20)).toThrow(
-      /required in per_room_night mode/,
-    );
-    expect(() => floorFor(absolute, -1)).toThrow(RangeError);
-    expect(() => floorFor(absolute, 2.5)).toThrow(RangeError);
+  it('rounds up, so it never lands under the floor', () => {
+    expect(floorRate({ ...DEFAULT_POLICY, total_rooms_units: 3 })).toBe(6667);
+  });
+
+  it('rejects zero rooms', () => {
+    expect(() => floorRate({ ...DEFAULT_POLICY, total_rooms_units: 0 })).toThrow(RangeError);
+  });
+});
+
+describe('Sales discount (D-057)', () => {
+  it('discountedRate: whole-percent off the floor rate, rounded up', () => {
+    expect(discountedRate(DEFAULT_POLICY, 0)).toBe(2000);
+    expect(discountedRate(DEFAULT_POLICY, 5)).toBe(1900);
+    expect(discountedRate({ ...DEFAULT_POLICY, total_rooms_units: 3 }, 10)).toBe(6001);
+    expect(() => discountedRate(DEFAULT_POLICY, 101)).toThrow(RangeError);
+  });
+
+  it('minimumRate: the floor rate less the owner limit (10% by default)', () => {
+    expect(minimumRate(DEFAULT_POLICY)).toBe(1800);
+    expect(minimumRate({ ...DEFAULT_POLICY, max_sales_discount_pct: 0 })).toBe(2000);
+    expect(minimumRate({ ...DEFAULT_POLICY, max_sales_discount_pct: 25 })).toBe(1500);
+  });
+});
+
+describe('floorFor (the floor as contribution for a package)', () => {
+  it('lowest Sales rate x room-nights - variable cost', () => {
+    expect(floorFor(DEFAULT_POLICY, 20, 16000)).toBe(20000); // fixture: 20 x 1800 - 16000
+    expect(floorFor(DEFAULT_POLICY, 2, 1600)).toBe(2000); // 1 room x 2 nights
+    expect(floorFor(DEFAULT_POLICY, 0, 0)).toBe(0);
+  });
+
+  it('is unknown when the variable cost is unknown (never treated as 0)', () => {
+    expect(floorFor(DEFAULT_POLICY, 20, null)).toBeNull();
+  });
+
+  it('rejects a bad volume', () => {
+    expect(() => floorFor(DEFAULT_POLICY, -1, 0)).toThrow(RangeError);
+    expect(() => floorFor(DEFAULT_POLICY, 2.5, 0)).toThrow(RangeError);
   });
 });
 
 describe('floorPasses (BR-06)', () => {
   it('passes at exactly the floor and fails one rupee below', () => {
-    expect(floorPasses(20000, 20000)).toBe(true);
-    expect(floorPasses(19999, 20000)).toBe(false);
-    expect(floorPasses(24000, 20000)).toBe(true);
+    expect(floorPasses(24000, 24000)).toBe(true);
+    expect(floorPasses(23999, 24000)).toBe(false);
   });
 });

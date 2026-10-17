@@ -1,28 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FLOOR_MODES } from '@c32/core';
 import type { Policy } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
 import { LeaveGuard } from '../../app/LeaveGuard';
-import {
-  Alert,
-  Button,
-  Card,
-  ProblemAlert,
-  SelectField,
-  Spinner,
-  TextField,
-} from '../../components';
+import { Alert, Button, Card, ProblemAlert, Spinner, TextField } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatIst } from '../../lib/format';
-import { describeChanges, formFromPolicy, inactiveFloor, parsePolicy } from './policyForm';
-import type { FloorModeValue, PolicyForm } from './policyForm';
+import {
+  describeChanges,
+  floorRatePreview,
+  formFromPolicy,
+  lowestRatePreview,
+  parsePolicy,
+} from './policyForm';
+import type { PolicyForm } from './policyForm';
 import { POLICY_KEY } from './queries';
-
-const MODE_LABEL: Record<FloorModeValue, string> = {
-  absolute: 'One floor for the whole package',
-  per_room_night: 'A floor per room-night, scaled by volume',
-};
 
 interface SavedChange {
   version: number;
@@ -112,14 +104,11 @@ export function PolicyPage() {
     setErrors({});
   };
   const err = (path: string) => (errors[path] ? { error: errors[path] } : {});
-  // The floor the mode does not use is shown, kept and saved as it was, but not editable.
-  const unused = inactiveFloor(form.floorMode);
-  const UNUSED_HINT = 'Not used in this floor mode. Its value is kept.';
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!form) return;
-    const parsed = parsePolicy(form, policy);
+    const parsed = parsePolicy(form, policy.version);
     if (!parsed.ok) {
       setErrors(parsed.errors);
       return;
@@ -172,21 +161,8 @@ export function PolicyPage() {
       )}
 
       <form onSubmit={submit} noValidate className="mt-6 flex flex-col gap-6">
-        <Card title="Contribution floor">
+        <Card title="Floor and rooms">
           <div className="grid gap-4 md:grid-cols-2">
-            <SelectField
-              label="Floor mode"
-              value={form.floorMode}
-              onChange={(e) => set({ floorMode: e.target.value as FloorModeValue })}
-              hint={MODE_LABEL[form.floorMode]}
-            >
-              {FLOOR_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m === 'absolute' ? 'Package floor' : 'Per room-night floor'}
-                </option>
-              ))}
-            </SelectField>
-            <div />
             <TextField
               label="Package floor (INR)"
               type="number"
@@ -194,30 +170,43 @@ export function PolicyPage() {
               min={0}
               value={form.contributionFloor}
               onChange={(e) => set({ contributionFloor: e.target.value })}
-              disabled={unused === 'contribution_floor_inr'}
-              hint={
-                unused === 'contribution_floor_inr'
-                  ? UNUSED_HINT
-                  : 'Minimum contribution for the whole package.'
-              }
+              hint="Divided by total rooms to give the minimum rate per room-night."
               {...err('contribution_floor_inr')}
             />
             <TextField
-              label="Floor per room-night (INR)"
+              label="Total rooms in the hotel"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={form.totalRooms}
+              onChange={(e) => set({ totalRooms: e.target.value })}
+              hint="Saving a new number updates every future night's rooms."
+              {...err('total_rooms_units')}
+            />
+            <TextField
+              label="Max Sales discount (%)"
               type="number"
               inputMode="numeric"
               min={0}
-              value={form.floorPerRoomNight}
-              onChange={(e) => set({ floorPerRoomNight: e.target.value })}
-              disabled={unused === 'floor_per_room_night_inr'}
-              hint={
-                unused === 'floor_per_room_night_inr'
-                  ? UNUSED_HINT
-                  : 'Minimum contribution per room-night, scaled by the number of room-nights.'
-              }
-              {...err('floor_per_room_night_inr')}
+              max={100}
+              value={form.maxDiscount}
+              onChange={(e) => set({ maxDiscount: e.target.value })}
+              hint="Sales can give up to this much off the full price; more needs owner approval."
+              {...err('max_sales_discount_pct')}
             />
           </div>
+          <p className="mt-4" aria-live="polite">
+            {floorRatePreview(form) === null || lowestRatePreview(form) === null ? (
+              'Enter the numbers to see the full price and the lowest Sales price.'
+            ) : (
+              <>
+                Full price: <strong>₹{floorRatePreview(form)?.toLocaleString('en-IN')}</strong> per
+                room per night, variable cost included. With up to {form.maxDiscount}% off, Sales
+                can go down to <strong>₹{lowestRatePreview(form)?.toLocaleString('en-IN')}</strong>;
+                anything lower needs owner approval.
+              </>
+            )}
+          </p>
         </Card>
 
         <Card title="Validity and rooms">

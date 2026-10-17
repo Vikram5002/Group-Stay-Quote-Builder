@@ -13,6 +13,11 @@ const totals = (contribution: number | null): QuoteTotals => ({
   floor_headroom_inr: null,
   shortfall_inr: null,
   min_rate_per_room_night_inr: 1800,
+  floor_rate_per_room_night_inr: 2000,
+  list_revenue_inr: 40000,
+  min_room_revenue_inr: 36000,
+  discount_pct: 0,
+  max_discount_pct: 10,
 });
 
 const evaluation = (
@@ -34,9 +39,9 @@ describe('meter status for each decision', () => {
     });
   });
 
-  it('REVIEW below the floor', () => {
+  it('REVIEW over the Sales limit', () => {
     expect(meterStatus(evaluation('REVIEW', ['FLOOR_BREACH']), totals(14000)).label).toBe(
-      'Below floor: review required',
+      'Over the limit: owner review',
     );
   });
 
@@ -53,19 +58,19 @@ describe('meter status for each decision', () => {
   it('PARTIAL_OFFER and OFFER', () => {
     expect(
       meterStatus(evaluation('PARTIAL_OFFER', ['PARTIAL_AVAILABILITY'], 8), totals(24000)).label,
-    ).toBe('Meets floor: partial offer of 8 rooms');
+    ).toBe('Within the Sales limit: partial offer of 8 rooms');
     expect(meterStatus(evaluation('OFFER', []), totals(24000))).toEqual({
       tone: 'success',
-      label: 'Meets floor',
+      label: 'Within the Sales limit',
     });
   });
 
   it('follows an estimated rate across the floor in either direction', () => {
     expect(meterStatus(evaluation('REVIEW', ['FLOOR_BREACH']), totals(24000)).label).toBe(
-      'Meets floor',
+      'Within the Sales limit',
     );
     expect(meterStatus(evaluation('OFFER', []), totals(14000)).label).toBe(
-      'Below floor: review required',
+      'Over the limit: owner review',
     );
   });
 });

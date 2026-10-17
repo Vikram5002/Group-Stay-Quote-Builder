@@ -34,7 +34,7 @@ const { totals, floor_ok, trail } = price({
 | ----------------------------- | -------------------------------------------------------------- |
 | `room_revenue_inr`            | Sum over nights of rooms x rate (BR-01)                        |
 | `contribution_inr`            | Revenue (rooms + extras) minus cost (variable + extras)        |
-| `contribution_floor_inr`      | Absolute package floor, or per room-night x room-nights (G1)   |
+| `contribution_floor_inr`      | Lowest Sales rate x room-nights - cost (D-056, D-057)          |
 | `floor_ok`                    | Contribution at least the floor; equal passes (BR-06)          |
 | `min_rate_per_room_night_inr` | Flat rate that just meets the floor, rounded up (BR-20)        |
 | any of the above              | `null` when an input it depends on is unknown, never 0 (BR-07) |

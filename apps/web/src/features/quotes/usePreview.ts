@@ -75,12 +75,22 @@ export function estimateTotals(
   basis: QuoteRequest,
   evaluation: Evaluation,
 ): QuoteTotals | null {
-  const onlyRateChanged =
-    JSON.stringify({ ...request, rate_per_room_night_inr: 0 }) ===
-    JSON.stringify({ ...basis, rate_per_room_night_inr: 0 });
-  if (!onlyRateChanged || (request.inclusions?.length ?? 0) > 0) return null;
+  // Everything but the price (a rate or a discount) is unchanged.
+  const withoutPrice = ({
+    rate_per_room_night_inr: _rate,
+    discount_pct: _discount,
+    ...rest
+  }: QuoteRequest) => JSON.stringify(rest);
+  if (withoutPrice(request) !== withoutPrice(basis) || (request.inclusions?.length ?? 0) > 0) {
+    return null;
+  }
   const last = evaluation.totals;
-  const rate = request.rate_per_room_night_inr;
+  const full = last.floor_rate_per_room_night_inr;
+  const rate =
+    request.rate_per_room_night_inr ??
+    (request.discount_pct === undefined
+      ? undefined
+      : Math.ceil((full * (100 - request.discount_pct)) / 100));
   if (rate === undefined || last.room_nights === 0 || last.variable_cost_inr === null) return null;
   const costPerRoomNight = last.variable_cost_inr / last.room_nights;
   if (!Number.isInteger(costPerRoomNight)) return null;
@@ -89,10 +99,11 @@ export function estimateTotals(
   const { totals } = price({
     rooms: evaluation.offered_rooms,
     nights: flatNights(stay.check_in, stay.nights, rate, costPerRoomNight),
+    // The server's full price and Sales limit, as a one-room policy so the estimate matches.
     floor: {
-      floor_mode: 'absolute',
-      contribution_floor_inr: last.contribution_floor_inr,
-      floor_per_room_night_inr: null,
+      contribution_floor_inr: full,
+      total_rooms_units: 1,
+      max_sales_discount_pct: last.max_discount_pct,
     },
   });
   return totals;

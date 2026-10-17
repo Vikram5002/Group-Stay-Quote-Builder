@@ -8,6 +8,7 @@ import { decide, planRooms, type DecisionOutcome, type RoomPlan } from './decisi
 import { inclusionExtras } from './inclusions.js';
 import { NO_EXTRAS, nightsFromRatePlan, price, type PricingExtras } from './pricing.js';
 import type { ResolvedQuoteRequest } from './request.js';
+import { discountedRate } from './floor.js';
 import { formatInZone } from './timezone.js';
 import { unknownPricingReasons } from './unknowns.js';
 import { computeValidity, type Validity } from './validity.js';
@@ -79,13 +80,8 @@ function decisionLine(outcome: DecisionOutcome): string {
   return `decision ${outcome.decision}${why}${auto}`;
 }
 
-interface Assessment extends EvaluationResult {
-  /** Rooms sellable on every night, or null when availability is not known. */
-  sellable: number | null;
-}
-
 /** Steps 2 to 6 without counter-offers; also what the counter-offer generator re-runs. */
-function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessment {
+function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
   const { policy } = ctx;
   const { stay } = request;
 
@@ -103,7 +99,10 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessme
     stay.nights,
     request.room_type,
     ctx.ratePlan,
-    request.rate_per_room_night_inr,
+    // Sales gives a discount off the floor rate (D-057); otherwise an explicit rate or the plan.
+    request.discount_pct === undefined
+      ? request.rate_per_room_night_inr
+      : discountedRate(policy, request.discount_pct),
   );
   const extras = plan.final === null ? extrasFor(request, plan.offered_rooms, policy) : NO_EXTRAS;
   const pricing = price({ rooms: plan.offered_rooms, nights, floor: policy, extras });
@@ -130,7 +129,6 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessme
 
   return {
     validity,
-    sellable: availability.kind === 'known' ? availability.sellable : null,
     evaluation: {
       decision: outcome.decision,
       reasons: outcome.reasons,
@@ -150,13 +148,13 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessme
 
 /** Evaluate a validated request: decision, totals, trail and floor-safe counter-offers. */
 export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
-  const { evaluation, validity, sellable } = assess(request, ctx);
+  const { evaluation, validity } = assess(request, ctx);
   const reassess = (r: ResolvedQuoteRequest) => assess(r, ctx).evaluation;
   return {
     validity,
     evaluation: {
       ...evaluation,
-      counter_offers: counterOffers(request, evaluation, reassess, sellable),
+      counter_offers: counterOffers(request, evaluation, reassess),
     },
   };
 }

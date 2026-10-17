@@ -17,7 +17,7 @@ const DECLINE_LABEL: Partial<Record<ReasonCode, string>> = {
 /**
  * The meter's label for a decision. Room-related reasons (decline, unknown availability, partial)
  * come from the evaluation; the floor comes from `totals`, which may be a browser estimate for a
- * new rate. A contribution of 0 because nothing can be offered is never called "below floor".
+ * new rate. A contribution of 0 because nothing can be offered is never called "over the limit".
  */
 export function meterStatus(evaluation: Evaluation, totals: QuoteTotals): MeterStatus {
   if (evaluation.decision === 'DECLINE') {
@@ -28,15 +28,17 @@ export function meterStatus(evaluation: Evaluation, totals: QuoteTotals): MeterS
     return { tone: 'unknown', label: 'Availability unknown: review required' };
   }
   const contribution = totals.contribution_inr;
-  if (contribution === null) return { tone: 'unknown', label: 'Unknown: review required' };
+  if (contribution === null || totals.contribution_floor_inr === null) {
+    return { tone: 'unknown', label: 'Unknown: review required' };
+  }
   if (contribution < totals.contribution_floor_inr) {
-    return { tone: 'danger', label: 'Below floor: review required' };
+    return { tone: 'danger', label: 'Over the limit: owner review' };
   }
   if (evaluation.offered_rooms < evaluation.requested_rooms) {
     return {
       tone: 'info',
-      label: `Meets floor: partial offer of ${counted(evaluation.offered_rooms, 'room')}`,
+      label: `Within the Sales limit: partial offer of ${counted(evaluation.offered_rooms, 'room')}`,
     };
   }
-  return { tone: 'success', label: 'Meets floor' };
+  return { tone: 'success', label: 'Within the Sales limit' };
 }

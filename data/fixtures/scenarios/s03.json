@@ -1,6 +1,6 @@
 {
   "id": "S03",
-  "title": "Rate exactly at the minimum safe rate passes",
+  "title": "Rate at the lowest Sales rate (1800, 10% off) passes",
   "source": "T03",
   "synthetic": true,
   "policy": {},
@@ -21,7 +21,9 @@
     "decision": "OFFER",
     "totals": {
       "contribution_inr": 20000,
-      "floor_headroom_inr": 0
+      "contribution_floor_inr": 20000,
+      "floor_headroom_inr": 0,
+      "discount_pct": 10
     }
   }
 }

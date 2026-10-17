@@ -61,7 +61,7 @@ describe('P1 contribution = revenue - all costs, never NaN or fractional', () =>
           ]) {
             expect(Number.isSafeInteger(v)).toBe(true);
           }
-          expect(t.floor_headroom_inr).toBe(t.contribution_inr! - t.contribution_floor_inr);
+          expect(t.floor_headroom_inr).toBe(t.contribution_inr! - t.contribution_floor_inr!);
           expect(t.shortfall_inr).toBe(Math.max(0, -t.floor_headroom_inr!));
         },
       ),
@@ -75,7 +75,7 @@ describe('P2 revenue is non-decreasing in rate, rooms and nights', () => {
     price({
       rooms: r,
       nights: flatNights(CHECK_IN, n, perNight, 0),
-      floor: { floor_mode: 'absolute', contribution_floor_inr: 0, floor_per_room_night_inr: null },
+      floor: { contribution_floor_inr: 0, total_rooms_units: 1, max_sales_discount_pct: 0 },
     }).totals.room_revenue_inr!;
 
   it('raising the rate never lowers revenue', () => {
@@ -114,9 +114,9 @@ describe('P2 revenue is non-decreasing in rate, rooms and nights', () => {
         ),
         (r, [nights, i, d]) => {
           const floor = {
-            floor_mode: 'absolute' as const,
             contribution_floor_inr: 0,
-            floor_per_room_night_inr: null,
+            total_rooms_units: 1,
+            max_sales_discount_pct: 0,
           };
           const before = price({ rooms: r, nights, floor }).totals.room_revenue_inr!;
           const bumped = nights.map((x, j) => (j === i ? { ...x, rate_inr: x.rate_inr! + d } : x));
@@ -240,7 +240,7 @@ describe('P6 a null input never turns into a number', () => {
           if (nights.some((x) => x.rate_inr === null)) expect(t.room_revenue_inr).toBeNull();
           if (nights.some((x) => x.variable_cost_inr === null)) {
             expect(t.variable_cost_inr).toBeNull();
-            expect(t.min_rate_per_room_night_inr).toBeNull();
+            expect(t.contribution_floor_inr).toBeNull(); // the floor needs the cost; the floor rate does not
           }
         },
       ),

@@ -96,9 +96,9 @@ export function verifyDerivedClaims(): ClaimCheck[] {
       quote.variable_cost_per_room_night_inr,
     ),
     floor: {
-      floor_mode: 'absolute',
       contribution_floor_inr: quote.contribution_floor_inr,
-      floor_per_room_night_inr: null,
+      total_rooms_units: Math.max(...fixtureJson.records.inventory.map((r) => r.rooms ?? 0)),
+      max_sales_discount_pct: 10,
     },
   });
   return [

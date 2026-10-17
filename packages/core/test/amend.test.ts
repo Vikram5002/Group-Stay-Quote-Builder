@@ -6,7 +6,11 @@ const fixtureTotals = price({
   nights: flatNights('2026-11-01', 2, 2000, 800),
   floor: DEFAULT_POLICY,
 }).totals;
-const perRoomNight = { ...DEFAULT_POLICY, floor_mode: 'per_room_night' as const };
+const discountedTotals = price({
+  rooms: 10,
+  nights: flatNights('2026-11-01', 2, 1500, 800),
+  floor: DEFAULT_POLICY,
+}).totals;
 
 describe('T20 partial cancellation 10 to 7 rooms (blueprint 5.8)', () => {
   it('releases 6 room-nights; contribution 28000 - 11200 = 16800', () => {
@@ -20,20 +24,19 @@ describe('T20 partial cancellation 10 to 7 rooms (blueprint 5.8)', () => {
     expect(r.trail[0]).toBe('amended 10 to 7 rooms: 6 room-nights released');
   });
 
-  it('absolute floor 20000: fails, owner review', () => {
+  it('at full price the smaller booking still passes (floor 14 x 1800 - 11200 = 14000)', () => {
     const r = amendTotals(fixtureTotals, 10, 7, DEFAULT_POLICY);
-    expect(r.floor_ok).toBe(false);
-    expect(r.totals.shortfall_inr).toBe(3200);
-    expect(r.trail[1]).toBe(
-      'remaining contribution 16800 < 20000 floor, shortfall 3200: owner review',
-    );
+    expect(r.floor_ok).toBe(true);
+    expect(r.totals).toMatchObject({ contribution_floor_inr: 14000, floor_headroom_inr: 2800 });
   });
 
-  it('per-room-night floor (14 x 1000 = 14000): passes', () => {
-    const r = amendTotals(fixtureTotals, 10, 7, perRoomNight);
-    expect(r.floor_ok).toBe(true);
-    expect(r.totals.contribution_floor_inr).toBe(14000);
-    expect(r.totals.floor_headroom_inr).toBe(2800);
+  it('a booking approved over the Sales limit stays below the floor: owner review', () => {
+    const r = amendTotals(discountedTotals, 10, 7, DEFAULT_POLICY);
+    expect(r.floor_ok).toBe(false);
+    expect(r.totals.shortfall_inr).toBe(4200); // 300 under on 14 room-nights
+    expect(r.trail[1]).toBe(
+      'remaining contribution 9800 < 14000 floor, shortfall 4200: owner review',
+    );
   });
 });
 

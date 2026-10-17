@@ -123,54 +123,14 @@ describe('policy screen', () => {
     expect(store.policy.version).toBe(1);
 
     await setValue(u, /Quote validity/, '72');
-    await u.selectOptions(screen.getByLabelText('Floor mode'), 'per_room_night');
-    await setValue(u, /Floor per room-night/, '');
+    await setValue(u, /Total rooms/, '0');
     await u.click(save());
-    expect(screen.getByText('Required when the floor mode is per room-night')).toBeInTheDocument();
+    expect(screen.getByText('Must be between 1 and 500')).toBeInTheDocument();
 
-    await u.selectOptions(screen.getByLabelText('Floor mode'), 'absolute');
+    await setValue(u, /Total rooms/, '10');
     await setValue(u, /Minimum validity/, '100');
     await u.click(save());
     expect(screen.getByText(/cannot exceed validity_hours/)).toBeInTheDocument();
-  });
-
-  it('only the floor that applies can be edited; the other keeps its value', async () => {
-    const u = userEvent.setup();
-    renderPage();
-    const packageFloor = await field(/Package floor/);
-    const perRoomNight = screen.getByLabelText(/Floor per room-night/);
-    expect(packageFloor).toBeEnabled();
-    expect(perRoomNight).toBeDisabled();
-    expect(perRoomNight).toHaveValue(1000);
-
-    await u.selectOptions(screen.getByLabelText('Floor mode'), 'per_room_night');
-    expect(packageFloor).toBeDisabled();
-    expect(packageFloor).toHaveValue(20000);
-    expect(perRoomNight).toBeEnabled();
-  });
-
-  it('checks only the floor that applies, and saves the other unchanged', async () => {
-    const u = userEvent.setup();
-    renderPage();
-    // A broken package floor, then a switch to the per room-night floor.
-    await setValue(u, /Package floor/, '');
-    await u.selectOptions(screen.getByLabelText('Floor mode'), 'per_room_night');
-    await setValue(u, /Floor per room-night/, '1200');
-    await u.click(save());
-
-    expect(await screen.findByText('Policy saved as version 2.')).toBeInTheDocument();
-    expect(store.policy).toMatchObject({
-      floor_mode: 'per_room_night',
-      floor_per_room_night_inr: 1200,
-      contribution_floor_inr: 20000,
-    });
-
-    // And the other way round.
-    await setValue(u, /Floor per room-night/, '-5');
-    await u.selectOptions(screen.getByLabelText('Floor mode'), 'absolute');
-    await u.click(save());
-    expect(await screen.findByText('Policy saved as version 3.')).toBeInTheDocument();
-    expect(store.policy).toMatchObject({ floor_mode: 'absolute', floor_per_room_night_inr: 1200 });
   });
 
   it('asks before leaving with unsaved changes', async () => {

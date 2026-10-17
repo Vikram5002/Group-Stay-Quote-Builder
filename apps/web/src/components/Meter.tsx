@@ -13,6 +13,10 @@ export function ContributionMeter({
   floor,
   max,
   status,
+  label = 'Contribution',
+  floorLabel = 'Floor',
+  okText = 'Meets floor',
+  belowText = 'Below floor: review required',
 }: {
   contribution: number | null;
   floor: number;
@@ -22,6 +26,11 @@ export function ContributionMeter({
    * offered. Without it the badge compares the contribution with the floor.
    */
   status?: { tone: Tone; label: string };
+  /** What the bar measures, for example "Revenue after discount". */
+  label?: string;
+  floorLabel?: string;
+  okText?: string;
+  belowText?: string;
 }) {
   const labelId = useId();
   const scale = Math.max(max, floor, contribution ?? 0, 1);
@@ -32,28 +41,31 @@ export function ContributionMeter({
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <span id={labelId} className="text-sm font-semibold">
-          Contribution
+          {label}
         </span>
         {status ? (
           <Badge tone={status.tone}>{status.label}</Badge>
         ) : contribution === null ? (
           <Badge tone="unknown">Unknown</Badge>
         ) : below ? (
-          <Badge tone="danger">Below floor: review required</Badge>
+          <Badge tone="danger">{belowText}</Badge>
         ) : (
-          <Badge tone="success">Meets floor</Badge>
+          <Badge tone="success">{okText}</Badge>
         )}
       </div>
       <div
         {...(contribution === null
-          ? { role: 'img', 'aria-label': `Contribution: Unknown, floor ${formatInr(floor)}` }
+          ? {
+              role: 'img',
+              'aria-label': `${label}: Unknown, ${floorLabel.toLowerCase()} ${formatInr(floor)}`,
+            }
           : {
               role: 'meter',
               'aria-labelledby': labelId,
               'aria-valuemin': 0,
               'aria-valuemax': scale,
               'aria-valuenow': contribution,
-              'aria-valuetext': `${formatInr(contribution)}, floor ${formatInr(floor)}`,
+              'aria-valuetext': `${formatInr(contribution)}, ${floorLabel.toLowerCase()} ${formatInr(floor)}`,
             })}
         className="relative h-4 rounded-full bg-surface-muted"
       >
@@ -71,7 +83,7 @@ export function ContributionMeter({
       </div>
       <div className="relative mt-1 h-5 text-xs text-ink-muted">
         <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: pct(floor) }}>
-          Floor {formatInr(floor)}
+          {floorLabel} {formatInr(floor)}
         </span>
       </div>
     </div>

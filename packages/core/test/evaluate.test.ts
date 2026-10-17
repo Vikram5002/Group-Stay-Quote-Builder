@@ -138,22 +138,20 @@ describe('request forms and room types', () => {
     expect(e).toMatchObject({ decision: 'DECLINE', reasons: ['NO_INVENTORY_DATA'] });
   });
 
-  it('per-room-night floor scales with the offered rooms', () => {
-    const policy = { ...fx.policy, floor_mode: 'per_room_night' as const };
-    const { evaluation: e } = run({ rooms: 3 }, ctx({ policy }));
+  it('the floor scales with the offered rooms, so a small group at the floor rate is an OFFER', () => {
+    const { evaluation: e } = run({ rooms: 3 });
     expect(e.totals).toMatchObject({
       room_nights: 6,
-      contribution_floor_inr: 6000,
+      contribution_floor_inr: 6000, // 6 x 1800 - 4800
       contribution_inr: 7200,
     });
     expect(e.decision).toBe('OFFER');
   });
 
-  it('under the absolute floor a small group is REVIEW (the 20000 floor does not scale)', () => {
-    expect(run({ rooms: 3 }).evaluation).toMatchObject({
-      decision: 'REVIEW',
-      reasons: ['FLOOR_BREACH'],
-    });
+  it('one room for one night at the floor rate is an OFFER (the small booking case)', () => {
+    expect(run({ rooms: 1, stay: { check_in: '2026-11-01', nights: 1 } }).evaluation.decision).toBe(
+      'OFFER',
+    );
   });
 });
 
@@ -165,5 +163,57 @@ describe('purity', () => {
     const b = run({ rooms: 12 }, context);
     expect(JSON.stringify(context)).toBe(snapshot);
     expect(a).toEqual(b);
+  });
+});
+
+describe('Sales discount off the full price (D-057)', () => {
+  it('5% off: rate 1900, within the 10% limit, a clean OFFER', () => {
+    const { evaluation: e } = run({ rate_per_room_night_inr: undefined, discount_pct: 5 });
+    expect(e.decision).toBe('OFFER');
+    expect(e.totals).toMatchObject({
+      room_revenue_inr: 38000,
+      list_revenue_inr: 40000,
+      discount_pct: 5,
+      max_discount_pct: 10,
+      min_room_revenue_inr: 36000,
+    });
+  });
+
+  it('10% off is the limit; 11% goes to the owner, with a raise-the-rate fix', () => {
+    expect(run({ rate_per_room_night_inr: undefined, discount_pct: 10 }).evaluation.decision).toBe(
+      'OFFER',
+    );
+    const { evaluation: e } = run({ rate_per_room_night_inr: undefined, discount_pct: 11 });
+    expect(e).toMatchObject({ decision: 'REVIEW', reasons: ['FLOOR_BREACH'] });
+    expect(e.counter_offers[0]).toMatchObject({
+      type: 'RAISE_RATE',
+      rate_per_room_night_inr: 1800,
+    });
+  });
+
+  it('the owner limit comes from the policy', () => {
+    const policy = { ...fx.policy, max_sales_discount_pct: 20 };
+    expect(
+      run({ rate_per_room_night_inr: undefined, discount_pct: 15 }, ctx({ policy })).evaluation
+        .decision,
+    ).toBe('OFFER');
+  });
+
+  it('a discount and a rate together are refused', () => {
+    const v = validateQuoteRequest({
+      ...fx.request,
+      rate_per_room_night_inr: 2000,
+      discount_pct: 5,
+    });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.problem.errors).toEqual([
+        {
+          path: 'discount_pct',
+          code: 'INCONSISTENT',
+          message: 'Give a discount or a rate, not both',
+        },
+      ]);
+    }
   });
 });

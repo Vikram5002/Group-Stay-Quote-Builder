@@ -107,7 +107,7 @@ describe.skipIf(!hasDb)('createQuote (DynamoDB Local)', () => {
   it('falls back to the default policy when none is saved', async () => {
     const { deps } = await setup();
     const q = await createQuote(deps, request({ rooms: 3 }), sales);
-    expect(q.evaluation.reasons).toEqual(['FLOOR_BREACH']); // absolute 20000 floor by default
+    expect(q.evaluation.totals.floor_rate_per_room_night_inr).toBe(2000); // 20000 / 10 rooms
   });
 
   it('keeps the ledger consistent', async () => {

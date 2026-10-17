@@ -18,9 +18,9 @@ import { counted } from '../../lib/plural';
 
 const METER_NOTE: Record<LiveMeterState['kind'], string> = {
   start:
-    'Fill in the group, dates and rooms. The contribution against the floor will appear here and update as you change the rate.',
-  invalid: 'Enter valid values to see the contribution.',
-  error: 'The server could not check these values, so no contribution is shown.',
+    'Fill in the group, dates and rooms. The price against the Sales limit will appear here and update as you change the discount or rate.',
+  invalid: 'Enter valid values to see the price check.',
+  error: 'The server could not check these values, so no price check is shown.',
   checking: 'Checking with the server…',
   estimate: 'Estimate from your rate. The server confirms it next.',
   server: 'Confirmed by the server.',
@@ -38,7 +38,7 @@ export function LiveMeter({ state }: { state: LiveMeterState }) {
   );
   if (!('totals' in state) || !state.totals) {
     return (
-      <Card title="Live contribution" aria-busy={state.kind === 'checking' || undefined}>
+      <Card title="Live price check" aria-busy={state.kind === 'checking' || undefined}>
         {state.kind === 'start' ? (
           <p className="text-sm text-ink-muted">{METER_NOTE.start}</p>
         ) : (
@@ -49,19 +49,49 @@ export function LiveMeter({ state }: { state: LiveMeterState }) {
   }
   const { totals } = state;
   const checking = state.kind === 'checking';
+  const status = state.evaluation ? meterStatus(state.evaluation, totals) : null;
   return (
-    <Card title="Live contribution" aria-busy={checking || undefined}>
+    <Card title="Live price check" aria-busy={checking || undefined}>
       <div className={checking ? 'opacity-60' : undefined}>
-        <ContributionMeter
-          contribution={totals.contribution_inr}
-          floor={totals.contribution_floor_inr}
-          max={Math.max(totals.room_revenue_inr ?? 0, totals.contribution_floor_inr * 2)}
-          {...(state.evaluation ? { status: meterStatus(state.evaluation, totals) } : {})}
-        />
+        {/* The lowest room revenue that needs no owner review: minimum safe rate x room-nights.
+            It already allows for bundled extras, so the bar agrees with the decision. */}
+        {totals.min_rate_per_room_night_inr === null || totals.contribution_floor_inr === null ? (
+          status?.tone === 'danger' ? (
+            // Nothing can be offered, so there is no price to check: say why instead.
+            <Badge tone="danger">{status.label}</Badge>
+          ) : (
+            <p className="text-sm">
+              A cost is unknown, so the price cannot be checked yet: the owner reviews it.
+            </p>
+          )
+        ) : (
+          <ContributionMeter
+            label="Revenue after discount"
+            floorLabel="Lowest allowed"
+            okText="Within the Sales limit"
+            belowText="Over the limit: owner review"
+            contribution={totals.room_revenue_inr}
+            floor={totals.min_rate_per_room_night_inr * totals.room_nights}
+            max={totals.list_revenue_inr}
+            {...(status ? { status } : {})}
+          />
+        )}
         <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
-          <dt>Contribution</dt>
+          <dt>Total revenue at full price</dt>
           <dd className="font-semibold">
-            <Money value={totals.contribution_inr} />
+            <Money value={totals.list_revenue_inr} />
+          </dd>
+          <dt>Discount (Sales limit {totals.max_discount_pct}%)</dt>
+          <dd className="font-semibold">
+            {totals.discount_pct === null ? 'Unknown' : `${totals.discount_pct}%`}
+          </dd>
+          <dt>Revenue after discount</dt>
+          <dd className="font-semibold">
+            <Money value={totals.room_revenue_inr} />
+          </dd>
+          <dt>Full price per room-night</dt>
+          <dd className="font-semibold">
+            <Money value={totals.floor_rate_per_room_night_inr} />
           </dd>
           <dt>Minimum safe rate per room-night</dt>
           <dd className="font-semibold">
@@ -198,6 +228,9 @@ export function TotalsTable({ totals }: { totals: QuoteTotals }) {
         </Row>
         <Row label="Contribution">
           <Money value={totals.contribution_inr} />
+        </Row>
+        <Row label="Floor rate per room-night (cost included)">
+          <Money value={totals.floor_rate_per_room_night_inr} />
         </Row>
         <Row label="Contribution floor">
           <Money value={totals.contribution_floor_inr} />

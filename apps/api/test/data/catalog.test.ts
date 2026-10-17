@@ -1,5 +1,5 @@
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
-import { DEFAULT_POLICY } from '@c32/core';
+import { DEFAULT_POLICY, Policy } from '@c32/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   getInventory,
@@ -9,7 +9,7 @@ import {
   type DataContext,
 } from '../../src/data/catalog.js';
 import { VersionConflictError } from '../../src/data/errors.js';
-import { getPolicy, savePolicy } from '../../src/data/policy.js';
+import { getPolicy, savePolicy, upgradeStoredPolicy } from '../../src/data/policy.js';
 import { keys } from '../../src/data/table.js';
 import { createTestTable, hasDb, night } from './local-db.js';
 
@@ -94,5 +94,32 @@ describe.skipIf(!hasDb)('catalog and policy repositories (DynamoDB Local)', () =
       VersionConflictError,
     );
     expect((await getPolicy(ctx))?.validity_hours).toBe(48);
+  });
+});
+
+describe('stored policies from before D-056', () => {
+  it('drop the retired floor mode fields and default total rooms', () => {
+    const legacy = {
+      property_id: 'p1',
+      timezone: 'Asia/Kolkata',
+      floor_mode: 'absolute',
+      contribution_floor_inr: 20000,
+      floor_per_room_night_inr: null,
+      validity_hours: 24,
+      stay_cutoff_hours: 24,
+      min_validity_hours: 2,
+      min_partial_rooms_units: 1,
+      guests_per_room_units: 2,
+      version: 6,
+    };
+    expect(Policy.parse(upgradeStoredPolicy(legacy))).toMatchObject({
+      total_rooms_units: 10,
+      max_sales_discount_pct: 10,
+      version: 6,
+      validity_hours: 24,
+    });
+    expect(upgradeStoredPolicy({ ...legacy, total_rooms_units: 30 })).toMatchObject({
+      total_rooms_units: 30,
+    });
   });
 });

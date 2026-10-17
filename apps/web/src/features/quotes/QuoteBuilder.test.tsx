@@ -70,7 +70,7 @@ async function toReview(
     await u.type(screen.getByLabelText(/^Rooms/), opts.rooms);
   }
   await next(u);
-  if (opts.rate) await u.type(screen.getByLabelText(/Rate per room per night/), opts.rate);
+  if (opts.rate) await u.type(screen.getByLabelText(/fixed rate per room-night/), opts.rate);
   await next(u);
 }
 
@@ -85,8 +85,8 @@ describe('quote builder: the three rubric flows', () => {
       .getByRole('heading', { name: 'Totals' })
       .closest('section') as HTMLElement;
     expect(within(totals).getByText(/40,000/)).toBeInTheDocument();
-    expect(within(totals).getByText(/24,000/)).toBeInTheDocument();
-    expect(screen.getAllByText('Meets floor').length).toBeGreaterThan(0);
+    expect(within(totals).getAllByText(/24,000/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Within the Sales limit').length).toBeGreaterThan(0);
     expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
     // The button stays disabled while the server is still confirming the latest form.
@@ -118,7 +118,7 @@ describe('quote builder: the three rubric flows', () => {
     await toReview(u, { rate: '1700' });
 
     expect(await screen.findByText('Owner review required')).toBeInTheDocument();
-    expect(screen.getAllByText(/Below floor: review required/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Send for Owner review' })).toBeEnabled();
 
     await u.click(screen.getByRole('button', { name: 'Use rate 1800' }));
@@ -137,7 +137,9 @@ describe('quote builder: the three rubric flows', () => {
       .getByRole('heading', { name: 'Totals' })
       .closest('section') as HTMLElement;
     expect(within(totals).getAllByText('Unknown').length).toBeGreaterThan(0);
-    expect(screen.getByRole('img', { name: /Contribution: Unknown/ })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/A cost is unknown, so the price cannot be checked yet/).length,
+    ).toBeGreaterThan(0);
   });
 });
 
@@ -167,11 +169,30 @@ describe('quote builder: forms and live meter', () => {
     // The plan rate is 2000, so the server answer arrives first.
     expect(await screen.findByText('Confirmed by the server.')).toBeInTheDocument();
 
-    await u.type(screen.getByLabelText(/Rate per room per night/), '1700');
+    await u.type(screen.getByLabelText(/fixed rate per room-night/), '1700');
     expect(await screen.findByText(/Estimate from your rate/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Below floor: review required/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByText('Confirmed by the server.')).toBeInTheDocument());
-    expect(screen.getAllByText(/Below floor: review required/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
+  });
+
+  it('Sales prices by a discount: within the limit is fine, over it goes to the owner', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    const discount = screen.getByLabelText(/Discount off full price/);
+    await u.clear(discount);
+    await u.type(discount, '5');
+    await waitFor(() => expect(screen.getByText('Confirmed by the server.')).toBeInTheDocument());
+    expect(screen.getAllByText('Within the Sales limit').length).toBeGreaterThan(0);
+    expect(screen.getByText('5%')).toBeInTheDocument();
+
+    await u.clear(discount);
+    await u.type(discount, '15');
+    await waitFor(() => expect(screen.getByText('15%')).toBeInTheDocument());
+    expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
   });
 
   it('adds an inclusion with an unknown cost and sends it for review', async () => {
@@ -195,7 +216,7 @@ describe('quote builder: forms and live meter', () => {
     await fillGroup(u);
     await next(u);
     await next(u);
-    await u.type(screen.getByLabelText(/Rate per room per night/), '2000');
+    await u.type(screen.getByLabelText(/fixed rate per room-night/), '2000');
     await u.click(screen.getByRole('button', { name: 'Add inclusion' }));
     await u.type(screen.getByLabelText(/Inclusion 1 name/), 'Breakfast');
     await u.type(screen.getByLabelText(/Cost to the hotel per unit/), '150');
@@ -245,10 +266,10 @@ describe('quote builder: forms and live meter', () => {
 });
 
 describe('quote builder: the live meter never shows stale numbers as confirmed', () => {
-  const meter = () => screen.getByRole('complementary', { name: 'Live contribution' });
-  const rateField = () => screen.getByLabelText(/Rate per room per night/);
+  const meter = () => screen.getByRole('complementary', { name: 'Live price check' });
+  const rateField = () => screen.getByLabelText(/fixed rate per room-night/);
 
-  /** Step 3 with the rate at 1500: 20 room-nights x (1500 - 800) = 14000. */
+  /** Step 3 with the rate at 1500: revenue after discount 20 room-nights x 1500 = 30000. */
   async function atRate1500(u: ReturnType<typeof user>) {
     renderBuilder();
     await fillGroup(u);
@@ -258,7 +279,7 @@ describe('quote builder: the live meter never shows stale numbers as confirmed',
     await waitFor(() =>
       expect(within(meter()).getByText('Confirmed by the server.')).toBeInTheDocument(),
     );
-    expect(within(meter()).getByText('₹14,000')).toBeInTheDocument();
+    expect(within(meter()).getByText('₹30,000')).toBeInTheDocument();
   }
 
   it.each([
@@ -272,9 +293,9 @@ describe('quote builder: the live meter never shows stale numbers as confirmed',
 
     expect(screen.getByText('Must be between 0 and 10,00,000')).toBeInTheDocument();
     expect(rateField()).toHaveAttribute('aria-invalid', 'true');
-    expect(within(meter()).getByText('Enter valid values to see the contribution.')).toBeVisible();
+    expect(within(meter()).getByText('Enter valid values to see the price check.')).toBeVisible();
     expect(within(meter()).queryByText('Confirmed by the server.')).not.toBeInTheDocument();
-    expect(within(meter()).queryByText('₹14,000')).not.toBeInTheDocument();
+    expect(within(meter()).queryByText('₹30,000')).not.toBeInTheDocument();
   });
 
   it('clearing the rate prices the stay from the rate plan again', async () => {
@@ -282,9 +303,11 @@ describe('quote builder: the live meter never shows stale numbers as confirmed',
     await atRate1500(u);
     await u.clear(rateField());
 
-    // Rate plan 2000: 20 x (2000 - 800) = 24000.
-    await waitFor(() => expect(within(meter()).getByText('₹24,000')).toBeInTheDocument());
-    expect(within(meter()).getByText('Confirmed by the server.')).toBeInTheDocument();
+    // No rate and no discount: the full price, 20 x 2000 = 40000.
+    await waitFor(() =>
+      expect(within(meter()).getByText('Confirmed by the server.')).toBeInTheDocument(),
+    );
+    expect(within(meter()).getAllByText('₹40,000').length).toBeGreaterThan(1);
   });
 
   it('an inclusion without a name or cost makes the meter neutral', async () => {
@@ -292,7 +315,7 @@ describe('quote builder: the live meter never shows stale numbers as confirmed',
     await atRate1500(u);
     await u.click(screen.getByRole('button', { name: 'Add inclusion' }));
 
-    expect(within(meter()).getByText('Enter valid values to see the contribution.')).toBeVisible();
+    expect(within(meter()).getByText('Enter valid values to see the price check.')).toBeVisible();
     expect(within(meter()).queryByText('Confirmed by the server.')).not.toBeInTheDocument();
   });
 
@@ -306,7 +329,7 @@ describe('quote builder: the live meter never shows stale numbers as confirmed',
 });
 
 describe('quote builder: the live meter names the decision', () => {
-  const meter = () => screen.getByRole('complementary', { name: 'Live contribution' });
+  const meter = () => screen.getByRole('complementary', { name: 'Live price check' });
 
   it('says no rooms are available when another quote holds them all', async () => {
     // Another quote holds all 10 standard rooms on 1 and 2 Nov.
@@ -337,7 +360,7 @@ describe('quote builder: the live meter names the decision', () => {
     await waitFor(() =>
       expect(within(meter()).getByText('Cannot offer: no rooms available')).toBeInTheDocument(),
     );
-    expect(within(meter()).queryByText(/Below floor/)).not.toBeInTheDocument();
+    expect(within(meter()).queryByText(/Over the limit/)).not.toBeInTheDocument();
   });
 
   it('says the dates are not on sale when there is no inventory', async () => {
@@ -360,7 +383,7 @@ describe('quote builder: the live meter names the decision', () => {
 });
 
 describe('quote builder: check-in dates', () => {
-  const meter = () => screen.getByRole('complementary', { name: 'Live contribution' });
+  const meter = () => screen.getByRole('complementary', { name: 'Live price check' });
 
   it('refuses a check-in before today in the property time zone', async () => {
     const u = user();

@@ -62,7 +62,7 @@ test.describe('rubric flows', () => {
     await signIn(page, 'Asha', 'Sales');
     await buildQuote(page, { organiser: 'Discount Group', rate: '1700' });
     await expect(page.getByText('Owner review required')).toBeVisible();
-    await expect(page.getByText(/Below floor: review required/).first()).toBeVisible();
+    await expect(page.getByText(/Over the limit: owner review/).first()).toBeVisible();
     await issueQuote(page, 'Send for Owner review');
 
     await expect(page.getByText('Waiting for Owner approval')).toBeVisible();

@@ -10,4 +10,4 @@ Two timed rehearsals are required before the final submission (roadmap M5). Use 
 
 Checklist before each run: both accounts signed in; Availability shows 10 of 10 on 1 and 2 Nov
 2026; the recording is ready as a fallback; everyone can answer the fixture numbers
-(40000, 16000, 24000, 20000, 1800).
+(40000, 16000, 24000; full price 2000 a night, Sales up to 10% off = 1800).

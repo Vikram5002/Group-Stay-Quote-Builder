@@ -1,24 +1,55 @@
 import type { Policy } from '../contract/policy.js';
-import { assertInt } from './money.js';
+import { assertInt, ceilDiv } from './money.js';
 
 /** The policy fields the floor depends on. */
 export type FloorPolicy = Pick<
   Policy,
-  'floor_mode' | 'contribution_floor_inr' | 'floor_per_room_night_inr'
+  'contribution_floor_inr' | 'total_rooms_units' | 'max_sales_discount_pct'
 >;
 
 /**
- * Contribution floor in INR for a package of `roomNights` (decision G1, D-001).
- * - absolute: the package floor, whatever the volume.
- * - per_room_night: floor per room-night times room-nights, so it scales with volume.
+ * Floor rate (D-056): the minimum rate per room-night, package floor / total rooms, rounded up
+ * so it never lands under the floor. It already includes the variable cost: a room sold at the
+ * floor rate earns the floor rate minus its cost. Example: 20000 / 10 rooms = 2000.
  */
-export function floorFor(policy: FloorPolicy, roomNights: number): number {
+export function floorRate(policy: FloorPolicy): number {
+  assertInt('contribution_floor_inr', policy.contribution_floor_inr);
+  assertInt('total_rooms_units', policy.total_rooms_units, 1);
+  return ceilDiv(policy.contribution_floor_inr, policy.total_rooms_units);
+}
+
+/**
+ * Rate after a whole-percent discount off the floor rate (D-057), rounded up so a discount never
+ * takes more than it says. Example: 5% off 2000 = 1900.
+ */
+export function discountedRate(policy: FloorPolicy, discountPct: number): number {
+  assertInt('discount_pct', discountPct, 0, 100);
+  return ceilDiv(floorRate(policy) * (100 - discountPct), 100);
+}
+
+/**
+ * Lowest rate Sales may agree to without owner review: the floor rate less the owner's maximum
+ * Sales discount. Example: 2000 less 10% = 1800.
+ */
+export function minimumRate(policy: FloorPolicy): number {
+  assertInt('max_sales_discount_pct', policy.max_sales_discount_pct, 0, 100);
+  return discountedRate(policy, policy.max_sales_discount_pct);
+}
+
+/**
+ * The floor expressed as contribution for a package: minimum rate x room-nights - variable cost.
+ * A package passes when its contribution reaches it, which with a flat rate and no inclusions is
+ * exactly "rate >= minimum rate", that is "discount <= the Sales limit"; a bundled inclusion's
+ * cost must also be covered. Null when the variable cost is unknown (never treated as 0).
+ */
+export function floorFor(
+  policy: FloorPolicy,
+  roomNights: number,
+  variableCostInr: number | null,
+): number | null {
   assertInt('roomNights', roomNights);
-  if (policy.floor_mode === 'absolute') return policy.contribution_floor_inr;
-  if (policy.floor_per_room_night_inr === null) {
-    throw new RangeError('floor_per_room_night_inr is required in per_room_night mode');
-  }
-  return policy.floor_per_room_night_inr * roomNights;
+  if (variableCostInr === null) return null;
+  return minimumRate(policy) * roomNights - variableCostInr;
 }
 
 /** BR-06: the floor passes when contribution is at least the floor (equal passes). */

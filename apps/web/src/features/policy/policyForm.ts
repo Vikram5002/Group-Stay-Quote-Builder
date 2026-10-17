@@ -1,13 +1,11 @@
 import { LIMITS, parseWith, PolicyUpdateRequest } from '@c32/core';
-import type { FLOOR_MODES, Policy, ValidationIssue } from '@c32/core';
-
-export type FloorModeValue = (typeof FLOOR_MODES)[number];
+import type { Policy, ValidationIssue } from '@c32/core';
 
 /** The policy as text, so half-typed numbers stay visible while editing. */
 export interface PolicyForm {
-  floorMode: FloorModeValue;
   contributionFloor: string;
-  floorPerRoomNight: string;
+  totalRooms: string;
+  maxDiscount: string;
   validityHours: string;
   stayCutoffHours: string;
   minValidityHours: string;
@@ -21,9 +19,9 @@ const text = (n: number | null) => (n === null ? '' : String(n));
 
 export function formFromPolicy(policy: Policy): PolicyForm {
   return {
-    floorMode: policy.floor_mode,
     contributionFloor: text(policy.contribution_floor_inr),
-    floorPerRoomNight: text(policy.floor_per_room_night_inr),
+    totalRooms: text(policy.total_rooms_units),
+    maxDiscount: text(policy.max_sales_discount_pct),
     validityHours: text(policy.validity_hours),
     stayCutoffHours: text(policy.stay_cutoff_hours),
     minValidityHours: text(policy.min_validity_hours),
@@ -39,9 +37,9 @@ const nullableNum = (value: string): number | null => (value.trim() === '' ? nul
 export function toUpdate(form: PolicyForm, version: number) {
   return {
     timezone: form.timezone.trim(),
-    floor_mode: form.floorMode,
     contribution_floor_inr: num(form.contributionFloor),
-    floor_per_room_night_inr: nullableNum(form.floorPerRoomNight),
+    total_rooms_units: num(form.totalRooms),
+    max_sales_discount_pct: num(form.maxDiscount),
     validity_hours: num(form.validityHours),
     stay_cutoff_hours: num(form.stayCutoffHours),
     min_validity_hours: num(form.minValidityHours),
@@ -52,9 +50,9 @@ export function toUpdate(form: PolicyForm, version: number) {
 }
 
 export const FIELD_LABEL: Record<string, string> = {
-  floor_mode: 'Floor mode',
   contribution_floor_inr: 'Package floor',
-  floor_per_room_night_inr: 'Floor per room-night',
+  total_rooms_units: 'Total rooms',
+  max_sales_discount_pct: 'Max Sales discount',
   validity_hours: 'Validity',
   stay_cutoff_hours: 'Stay cutoff',
   min_validity_hours: 'Minimum validity',
@@ -65,7 +63,8 @@ export const FIELD_LABEL: Record<string, string> = {
 
 const RANGES: Record<string, [number, number]> = {
   contribution_floor_inr: [0, LIMITS.MAX_UNIT_INR * 100],
-  floor_per_room_night_inr: [0, LIMITS.MAX_UNIT_INR],
+  total_rooms_units: [1, LIMITS.MAX_ROOMS],
+  max_sales_discount_pct: [0, 100],
   validity_hours: [1, LIMITS.MAX_POLICY_HOURS],
   stay_cutoff_hours: [0, LIMITS.MAX_POLICY_HOURS],
   min_validity_hours: [0, LIMITS.MAX_POLICY_HOURS],
@@ -77,9 +76,7 @@ function friendly(issue: ValidationIssue): string {
   const range = RANGES[issue.path];
   switch (issue.code) {
     case 'REQUIRED':
-      return issue.path === 'floor_per_room_night_inr'
-        ? 'Required when the floor mode is per room-night'
-        : 'Required';
+      return 'Required';
     case 'NOT_INTEGER':
       return 'Use a whole number';
     case 'INVALID_TYPE':
@@ -100,28 +97,10 @@ function friendly(issue: ValidationIssue): string {
 export type PolicyParse =
   { ok: true; value: ReturnType<typeof toUpdate> } | { ok: false; errors: Record<string, string> };
 
-/** The floor field the mode does not use: it cannot be edited and is not checked. */
-export function inactiveFloor(
-  mode: FloorModeValue,
-): 'contribution_floor_inr' | 'floor_per_room_night_inr' {
-  return mode === 'absolute' ? 'floor_per_room_night_inr' : 'contribution_floor_inr';
-}
-
-/**
- * Same schema as the server, so the checks cannot drift. Only the floor that applies to the mode
- * is checked; if the other one holds something unusable, the saved value is sent unchanged.
- */
-export function parsePolicy(form: PolicyForm, saved: Policy): PolicyParse {
-  let body = toUpdate(form, saved.version);
-  let result = parseWith(PolicyUpdateRequest, body);
-  const inactive = inactiveFloor(form.floorMode);
-  if (!result.ok && result.issues.some((i) => i.path === inactive)) {
-    body =
-      inactive === 'contribution_floor_inr'
-        ? { ...body, contribution_floor_inr: saved.contribution_floor_inr }
-        : { ...body, floor_per_room_night_inr: saved.floor_per_room_night_inr };
-    result = parseWith(PolicyUpdateRequest, body);
-  }
+/** Same schema as the server, so the checks cannot drift. */
+export function parsePolicy(form: PolicyForm, version: number): PolicyParse {
+  const body = toUpdate(form, version);
+  const result = parseWith(PolicyUpdateRequest, body);
   if (result.ok) return { ok: true, value: body };
   const errors: Record<string, string> = {};
   for (const issue of result.issues) errors[issue.path] ??= friendly(issue);
@@ -138,4 +117,20 @@ export function describeChanges(before: Policy, after: Policy): string[] {
     }
   }
   return out;
+}
+
+/** Floor rate the form implies (package floor / total rooms, rounded up), or null if invalid. */
+export function floorRatePreview(form: PolicyForm): number | null {
+  const floor = num(form.contributionFloor);
+  const rooms = num(form.totalRooms);
+  if (!Number.isInteger(floor) || floor < 0 || !Number.isInteger(rooms) || rooms < 1) return null;
+  return Math.ceil(floor / rooms);
+}
+
+/** Lowest rate Sales can give alone: full price less the max Sales discount, rounded up. */
+export function lowestRatePreview(form: PolicyForm): number | null {
+  const full = floorRatePreview(form);
+  const pct = num(form.maxDiscount);
+  if (full === null || !Number.isInteger(pct) || pct < 0 || pct > 100) return null;
+  return Math.ceil((full * (100 - pct)) / 100);
 }

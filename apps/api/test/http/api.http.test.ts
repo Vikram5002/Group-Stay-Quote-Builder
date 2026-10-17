@@ -117,8 +117,10 @@ describe.skipIf(!hasDb)('HTTP API (DynamoDB Local)', () => {
     });
 
     it('get, list (filters and paging) and audit', async () => {
-      // a: 1 room (REVIEW, below the floor); b: the other 9 (OFFER, 21600 >= 20000)
-      const a = Quote.parse((await post('/v1/quotes', SALES, body({ rooms: 1 }))).body);
+      // a: 1 room below the floor rate (REVIEW); b: the other 9 at the floor rate (OFFER)
+      const a = Quote.parse(
+        (await post('/v1/quotes', SALES, body({ rooms: 1, rate_per_room_night_inr: 1500 }))).body,
+      );
       const b = Quote.parse((await post('/v1/quotes', SALES, body({ rooms: 9 }))).body);
       expect(Quote.parse((await get(`/v1/quotes/${a.quote_id}`, VIEWER).expect(200)).body)).toEqual(
         a,
@@ -268,7 +270,7 @@ describe.skipIf(!hasDb)('HTTP API (DynamoDB Local)', () => {
       expect(p0).toMatchObject({
         version: 0,
         contribution_floor_inr: 20000,
-        floor_mode: 'absolute',
+        total_rooms_units: 10,
       });
       const { property_id: _p, ...update } = p0;
       const p1 = Policy.parse(
@@ -294,15 +296,44 @@ describe.skipIf(!hasDb)('HTTP API (DynamoDB Local)', () => {
       expect(invalid.status).toBe(422);
     });
 
-    it('a saved policy changes decisions: per-room-night floor makes 3 rooms an OFFER', async () => {
+    it('a saved policy changes decisions: 20 rooms halve the floor rate, so 1500 is an OFFER', async () => {
       const { property_id: _p, ...p0 } = Policy.parse((await get('/v1/policy', OWNER)).body);
+      const quote = () =>
+        post('/v1/quotes/preview', SALES, body({ rate_per_room_night_inr: 1500 }));
+      expect((await quote()).body.evaluation.decision).toBe('REVIEW'); // floor rate 2000
       await request(app)
         .put('/v1/policy')
         .set('x-dev-user', OWNER)
-        .send({ ...p0, floor_mode: 'per_room_night' })
+        .send({ ...p0, total_rooms_units: 20 })
         .expect(200);
-      const q = Quote.parse((await post('/v1/quotes', SALES, body({ rooms: 3 }))).body);
-      expect(q.evaluation.decision).toBe('OFFER');
+      expect((await quote()).body.evaluation.decision).toBe('OFFER'); // floor rate 1000
+    });
+
+    it('saving total rooms sets every future night, never below what is held', async () => {
+      const { property_id: _p, ...p0 } = Policy.parse((await get('/v1/policy', OWNER)).body);
+      await post('/v1/quotes', SALES, body({ rooms: 6 })).expect(201); // holds 6 per night
+      const save = (rooms: number, version: number) =>
+        request(app)
+          .put('/v1/policy')
+          .set('x-dev-user', OWNER)
+          .send({ ...p0, total_rooms_units: rooms, version })
+          .expect(200);
+      const nights = async () =>
+        AvailabilityResponse.parse(
+          (await get('/v1/availability?room_type=standard&from=2026-11-01&to=2026-11-02', VIEWER))
+            .body,
+        ).nights.map((n) => [n.total_units, n.available_units, n.held_units]);
+
+      await save(15, 0);
+      expect(await nights()).toEqual([
+        [15, 9, 6],
+        [15, 9, 6],
+      ]);
+      await save(4, 1); // below the 6 held: those nights are left alone
+      expect(await nights()).toEqual([
+        [15, 9, 6],
+        [15, 9, 6],
+      ]);
     });
   });
 

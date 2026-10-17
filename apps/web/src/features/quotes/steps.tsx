@@ -225,14 +225,26 @@ export function PricingStep({ form, patch, errors }: StepProps) {
       <Card title="Pricing">
         <div className="grid gap-4 md:grid-cols-2">
           <TextField
-            label="Rate per room per night (INR)"
+            label="Discount off full price (%)"
+            name="discount_pct"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={100}
+            value={form.discount}
+            onChange={(e) => patch({ discount: e.target.value, rate: '' })}
+            hint="Up to the owner's limit Sales can confirm alone; more goes to the owner."
+            {...err(errors, 'discount_pct')}
+          />
+          <TextField
+            label="Or a fixed rate per room-night (INR)"
             name="rate_per_room_night_inr"
             type="number"
             inputMode="numeric"
             min={0}
             value={form.rate}
             onChange={(e) => patch({ rate: e.target.value })}
-            hint="Leave blank to use the rate plan."
+            hint="Optional. Replaces the discount, for example to cover a bundled extra."
             {...err(errors, 'rate_per_room_night_inr')}
           />
           <TextField

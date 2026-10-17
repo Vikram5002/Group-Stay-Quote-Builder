@@ -12,3 +12,4 @@ cdk.out/
 .idea/
 ~$*.docx
 .local-files/
+dist-lambda/

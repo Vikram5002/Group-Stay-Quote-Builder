@@ -21,9 +21,26 @@ A sales manager at a small hotel enters a group request (rooms, dates, room type
 │   └── fixtures/       Case fixture (authoritative) and test scenarios
 ├── docs/
 │   ├── api/            OpenAPI 3.1 document generated from the contract
-│   ├── architecture/   Decision log
+│   ├── architecture/   Decision log, Track 1 deployment handoff
+│   ├── testing/        Test traceability, local performance
 │   └── blueprint/      Master blueprint and four-track roadmap
 └── .github/workflows/  Continuous integration
+```
+
+## Track 1 status (core engine and API)
+
+All 14 work packages are done (tags `T1.01` to `T1.14`, `core-v0.1`). Every golden test T01 to T25
+and property P1 to P6 passes in CI; see [test traceability](docs/testing/traceability.md). The API
+implements every route in the contract. Deploying it is Track 3's job:
+[what to deploy](docs/architecture/track1-handoff.md).
+
+Run it locally (Docker for DynamoDB Local, no AWS account needed):
+
+```bash
+npm install
+npm run db:up -w @c32/api && npm run seed -w @c32/api
+npm run dev -w @c32/api        # http://localhost:3000, caller set with x-dev-user: sales-1:Sales
+DYNAMODB_ENDPOINT=http://localhost:8100 npm run verify   # everything CI runs, with the database tests
 ```
 
 ## Getting started

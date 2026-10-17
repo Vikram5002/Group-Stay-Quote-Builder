@@ -4,7 +4,13 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '**/cdk.out/**'],
+    ignores: [
+      '**/dist/**',
+      '**/dist-lambda/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      '**/cdk.out/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.strict,
@@ -40,6 +46,13 @@ export default tseslint.config(
         },
       ],
       'no-restricted-globals': ['error', 'process', 'Buffer', 'require'],
+    },
+  },
+  {
+    // Plain Node build scripts.
+    files: ['**/scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { console: 'readonly', process: 'readonly', URL: 'readonly' },
     },
   },
   {

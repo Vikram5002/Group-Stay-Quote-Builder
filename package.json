@@ -8,8 +8,8 @@
     "node": ">=22.12.0"
   },
   "workspaces": [
-    "packages/*",
-    "apps/*"
+    "packages/core",
+    "apps/api"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -35,5 +35,11 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",
     "vitest": "^5.0.5"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all",
+    "printWidth": 100,
+    "semi": true
   }
 }

@@ -1,6 +1,6 @@
-# Branching
+# Contributing
 
-## Rule
+## Branches and commits
 
 - One branch per work package, named after its ID: `T<track>.<nn>`.
   Work package `T1-01` lives on branch `T1.01`, `T2-03` on `T2.03`, and so on.

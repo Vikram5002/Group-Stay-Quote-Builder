@@ -14,8 +14,8 @@ type Doc = {
 const doc = buildOpenApiDocument() as Doc;
 
 describe('OpenAPI document generated from Zod', () => {
-  it('matches the committed docs/openapi.json (run `npm run openapi` after contract changes)', () => {
-    expect(JSON.parse(JSON.stringify(doc))).toEqual(readJson('docs/openapi.json'));
+  it('matches the committed docs/api/openapi.json (run `npm run openapi` after contract changes)', () => {
+    expect(JSON.parse(JSON.stringify(doc))).toEqual(readJson('docs/api/openapi.json'));
   });
 
   it('is deterministic', () => {

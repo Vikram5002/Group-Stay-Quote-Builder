@@ -1,32 +1,50 @@
-# Group Stay Quote Builder (Case C32)
+# Group Stay Quote Builder
 
-Fynd x NMIMS Hyderabad, product and business simulation.
+**Case C32 · Fynd x NMIMS Hyderabad · product and business simulation**
 
-A sales manager at a small hotel enters a group request (rooms, dates, room type, inclusions). The system returns a feasible, dated package that respects room-night capacity and a contribution floor. It holds inventory atomically, expires stale quotes, and explains every decision.
+A sales manager at a small hotel enters a group request (rooms, dates, room type, inclusions). The system returns a feasible, dated package that respects room-night capacity and a contribution floor. It holds inventory atomically, expires stale quotes, and explains every decision with reason codes and an arithmetic trail.
 
 > **Honesty note:** all data in this project is synthetic. Nothing here claims live revenue, market demand or production readiness. Items marked HYPOTHESIS or ASSUMPTION must be tested before being treated as fact.
-
-## Stack
-
-React, Node.js, Express, TypeScript, AWS serverless (Lambda, API Gateway, DynamoDB, Cognito, S3, CloudFront, EventBridge Scheduler), defined in CDK.
 
 ## Repository layout
 
 ```
-packages/core/     pure rules engine and API contract (Zod schemas)   Track 1
-apps/api/          Express API, services, repositories, Lambda        Track 1
-apps/web/          React SPA                                          Track 2
-infra/             AWS CDK app                                        Track 3
-evidence/          baseline, negotiated scope, final evidence, ledger Track 4
-data/fixtures/     case fixture (authoritative schema) and scenarios
-docs/              blueprint, roadmap, decisions, OpenAPI, branching
+.
+├── apps/
+│   ├── api/            Express API, runs locally and in AWS Lambda           Track 1
+│   └── web/            React single-page app                                 Track 2
+├── packages/
+│   └── core/           Pure rules engine and API contract (Zod)              Track 1
+├── infra/              AWS CDK app (TypeScript)                              Track 3
+├── evidence/           Baseline, negotiated scope, final evidence, ledger    Track 4
+├── data/
+│   └── fixtures/       Case fixture (authoritative) and test scenarios
+├── docs/
+│   ├── api/            OpenAPI 3.1 document generated from the contract
+│   ├── architecture/   Decision log
+│   └── blueprint/      Master blueprint and four-track roadmap
+└── .github/workflows/  Continuous integration
 ```
 
-## Planning documents
+## Getting started
 
-- [Master blueprint](docs/blueprint/C32_Master_Blueprint.docx)
-- [Four-track roadmap](docs/blueprint/C32_Roadmap_4_Tracks.docx)
-- [Branching and phases](docs/BRANCHING.md)
+Requires Node.js 22.12 or later (24 recommended, see `.nvmrc`).
+
+```bash
+npm install
+npm run verify        # format check, lint, typecheck, tests with coverage
+npm run dev -w @c32/api   # API on http://localhost:3000 (GET /health)
+```
+
+| Script                  | What it does                                                 |
+| ----------------------- | ------------------------------------------------------------ |
+| `npm run build`         | Compile all TypeScript project references                    |
+| `npm run typecheck`     | Type-check sources and tests                                 |
+| `npm run lint`          | ESLint, including the purity rules for `@c32/core`           |
+| `npm test`              | Run all unit and API tests (Vitest)                          |
+| `npm run test:coverage` | Tests with the coverage gate (core: 95% lines, 90% branches) |
+| `npm run openapi`       | Regenerate `docs/api/openapi.json` from the Zod contract     |
+| `npm run verify`        | Everything CI runs                                           |
 
 ## Public checks (from the fixture)
 
@@ -35,3 +53,10 @@ docs/              blueprint, roadmap, decisions, OpenAPI, branching
 | 1   | 10 standard rooms, 2 nights from 2026-11-01, rate 2000 | Revenue 40000, contribution 24000, auto-confirm allowed    |
 | 2   | Same with 12 rooms, 10 available                       | Partial offer for 10 rooms, or decline; never an over-hold |
 | 3   | Rate below the contribution floor                      | Review required; cannot auto-confirm                       |
+
+## Further reading
+
+- [Contributing: branches and commits](CONTRIBUTING.md)
+- [Documentation index](docs/README.md)
+- [API contract v0.1](docs/api/README.md)
+- [Decision log](docs/architecture/decisions.md)

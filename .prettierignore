@@ -3,6 +3,6 @@ dist
 coverage
 cdk.out
 package-lock.json
-docs/openapi.json
+docs/api/openapi.json
 *.docx
 data/fixtures/fixture.json

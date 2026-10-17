@@ -15,6 +15,14 @@ export interface InclusionForm {
   price: string;
 }
 
+/** Another block of rooms in the same quote (D-058), as text while editing. */
+export interface LineForm {
+  id: string;
+  checkIn: string;
+  nights: string;
+  rooms: string;
+}
+
 /** Everything the wizard edits, kept as text so half-typed numbers stay visible. */
 export interface QuoteForm {
   organiser: string;
@@ -23,6 +31,8 @@ export interface QuoteForm {
   nights: string;
   roomType: string;
   rooms: string;
+  /** More blocks of rooms, for example 3 more rooms for one extra night. */
+  extraLines: LineForm[];
   /** Discount off the full price (the floor rate), whole percent. Blank means none. */
   discount: string;
   /** A fixed rate instead of a discount; blank means "use the discount". */
@@ -44,6 +54,7 @@ export const initialForm: QuoteForm = {
   nights: '2',
   roomType: 'standard',
   rooms: '10',
+  extraLines: [],
   discount: '0',
   rate: '',
   guests: '',
@@ -60,12 +71,17 @@ export const STEPS = [
 /** Which request fields each step owns, so a step only blocks on its own errors. */
 const STEP_PATHS: ReadonlyArray<readonly string[]> = [
   ['organiser', 'stay'],
-  ['room_type', 'rooms'],
+  ['room_type', 'rooms', 'additional_lines'],
   ['discount_pct', 'rate_per_room_night_inr', 'guests_per_room_units', 'inclusions'],
   [],
 ];
 
 let counter = 0;
+export function newLine(checkIn = ''): LineForm {
+  counter += 1;
+  return { id: `line-${counter}`, checkIn, nights: '1', rooms: '1' };
+}
+
 export function newInclusion(): InclusionForm {
   counter += 1;
   return {
@@ -111,6 +127,12 @@ export function toRequest(form: QuoteForm): unknown {
   else if (form.discount.trim() !== '') request.discount_pct = num(form.discount);
   if (form.guests.trim() !== '') request.guests_per_room_units = num(form.guests);
   if (form.inclusions.length > 0) request.inclusions = form.inclusions.map(inclusionRequest);
+  if (form.extraLines.length > 0) {
+    request.additional_lines = form.extraLines.map((l) => ({
+      stay: { check_in: l.checkIn, nights: l.nights.trim() === '' ? undefined : num(l.nights) },
+      rooms: num(l.rooms),
+    }));
+  }
   return request;
 }
 

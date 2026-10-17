@@ -134,14 +134,33 @@ export function createHandlers(store: MockStore) {
       confirmed: 'confirmed_units',
       available: 'available_units',
     } as const;
-    for (const date of nightsOf(quote)) {
+    for (const [date, units] of roomsPerNight(quote, rooms)) {
       const row = store.inventory.find(
         (r) => r.date === date && r.room_type === quote.request.room_type,
       );
       if (!row || row.available_units === null) continue;
-      row[column[from]] -= rooms;
-      row[column[to]] += rooms;
+      row[column[from]] -= units;
+      row[column[to]] += units;
     }
+  }
+
+  /**
+   * Rooms to move on each night. A multi-line quote (D-058) moves each line's rooms on that
+   * line's nights; otherwise `rooms` on every night of the stay.
+   */
+  function roomsPerNight(quote: Quote, rooms: number): Map<string, number> {
+    const lines = quote.evaluation.lines ?? [];
+    const out = new Map<string, number>();
+    if (lines.length > 1 && rooms === quote.evaluation.offered_rooms) {
+      for (const line of lines) {
+        for (const date of stayNights(line.check_in, line.nights)) {
+          out.set(date, (out.get(date) ?? 0) + line.rooms);
+        }
+      }
+      return out;
+    }
+    for (const date of nightsOf(quote)) out.set(date, rooms);
+    return out;
   }
 
   /** No hold is ever taken while availability is unknown (the engine reports that reason). */
@@ -405,6 +424,12 @@ export function createHandlers(store: MockStore) {
         const quote = find(String(params.id));
         if (!quote) return notFound(String(params.id));
         if (quote.status !== 'CONFIRMED') return problemResponse('INVALID_STATE');
+        if ((quote.request.additional_lines?.length ?? 0) > 0) {
+          // Same as the API: a multi-line booking cannot be amended yet (D-058).
+          return problemResponse('INVALID_STATE', {
+            detail: 'A multi-line booking cannot be amended yet; cancel it and quote again',
+          });
+        }
         const current = heldRooms(quote);
         if (body.value.rooms >= current) {
           return problemResponse('VALIDATION_FAILED', {

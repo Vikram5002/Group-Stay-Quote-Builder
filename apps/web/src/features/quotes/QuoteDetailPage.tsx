@@ -44,7 +44,18 @@ function Summary({ quote }: { quote: Quote }) {
         </dd>
         <dt className="text-ink-muted">Stay</dt>
         <dd>
-          {evaluation.check_in} to {evaluation.check_out} ({evaluation.nights} nights)
+          {(evaluation.lines?.length ?? 1) > 1 ? (
+            // A multi-line quote (D-058): each block of rooms with its own dates.
+            <ul className="flex flex-col gap-1">
+              {evaluation.lines?.map((line, i) => (
+                <li key={`${line.check_in}-${i}`}>
+                  {line.rooms} rooms, {line.check_in} to {line.check_out} ({line.nights} nights)
+                </li>
+              ))}
+            </ul>
+          ) : (
+            `${evaluation.check_in} to ${evaluation.check_out} (${evaluation.nights} nights)`
+          )}
         </dd>
         <dt className="text-ink-muted">Room type</dt>
         <dd className="capitalize">{request.room_type}</dd>

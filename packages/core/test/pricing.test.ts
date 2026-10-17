@@ -3,8 +3,11 @@ import {
   DEFAULT_POLICY,
   flatNights,
   price,
+  nightsFromRatePlan,
   type FloorPolicy,
+  type NightPrice,
   type PricingInput,
+  type RatePlanNight,
 } from '../src/index.js';
 
 const perRoomNight: FloorPolicy = { ...DEFAULT_POLICY, floor_mode: 'per_room_night' };
@@ -98,5 +101,73 @@ describe('unknown values propagate (BR-07, null means unknown, never zero)', () 
     const r = price({ ...withNight2(2000, 800), extras: { revenue_inr: null, cost_inr: 0 } });
     expect(r.totals.contribution_inr).toBeNull();
     expect(r.totals.min_rate_per_room_night_inr).toBeNull();
+  });
+});
+
+describe('per-night rates and the rate plan (BR-01, BR-08)', () => {
+  const plan: RatePlanNight[] = [
+    {
+      date: '2026-11-01',
+      room_type: 'standard',
+      rate_per_room_night_inr: 2000,
+      variable_cost_per_room_night_inr: 800,
+      rack_rate_inr: 2600,
+    },
+    {
+      date: '2026-11-02',
+      room_type: 'standard',
+      rate_per_room_night_inr: 2400,
+      variable_cost_per_room_night_inr: 900,
+      rack_rate_inr: 2600,
+    },
+    {
+      date: '2026-11-01',
+      room_type: 'deluxe',
+      rate_per_room_night_inr: 5000,
+      variable_cost_per_room_night_inr: 1500,
+      rack_rate_inr: null,
+    },
+  ];
+
+  it('sums revenue and cost night by night', () => {
+    const r = price({
+      rooms: 10,
+      nights: nightsFromRatePlan('2026-11-01', 2, 'standard', plan),
+      floor: DEFAULT_POLICY,
+    });
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: 44000, // 10 x 2000 + 10 x 2400
+      variable_cost_inr: 17000, // 10 x 800 + 10 x 900
+      contribution_inr: 27000,
+      min_rate_per_room_night_inr: 1850, // ceil((20000 + 17000) / 20)
+    });
+  });
+
+  it('uses only the requested room type', () => {
+    const nights = nightsFromRatePlan('2026-11-01', 1, 'deluxe', plan);
+    expect(nights).toEqual([{ date: '2026-11-01', rate_inr: 5000, variable_cost_inr: 1500 }]);
+  });
+
+  it('leaves a night with no plan row unknown', () => {
+    const nights = nightsFromRatePlan('2026-11-02', 2, 'standard', plan);
+    expect(nights[1]).toEqual({ date: '2026-11-03', rate_inr: null, variable_cost_inr: null });
+  });
+
+  it('an override rate replaces the plan rate on every night, cost still from the plan', () => {
+    const nights = nightsFromRatePlan('2026-11-01', 3, 'standard', plan, 1900);
+    expect(nights.map((n) => [n.rate_inr, n.variable_cost_inr])).toEqual([
+      [1900, 800],
+      [1900, 900],
+      [1900, null],
+    ]);
+  });
+
+  it('a flat plan gives the same totals as the flat oracle', () => {
+    const flat: NightPrice[] = flatNights('2026-11-01', 2, 2000, 800);
+    const viaPlan = nightsFromRatePlan('2026-11-01', 2, 'standard', [
+      { ...plan[0]!, rate_per_room_night_inr: 2000, variable_cost_per_room_night_inr: 800 },
+      { ...plan[1]!, rate_per_room_night_inr: 2000, variable_cost_per_room_night_inr: 800 },
+    ]);
+    expect(viaPlan).toEqual(flat);
   });
 });

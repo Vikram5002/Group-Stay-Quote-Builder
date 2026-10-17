@@ -38,6 +38,13 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - Issuing is never optimistic and carries one idempotency key per request, so a double click replays the same quote.
 - Unknown values show as `Unknown`, never zero.
 
+## Work package T2-04: Quote Detail and Dashboard
+
+- `/quotes/:id` shows the saved result, the arithmetic trail, a ticking hold countdown (IST with the exact UTC on hover), the request summary, any approval, and the audit timeline.
+- Actions follow role and status: Confirm, Extend validity and Cancel for Sales and Owner; read-only for Viewer; JSON download for everyone. Each action waits for the server, uses one idempotency key per request, and shows a plain-language message with a next step if the server refuses (for example a lapsed hold).
+- `/` shows the pipeline by status, contribution at risk on open quotes (unknown contributions are counted separately and never added as zero), holds expiring in 24 hours, and recent quotes, with an empty state that guides a new user.
+- Approve and reject are part of the review queue (T2-05); a pending-review quote tells Sales that an Owner must approve it.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -48,4 +55,4 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Not in this work package
 
-Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-04 to T2-08).
+Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-05 to T2-08).

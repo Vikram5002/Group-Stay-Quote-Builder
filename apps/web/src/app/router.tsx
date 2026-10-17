@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 import { DesignSystemPage } from '../features/design-system/DesignSystemPage';
+import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { QuoteDetailPage } from '../features/quotes/QuoteDetailPage';
 import { QuoteBuilderPage } from '../features/quotes/QuoteBuilderPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { SignInPage } from '../features/auth/SignInPage';
@@ -11,15 +13,9 @@ import { NotFoundPage } from './NotFoundPage';
 import { PlaceholderPage } from './PlaceholderPage';
 import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 
-const quoteDetailItem = {
-  path: '/quotes/:quoteId',
-  label: 'Quote detail',
-  workPackage: 'T2-04',
-  description: 'Result, arithmetic trail, countdown, audit timeline and actions.',
-};
-
 /** Screens that are built. Everything else shows a placeholder until its work package lands. */
 const SCREENS: Record<string, ReactNode> = {
+  '/': <DashboardPage />,
   '/quotes/new': <QuoteBuilderPage />,
 };
 
@@ -39,7 +35,7 @@ export const routes: RouteObject[] = [
               </RequireRole>
             ),
           })),
-          { path: '/quotes/:quoteId', element: <PlaceholderPage item={quoteDetailItem} /> },
+          { path: '/quotes/:quoteId', element: <QuoteDetailPage /> },
           { path: DESIGN_SYSTEM_PATH, element: <DesignSystemPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],

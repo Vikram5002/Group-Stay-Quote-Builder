@@ -73,8 +73,9 @@ export function DecisionSummary({
   onUseRooms,
 }: {
   evaluation: Evaluation;
-  onUseRate: (rate: number) => void;
-  onUseRooms: (rooms: number) => void;
+  /** Offered on the builder only. A saved quote cannot be edited, so these are omitted there. */
+  onUseRate?: (rate: number) => void;
+  onUseRooms?: (rooms: number) => void;
 }) {
   const view = DECISION_VIEW[evaluation.decision];
   const partial = evaluation.offered_rooms > 0 && evaluation.shortfall_rooms > 0;
@@ -99,13 +100,15 @@ export function DecisionSummary({
             every night. You are {evaluation.shortfall_rooms} short. The quote will hold{' '}
             {evaluation.offered_rooms} rooms and never more than are available.
           </p>
-          <Button
-            variant="secondary"
-            className="mt-3"
-            onClick={() => onUseRooms(evaluation.offered_rooms)}
-          >
-            Change the request to {evaluation.offered_rooms} rooms
-          </Button>
+          {onUseRooms && (
+            <Button
+              variant="secondary"
+              className="mt-3"
+              onClick={() => onUseRooms(evaluation.offered_rooms)}
+            >
+              Change the request to {evaluation.offered_rooms} rooms
+            </Button>
+          )}
         </Card>
       )}
 
@@ -118,14 +121,16 @@ export function DecisionSummary({
                 className="flex flex-wrap items-center justify-between gap-3"
               >
                 <span className="text-sm">{offer.summary}</span>
-                {offer.type === 'RAISE_RATE' && offer.rate_per_room_night_inr !== undefined && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => onUseRate(offer.rate_per_room_night_inr as number)}
-                  >
-                    Use rate {offer.rate_per_room_night_inr}
-                  </Button>
-                )}
+                {onUseRate &&
+                  offer.type === 'RAISE_RATE' &&
+                  offer.rate_per_room_night_inr !== undefined && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => onUseRate(offer.rate_per_room_night_inr as number)}
+                    >
+                      Use rate {offer.rate_per_room_night_inr}
+                    </Button>
+                  )}
               </li>
             ))}
           </ul>

@@ -77,7 +77,7 @@ describe('quote builder: the three rubric flows', () => {
 
     await u.click(screen.getByRole('button', { name: 'Issue quote' }));
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Quote detail' }),
+      await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' }),
     ).toBeInTheDocument();
     expect(store.quotes.size).toBe(1);
     expect([...store.quotes.values()][0]?.status).toBe('OFFERED');

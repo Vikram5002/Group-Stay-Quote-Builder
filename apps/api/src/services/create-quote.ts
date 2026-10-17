@@ -13,6 +13,7 @@ import { ContentionError, HoldConflictError } from '../data/errors.js';
 import { acquireHolds } from '../data/holds.js';
 import { putEventTx, putNewQuoteTx } from '../data/quotes.js';
 import { loadPolicy, loadStay } from './inputs.js';
+import { scheduleQuietly, type ExpiryScheduler } from './scheduler.js';
 import { termsHash } from './terms-hash.js';
 
 /**
@@ -27,6 +28,8 @@ export interface ServiceDeps {
   clock: Clock;
   /** ULID generator; injected so tests are deterministic. */
   newId: () => string;
+  /** Per-quote expiry schedules (EventBridge Scheduler in AWS); none locally. */
+  scheduler?: ExpiryScheduler;
 }
 
 const MAX_ATTEMPTS = 4;
@@ -108,6 +111,7 @@ export async function createQuote(
         },
         writes,
       );
+      await scheduleQuietly(deps.scheduler, quoteId, quote.valid_until);
       return quote;
     } catch (err) {
       if (err instanceof HoldConflictError && RETRYABLE.has(err.reason)) continue;

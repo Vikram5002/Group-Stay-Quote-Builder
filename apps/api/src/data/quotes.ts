@@ -193,3 +193,36 @@ export async function listQuotes(
     next_cursor: out.LastEvaluatedKey ? encodeCursor(out.LastEvaluatedKey) : null,
   };
 }
+
+/**
+ * Open quotes (OFFERED or PENDING_REVIEW) whose valid_until is at or before `nowIso`, oldest
+ * first, via GSI1 (sorted by valid_until for open quotes). Used by the expiry sweeper.
+ */
+export async function listDueQuoteIds(
+  ctx: DataContext,
+  nowIso: string,
+  limit: number,
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const status of ['OFFERED', 'PENDING_REVIEW'] as const) {
+    let start: Record<string, unknown> | undefined;
+    do {
+      const out = await ctx.doc.send(
+        new QueryCommand({
+          TableName: ctx.tableName,
+          IndexName: TABLE.gsi1.name,
+          KeyConditionExpression: 'GSI1PK = :pk AND GSI1SK <= :now',
+          ExpressionAttributeValues: {
+            ':pk': keys.statusIndex(ctx.propertyId, status),
+            ':now': nowIso,
+          },
+          ProjectionExpression: 'quote_id',
+          ...(start ? { ExclusiveStartKey: start } : {}),
+        }),
+      );
+      for (const item of out.Items ?? []) ids.push(item['quote_id'] as string);
+      start = out.LastEvaluatedKey;
+    } while (start && ids.length < limit);
+  }
+  return ids.slice(0, limit);
+}

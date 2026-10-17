@@ -5,6 +5,7 @@ import type { DataContext } from './data/catalog.js';
 import { createDocClient, dataConfigFromEnv } from './data/client.js';
 import { S3FileStore } from './files/store.js';
 import type { ServiceDeps } from './services/create-quote.js';
+import { schedulerFromEnv } from './services/scheduler.js';
 
 /**
  * Production wiring from the environment. CDK (Track 3) sets TABLE_NAME, AWS_REGION, PROPERTY_ID,
@@ -17,7 +18,13 @@ export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): ServiceDeps {
     tableName: config.tableName,
     propertyId: env['PROPERTY_ID'] ?? 'p1',
   };
-  return { data, clock: systemClock, newId: monotonicFactory() };
+  const scheduler = schedulerFromEnv(env);
+  return {
+    data,
+    clock: systemClock,
+    newId: monotonicFactory(),
+    ...(scheduler ? { scheduler } : {}),
+  };
 }
 
 export function corsOriginsFromEnv(env: NodeJS.ProcessEnv = process.env): string[] {

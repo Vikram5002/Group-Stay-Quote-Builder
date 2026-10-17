@@ -18,6 +18,7 @@ import type { ServiceDeps } from './create-quote.js';
 import { ServiceError } from './errors.js';
 import { expireQuote } from './expire-quote.js';
 import { loadPolicy } from './inputs.js';
+import { scheduleQuietly } from './scheduler.js';
 import { termsHash } from './terms-hash.js';
 
 /**
@@ -258,5 +259,6 @@ export async function extendQuote(
       ? extendHolds(deps.data, quoteId, validUntil, writes)
       : deps.data.doc.send(new TransactWriteCommand({ TransactItems: writes })),
   );
+  await scheduleQuietly(deps.scheduler, quoteId, validUntil);
   return next;
 }

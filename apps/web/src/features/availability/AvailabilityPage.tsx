@@ -46,13 +46,6 @@ function cellFor(date: string, byDate: Map<string, InventoryNight>): Cell {
   return { kind: 'sale', date, night };
 }
 
-function describe(cell: Cell): string {
-  if (cell.kind === 'off') return `${dayLabel(cell.date)}: not on sale, no inventory`;
-  if (cell.kind === 'unknown') return `${dayLabel(cell.date)}: availability unknown`;
-  const n = cell.night;
-  return `${dayLabel(cell.date)}: ${n.total_units} rooms, ${n.available_units} available, ${n.held_units} held, ${n.confirmed_units} confirmed`;
-}
-
 function Segment({ value, total, className }: { value: number; total: number; className: string }) {
   if (value === 0 || total === 0) return null;
   return <div className={className} style={{ width: `${(value / total) * 100}%` }} />;
@@ -77,7 +70,6 @@ function NightButton({
     <button
       type="button"
       aria-pressed={selected}
-      aria-label={describe(cell)}
       onClick={onSelect}
       className={cn(base, tone, selected && 'outline outline-3 outline-offset-1 outline-focus')}
     >
@@ -108,7 +100,7 @@ function NightButton({
             />
           </span>
           <span className="tabular-nums text-ink-muted">
-            H {cell.night.held_units} · C {cell.night.confirmed_units}
+            Held {cell.night.held_units} · Confirmed {cell.night.confirmed_units}
           </span>
         </>
       )}
@@ -129,11 +121,11 @@ function Legend() {
         <span aria-hidden="true" className="size-3 rounded-sm bg-success" /> Available
       </li>
       <li className="flex items-center gap-2">
-        <span aria-hidden="true" className="size-3 rounded-sm bg-warning" /> Held (H), expires if
-        not confirmed
+        <span aria-hidden="true" className="size-3 rounded-sm bg-warning" /> Held, expires if not
+        confirmed
       </li>
       <li className="flex items-center gap-2">
-        <span aria-hidden="true" className="size-3 rounded-sm bg-info" /> Confirmed (C)
+        <span aria-hidden="true" className="size-3 rounded-sm bg-info" /> Confirmed
       </li>
       <li className="flex items-center gap-2">
         <Badge tone="unknown">Unknown</Badge> no figure; never counted as zero

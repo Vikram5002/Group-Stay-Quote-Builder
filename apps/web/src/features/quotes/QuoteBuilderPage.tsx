@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../app/ApiProvider';
 import { Alert, Button, Card, Spinner, Stepper } from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
+import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
 import { initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
 import type { QuoteForm } from './form';
 import {
@@ -21,6 +22,7 @@ const LAST = STEPS.length - 1;
 export function QuoteBuilderPage() {
   const api = useApi();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<QuoteForm>(initialForm);
   const [step, setStep] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
@@ -51,7 +53,12 @@ export function QuoteBuilderPage() {
       if (!request) throw new Error('The request is not valid yet');
       return api.createQuote(request, { idempotencyKey: keyFor(JSON.stringify(request)) });
     },
-    onSuccess: (quote) => navigate(`/quotes/${quote.quote_id}`),
+    onSuccess: (quote) => {
+      // The dashboard and the calendar must show the new quote and its held rooms at once.
+      void queryClient.invalidateQueries({ queryKey: QUOTES_KEY });
+      void queryClient.invalidateQueries({ queryKey: AVAILABILITY_KEY });
+      navigate(`/quotes/${quote.quote_id}`);
+    },
   });
 
   function goTo(next: number) {

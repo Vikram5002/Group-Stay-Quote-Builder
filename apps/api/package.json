@@ -1,0 +1,22 @@
+{
+  "name": "@c32/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Express API for the Group Stay Quote Builder. Runs locally and in Lambda.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/local.ts",
+    "start": "tsx src/local.ts"
+  },
+  "dependencies": {
+    "@c32/core": "0.1.0",
+    "@codegenie/serverless-express": "^5.0.0",
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1"
+  }
+}

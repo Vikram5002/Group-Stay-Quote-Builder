@@ -102,7 +102,7 @@ export function RoomsStep({ form, patch, errors }: StepProps) {
           {...err(errors, 'room_type')}
         >
           {ROOM_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
+            <option key={t.code} value={t.code}>
               {t.label}
             </option>
           ))}

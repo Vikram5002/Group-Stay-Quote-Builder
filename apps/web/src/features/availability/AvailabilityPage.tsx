@@ -220,7 +220,7 @@ function rangeError(from: string, to: string): string | undefined {
 
 export function AvailabilityPage() {
   const api = useApi();
-  const [roomType, setRoomType] = useState<string>(ROOM_TYPES[0].value);
+  const [roomType, setRoomType] = useState<string>(ROOM_TYPES[0].code);
   const [from, setFrom] = useState(DEFAULT_FROM);
   const [to, setTo] = useState(DEFAULT_TO);
   const [selected, setSelected] = useState<string | null>(null);
@@ -256,7 +256,7 @@ export function AvailabilityPage() {
             }}
           >
             {ROOM_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
+              <option key={t.code} value={t.code}>
                 {t.label}
               </option>
             ))}

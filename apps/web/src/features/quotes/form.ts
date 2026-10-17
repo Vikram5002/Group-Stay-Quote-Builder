@@ -1,4 +1,4 @@
-import { LIMITS, parseWith, pastCheckInIssue, QuoteRequest } from '@c32/core';
+import { LIMITS, parseWith, pastCheckInIssue, PROPERTY_ROOM_TYPES, QuoteRequest } from '@c32/core';
 import type { INCLUSION_BASES, InclusionInput, ValidationIssue } from '@c32/core';
 
 export type InclusionBasisValue = (typeof INCLUSION_BASES)[number];
@@ -30,10 +30,8 @@ export interface QuoteForm {
   inclusions: InclusionForm[];
 }
 
-export const ROOM_TYPES = [
-  { value: 'standard', label: 'Standard' },
-  { value: 'deluxe', label: 'Deluxe' },
-] as const;
+/** The room types on sale: the same list the import check accepts. */
+export const ROOM_TYPES = PROPERTY_ROOM_TYPES;
 
 export const initialForm: QuoteForm = {
   organiser: '',

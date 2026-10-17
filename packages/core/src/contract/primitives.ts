@@ -47,6 +47,16 @@ export const RoomType = z
   .regex(/^[a-z][a-z0-9_]{0,31}$/)
   .describe('Room type code, for example "standard".');
 
+/**
+ * The room types this property sells (one property in this version). The quote wizard, the
+ * availability calendar and the import check all read this list, so an import cannot create a
+ * room type that nobody can quote.
+ */
+export const PROPERTY_ROOM_TYPES = [
+  { code: 'standard', label: 'Standard' },
+  { code: 'deluxe', label: 'Deluxe' },
+] as const;
+
 export const PropertyId = z
   .string()
   .regex(/^[a-z0-9][a-z0-9-]{0,63}$/)

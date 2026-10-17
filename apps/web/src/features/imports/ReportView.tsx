@@ -20,6 +20,20 @@ function sortIssues(issues: readonly ImportRowIssue[]): ImportRowIssue[] {
   );
 }
 
+/** The value as written in the file. An empty cell says so; a whole-file problem has none. */
+function IssueValue({ value }: { value: string | undefined }) {
+  if (value === undefined) {
+    return (
+      <>
+        <span aria-hidden="true">—</span>
+        <span className="sr-only">No single value</span>
+      </>
+    );
+  }
+  if (value === '') return <span className="text-ink-muted">(empty)</span>;
+  return <code className="font-mono text-sm break-all">{value}</code>;
+}
+
 /** Dry-run or commit result with every problem listed by row number. */
 export function ReportView({
   report,
@@ -57,6 +71,7 @@ export function ReportView({
         columns={[
           { header: 'Row', numeric: true, render: (i) => i.row },
           { header: 'Field', render: (i) => i.field },
+          { header: 'Value', render: (i) => <IssueValue value={i.value} /> },
           { header: 'Problem', render: (i) => i.message },
           {
             header: 'Level',

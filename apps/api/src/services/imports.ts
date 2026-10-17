@@ -83,8 +83,10 @@ async function load(deps: FileDeps, kind: ImportKind, importId: string): Promise
 const rowsWithErrors = (issues: ImportRowIssue[]) =>
   new Set(issues.filter((i) => i.severity === 'error').map((i) => i.row)).size;
 
-function ledgerIssue(row: number, message: string): ImportRowIssue {
-  return { row, field: 'rooms', code: 'INCONSISTENT', message, severity: 'error' };
+/** A row the ledger refuses; `rooms` is the row's value (null for an empty cell). */
+function ledgerIssue(row: number, message: string, rooms: number | null): ImportRowIssue {
+  const value = rooms === null ? '' : String(rooms);
+  return { row, field: 'rooms', code: 'INCONSISTENT', message, severity: 'error', value };
 }
 
 /** Parse the uploaded file and check inventory rows against what is already held or sold. */
@@ -148,13 +150,14 @@ async function analyse(deps: FileDeps, rec: ImportRecord): Promise<Analysis> {
           ledgerIssue(
             a.row,
             `${s} rooms are held or confirmed; availability cannot become unknown`,
+            rooms,
           ),
         );
         return false;
       }
       if (rooms !== null && rooms < s) {
         issues.push(
-          ledgerIssue(a.row, `${rooms} rooms is below the ${s} already held or confirmed`),
+          ledgerIssue(a.row, `${rooms} rooms is below the ${s} already held or confirmed`, rooms),
         );
         return false;
       }
@@ -214,7 +217,7 @@ export async function commitImport(
       if (outcome === 'below_sold' || outcome === 'unknown_with_holds') {
         // A hold landed between validation and commit.
         issues.push(
-          ledgerIssue(row, 'Rooms were held or sold meanwhile; this row was not applied'),
+          ledgerIssue(row, 'Rooms were held or sold meanwhile; this row was not applied', r.rooms),
         );
       } else {
         written++;

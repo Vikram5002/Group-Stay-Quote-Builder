@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Group Stay Quote Builder API",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Case C32. All money is integer INR; null means unknown, never zero. Synthetic data only."
   },
   "servers": [
@@ -2356,6 +2356,9 @@
           "severity": {
             "type": "string",
             "enum": ["error", "warning"]
+          },
+          "value": {
+            "type": "string"
           }
         },
         "required": ["row", "field", "code", "message", "severity"],

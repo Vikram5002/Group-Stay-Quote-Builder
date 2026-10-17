@@ -15,6 +15,14 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      dynamodb:
+        image: public.ecr.aws/aws-dynamodb-local/aws-dynamodb-local:3.3.2
+        ports:
+          - 8000:8000
+    env:
+      # Integration tests fail in CI without this, so they can never be skipped silently.
+      DYNAMODB_ENDPOINT: http://localhost:8000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -8,6 +8,7 @@ import {
   ImportUploadRequest,
   INITIAL_STATUS,
   parseWith,
+  pastCheckInIssue,
   PolicyUpdateRequest,
   problem,
   QuoteRequest,
@@ -190,6 +191,16 @@ export function createHandlers(store: MockStore) {
     return next;
   }
 
+  /** Like the API: a check-in before today in the property time zone is a 422 on the field. */
+  function pastCheckIn(request: QuoteRequest): Response | null {
+    const issue = pastCheckInIssue(
+      request.stay.check_in,
+      store.now().getTime(),
+      store.policy.timezone,
+    );
+    return issue ? problemResponse('VALIDATION_FAILED', { errors: [issue] }) : null;
+  }
+
   const termsHash = (request: QuoteRequest, rooms: number, rate: number | null) =>
     mockHash(JSON.stringify({ request, rooms, rate }));
 
@@ -220,6 +231,8 @@ export function createHandlers(store: MockStore) {
       if (actor instanceof Response) return actor;
       const body = await readBody(request, QuoteRequest);
       if (body.error) return body.error;
+      const past = pastCheckIn(body.value);
+      if (past) return past;
       const { evaluation, validity } = evaluate({
         request: body.value,
         policy: store.policy,
@@ -244,6 +257,8 @@ export function createHandlers(store: MockStore) {
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), QuoteRequest);
         if (body.error) return body.error;
+        const past = pastCheckIn(body.value);
+        if (past) return past;
         const { evaluation, validity } = evaluate({
           request: body.value,
           policy: store.policy,

@@ -1,5 +1,6 @@
 import type { Policy } from '../contract/policy.js';
-import { startOfDayUtc, toUtcIso } from './timezone.js';
+import type { ValidationIssue } from '../contract/problem.js';
+import { localDate, startOfDayUtc, toUtcIso } from './timezone.js';
 
 /**
  * Quote validity and expiry (blueprint 5.7, BR-09).
@@ -49,6 +50,25 @@ export function computeValidity(
     limited_by: byWindow <= byCutoff ? 'validity_window' : 'stay_cutoff',
     window_ms: windowMs,
     too_late: windowMs < policy.min_validity_hours * MS_PER_HOUR,
+  };
+}
+
+/**
+ * A stay cannot start before today in the property time zone. That is an input error (422 on
+ * stay.check_in), unlike a stay that starts too soon, which the engine declines with
+ * TOO_LATE_TO_QUOTE. Returns null when the check-in is today or later.
+ */
+export function pastCheckInIssue(
+  checkIn: string,
+  nowMs: number,
+  timeZone: string,
+): ValidationIssue | null {
+  const today = localDate(nowMs, timeZone);
+  if (checkIn >= today) return null; // ISO dates compare in calendar order
+  return {
+    path: 'stay.check_in',
+    code: 'OUT_OF_RANGE',
+    message: `Check-in must be today (${today}) or later`,
   };
 }
 

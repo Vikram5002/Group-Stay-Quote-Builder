@@ -1,5 +1,6 @@
 import { INCLUSION_BASES } from '@c32/core';
-import { Button, Card, CheckboxField, SelectField, TextField } from '../../components';
+import type { Policy } from '@c32/core';
+import { Alert, Button, Card, CheckboxField, SelectField, TextField } from '../../components';
 import { newInclusion, ROOM_TYPES } from './form';
 import type { InclusionBasisValue, InclusionForm, QuoteForm } from './form';
 
@@ -16,7 +17,21 @@ interface StepProps {
 const err = (errors: Record<string, string>, path: string) =>
   errors[path] ? { error: errors[path] } : {};
 
-export function GroupStep({ form, patch, errors }: StepProps) {
+export function GroupStep({
+  form,
+  patch,
+  errors,
+  today,
+  tooLate,
+  policy,
+}: StepProps & {
+  /** Today in the property time zone: the earliest check-in. */
+  today: string;
+  /** The server says this check-in leaves too little time before the stay cutoff. */
+  tooLate: boolean;
+  /** For the numbers in the too-late warning, when this role can read the policy. */
+  policy?: Policy | undefined;
+}) {
   return (
     <Card title="Group and dates">
       <div className="grid gap-4 md:grid-cols-2">
@@ -41,6 +56,7 @@ export function GroupStep({ form, patch, errors }: StepProps) {
           name="stay.check_in"
           type="date"
           required
+          min={today}
           value={form.checkIn}
           onChange={(e) => patch({ checkIn: e.target.value })}
           {...err(errors, 'stay.check_in')}
@@ -59,6 +75,16 @@ export function GroupStep({ form, patch, errors }: StepProps) {
           {...err(errors, 'stay.nights')}
         />
       </div>
+      {tooLate && (
+        <div className="mt-4">
+          <Alert tone="warning" title="Too late to quote for this date">
+            {policy
+              ? `A quote must stay open at least ${policy.min_validity_hours} hours before the stay cutoff, ${policy.stay_cutoff_hours} hours before check-in.`
+              : 'A quote must stay open for a minimum time before the stay cutoff, and this check-in is too close.'}{' '}
+            The request will be declined. Choose a later date.
+          </Alert>
+        </div>
+      )}
     </Card>
   );
 }

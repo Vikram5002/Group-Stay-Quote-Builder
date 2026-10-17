@@ -1,4 +1,4 @@
-import { LIMITS, parseWith, QuoteRequest } from '@c32/core';
+import { LIMITS, parseWith, pastCheckInIssue, QuoteRequest } from '@c32/core';
 import type { INCLUSION_BASES, InclusionInput, ValidationIssue } from '@c32/core';
 
 export type InclusionBasisValue = (typeof INCLUSION_BASES)[number];
@@ -112,11 +112,27 @@ export function toRequest(form: QuoteForm): unknown {
 export type ParsedRequest =
   { ok: true; request: QuoteRequest } | { ok: false; issues: ValidationIssue[] };
 
-/** Validation uses the same schema as the server, so the two cannot drift. */
-export function parseForm(form: QuoteForm): ParsedRequest {
-  const result = parseWith(QuoteRequest, toRequest(form));
-  return result.ok ? { ok: true, request: result.value } : { ok: false, issues: result.issues };
+/** "Today" for the check-in rule: the current instant and the property time zone. */
+export interface FormCalendar {
+  nowMs: number;
+  timeZone: string;
 }
+
+/**
+ * Validation uses the same schema as the server, so the two cannot drift. With a calendar it also
+ * applies the server's rule that check-in is today or later in the property time zone.
+ */
+export function parseForm(form: QuoteForm, calendar?: FormCalendar): ParsedRequest {
+  const result = parseWith(QuoteRequest, toRequest(form));
+  const past =
+    calendar && ISO_DATE.test(form.checkIn)
+      ? pastCheckInIssue(form.checkIn, calendar.nowMs, calendar.timeZone)
+      : null;
+  if (result.ok && !past) return { ok: true, request: result.value };
+  return { ok: false, issues: [...(result.ok ? [] : result.issues), ...(past ? [past] : [])] };
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const RANGES: Record<string, [number, number]> = {
   'stay.nights': [LIMITS.MIN_NIGHTS, LIMITS.MAX_NIGHTS],

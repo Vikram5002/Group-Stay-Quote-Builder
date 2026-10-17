@@ -1,9 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_POLICY, localDate } from '@c32/core';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../../app/ApiProvider';
 import { Alert, Button, Card, ProblemAlert, Spinner, Stepper } from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
+import { usePolicy } from '../policy/queries';
 import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
 import { initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
 import type { QuoteForm } from './form';
@@ -32,10 +34,15 @@ export function QuoteBuilderPage() {
 
   const patch = (changes: Partial<QuoteForm>) => setForm((f) => ({ ...f, ...changes }));
 
-  const parsed = useMemo(() => parseForm(form), [form]);
+  // Only an Owner can read the policy; otherwise the documented default zone (IST, which every
+  // screen displays) is used here, and the server checks the date with the real policy.
+  const policy = usePolicy();
+  const timeZone = policy.data?.timezone ?? DEFAULT_POLICY.timezone;
+  const nowMs = Date.now();
+  const today = localDate(nowMs, timeZone);
+  // Re-parsed when the form or the property's day changes, not on every tick of the clock.
+  const parsed = useMemo(() => parseForm(form, { nowMs, timeZone }), [form, today, timeZone]);
   const request = parsed.ok ? parsed.request : null;
-  const issues = parsed.ok ? [] : parsed.issues;
-  const errors = issuesByPath(issues);
 
   const { preview, basis, current, stale, error: previewError, refetch } = usePreview(request);
   const live = liveMeterState(request, {
@@ -44,6 +51,16 @@ export function QuoteBuilderPage() {
     current,
     error: previewError,
   });
+
+  // Field problems the server found (for example a check-in that is past in the property's zone).
+  const serverIssues =
+    previewError instanceof ApiError && previewError.code === 'VALIDATION_FAILED'
+      ? (previewError.problem.errors ?? [])
+      : [];
+  const issues = [...(parsed.ok ? [] : parsed.issues), ...serverIssues];
+  const errors = issuesByPath(issues);
+  // The server's answer for exactly this form, so it uses the real policy and clock.
+  const tooLate = current && (preview?.evaluation.reasons.includes('TOO_LATE_TO_QUOTE') ?? false);
 
   // One key per user intent: a double click or a retry of the same request replays the same quote.
   const intent = useRef<{ fingerprint: string; key: string } | null>(null);
@@ -118,7 +135,16 @@ export function QuoteBuilderPage() {
             if (step < LAST) next();
           }}
         >
-          {step === 0 && <GroupStep form={form} patch={patch} errors={visibleErrors} />}
+          {step === 0 && (
+            <GroupStep
+              form={form}
+              patch={patch}
+              errors={visibleErrors}
+              today={today}
+              tooLate={tooLate}
+              policy={policy.data}
+            />
+          )}
           {step === 1 && <RoomsStep form={form} patch={patch} errors={visibleErrors} />}
           {step === 2 && <PricingStep form={form} patch={patch} errors={visibleErrors} />}
 

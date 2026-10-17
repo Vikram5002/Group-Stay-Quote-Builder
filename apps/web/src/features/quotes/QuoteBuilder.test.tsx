@@ -12,8 +12,16 @@ import { mockSession } from '../auth/auth';
 
 const { server, store } = createTestApi(() => new Date('2026-10-20T06:00:00Z'));
 
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterAll(() => server.close());
+beforeAll(() => {
+  // Pin the date (not the timers) to the mock server's day, so "today" is 20 Oct 2026 in IST.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-20T06:00:00Z'));
+  server.listen({ onUnhandledRequest: 'error' });
+});
+afterAll(() => {
+  server.close();
+  vi.useRealTimers();
+});
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
   store.quotes.clear();
@@ -311,6 +319,38 @@ describe('quote builder: the live meter names the decision', () => {
       ).toBeInTheDocument(),
     );
     expect(within(meter()).queryByText(/review required/)).not.toBeInTheDocument();
+  });
+});
+
+describe('quote builder: check-in dates', () => {
+  const meter = () => screen.getByRole('complementary', { name: 'Live contribution' });
+
+  it('refuses a check-in before today in the property time zone', async () => {
+    const u = user();
+    renderBuilder();
+    await u.type(screen.getByLabelText(/Organiser name/), 'Fictional Events Pvt Ltd');
+    await u.type(screen.getByLabelText(/Check-in date/), '2025-01-01');
+
+    expect(screen.getByText('Check-in must be today (2026-10-20) or later')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Check-in date/)).toHaveAttribute('min', '2026-10-20');
+    await next(u);
+    expect(screen.getByRole('heading', { name: 'Group and dates' })).toBeInTheDocument();
+    expect(within(meter()).queryByText('Unknown')).not.toBeInTheDocument();
+    expect(within(meter()).queryByText('Confirmed by the server.')).not.toBeInTheDocument();
+  });
+
+  it('warns when the stay starts inside the stay cutoff plus the minimum validity', async () => {
+    const u = user();
+    renderBuilder();
+    await u.type(screen.getByLabelText(/Organiser name/), 'Fictional Events Pvt Ltd');
+    // Tomorrow: the 24 h cutoff is already past, so no quote could stay open for 2 h.
+    await u.type(screen.getByLabelText(/Check-in date/), '2026-10-21');
+
+    expect(await screen.findByText('Too late to quote for this date')).toBeInTheDocument();
+    expect(screen.queryByText(/Check-in must be today/)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(meter()).getByText('Cannot offer: too late to quote')).toBeInTheDocument(),
+    );
   });
 });
 

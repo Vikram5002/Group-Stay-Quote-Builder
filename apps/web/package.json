@@ -19,6 +19,7 @@
     "screenshots": "playwright test e2e/screenshots.e2e.ts --project=desktop"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "@tanstack/react-query": "^5.104.3",
     "msw": "^2.15.0",
     "react": "^18.3.1",

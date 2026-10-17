@@ -1,6 +1,7 @@
 import type { QuoteTotals } from '../contract/quote.js';
 import { floorPasses, type FloorPolicy } from './floor.js';
 import { completeTotals } from './pricing.js';
+import { counted } from './plural.js';
 
 /**
  * Partial cancellation maths (blueprint 5.8, BR-16). Every money component of a package is
@@ -63,7 +64,9 @@ export function amendTotals(
       : floorPasses(next.contribution_inr, next.contribution_floor_inr);
 
   const released = (fromRooms - toRooms) * nights;
-  const trail = [`amended ${fromRooms} to ${toRooms} rooms: ${released} room-nights released`];
+  const trail = [
+    `amended ${fromRooms} to ${counted(toRooms, 'room')}: ${counted(released, 'room-night')} released`,
+  ];
   if (floorOk === null) {
     trail.push('contribution unknown, so the floor cannot be checked');
   } else {

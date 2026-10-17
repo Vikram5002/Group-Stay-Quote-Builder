@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { RouterProvider } from 'react-router-dom';
 import type { Role } from '@c32/core';
-import { DEFAULT_POLICY } from '@c32/core';
+import { DEFAULT_POLICY, problem } from '@c32/core';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { axe } from 'vitest-axe';
 import { Providers } from '../../app/Providers';
@@ -30,11 +31,13 @@ beforeEach(() => {
 });
 
 function renderPage(role: Role = 'Owner') {
-  return render(
+  const router = createTestRouter(['/policy']);
+  const view = render(
     <Providers initialSession={mockSession(role, 'Meera')} baseUrl={BASE}>
-      <RouterProvider router={createTestRouter(['/policy'])} />
+      <RouterProvider router={router} />
     </Providers>,
   );
+  return { ...view, router };
 }
 
 const field = async (label: RegExp | string) => screen.findByLabelText(label);
@@ -130,6 +133,38 @@ describe('policy screen', () => {
     expect(screen.getByText(/cannot exceed validity_hours/)).toBeInTheDocument();
   });
 
+  it('asks before leaving with unsaved changes', async () => {
+    const u = userEvent.setup();
+    const { router } = renderPage();
+    await setValue(u, /Quote validity/, '10');
+
+    await act(() => router.navigate('/'));
+    const dialog = await screen.findByRole('dialog', { name: 'Leave without saving?' });
+    await u.click(within(dialog).getByRole('button', { name: 'Stay on this page' }));
+    expect(router.state.location.pathname).toBe('/policy');
+    expect(screen.getByLabelText(/Quote validity/)).toHaveValue(10);
+
+    await act(() => router.navigate('/'));
+    await u.click(
+      within(await screen.findByRole('dialog', { name: 'Leave without saving?' })).getByRole(
+        'button',
+        { name: 'Leave' },
+      ),
+    );
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+  });
+
+  it('leaves without asking once the changes are saved', async () => {
+    const u = userEvent.setup();
+    const { router } = renderPage();
+    await setValue(u, /Quote validity/, '10');
+    await u.click(save());
+    await screen.findByText('Policy saved as version 2.');
+    await act(() => router.navigate('/'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+    expect(screen.queryByRole('dialog', { name: 'Leave without saving?' })).not.toBeInTheDocument();
+  });
+
   it('discards edits', async () => {
     const u = userEvent.setup();
     renderPage();
@@ -153,6 +188,24 @@ describe('policy screen', () => {
     expect(await screen.findByText(/Version 2\./)).toBeInTheDocument();
     expect(screen.getByLabelText(/Quote validity/)).toHaveValue(96);
     expect(screen.queryByText('The policy was changed by someone else')).not.toBeInTheDocument();
+  });
+
+  it("explains a refused save in the server's own words", async () => {
+    server.use(
+      http.put('*/v1/policy', () =>
+        HttpResponse.json(
+          problem('INVALID_STATE', { detail: 'Policy changes are paused during the audit' }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+    const u = userEvent.setup();
+    renderPage();
+    await setValue(u, /Quote validity/, '10');
+    await u.click(save());
+
+    expect(await screen.findByText('Could not save the policy')).toBeInTheDocument();
+    expect(screen.getByText('Policy changes are paused during the audit')).toBeInTheDocument();
   });
 
   it('is honest that change history lasts only for the visit', async () => {

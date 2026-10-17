@@ -9,10 +9,10 @@ export const NOW = '2026-10-20T06:00:00Z';
  * The mock API keeps its data in memory, so a full page load resets it. Tests therefore load the
  * app once and move around with the menu, as a person would.
  */
-export async function openApp(page: Page) {
+export async function openApp(page: Page, path = '/sign-in') {
   await page.clock.setFixedTime(new Date(NOW));
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+  await page.goto(path);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 }
 
 export async function signIn(page: Page, name: string, role: 'Sales' | 'Owner' | 'Viewer') {
@@ -22,9 +22,24 @@ export async function signIn(page: Page, name: string, role: 'Sales' | 'Owner' |
   await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
 }
 
+/**
+ * Signing out from the dashboard lands on the front page, from anywhere else on the sign-in page.
+ * Either way this ends on the sign-in page, ready for the next person.
+ */
 export async function signOut(page: Page) {
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
+  const front = page.getByRole('heading', {
+    level: 1,
+    name: /Every group enquiry is a booking opportunity/,
+  });
+  const signIn = page.getByRole('heading', { level: 1, name: 'Sign in' });
+  await expect(front.or(signIn)).toBeVisible();
+  if (await front.isVisible())
+    await page
+      .getByRole('link', { name: /^Sign in/ })
+      .first()
+      .click();
+  await expect(signIn).toBeVisible();
 }
 
 export async function goTo(page: Page, menuName: string, heading = menuName) {
@@ -47,6 +62,9 @@ interface QuoteInput {
 /** Fill the quote builder and stop on the review step. */
 export async function buildQuote(page: Page, input: QuoteInput) {
   await goTo(page, 'New quote');
+  // An earlier quote left unissued in this tab is offered as a draft; these flows start afresh.
+  const startOver = page.getByRole('button', { name: 'Start over' });
+  if (await startOver.isVisible()) await startOver.click();
   await page.getByLabel('Organiser name').fill(input.organiser);
   await page.getByLabel('Check-in date').fill(input.checkIn ?? '2026-11-01');
   if (input.nights) await page.getByLabel('Nights').fill(input.nights);
@@ -70,6 +88,17 @@ const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
 /** Fails with a readable list of rule ids, counts and the first offending element. */
 export async function expectNoA11yViolations(page: Page, where: string) {
+  // Measure contrast only once fades and slides have finished (endless decorations are ignored).
+  await page
+    .waitForFunction(
+      () =>
+        document
+          .getAnimations()
+          .every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity),
+      undefined,
+      { timeout: 8000 },
+    )
+    .catch(() => undefined);
   const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   const summary = violations.map(
     (v) =>

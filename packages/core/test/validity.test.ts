@@ -5,6 +5,7 @@ import {
   computeValidity,
   formatInZone,
   isExpired,
+  pastCheckInIssue,
   secondsRemaining,
 } from '../src/index.js';
 
@@ -99,5 +100,30 @@ describe('expiry with an injected clock', () => {
 
   it('rejects an invalid valid_until', () => {
     expect(() => isExpired('soon', 0)).toThrow(RangeError);
+  });
+});
+
+describe('a check-in in the past is an input error, not a late enquiry', () => {
+  const now = ist('2026-10-18T23:30:00');
+
+  it('today and later are accepted, in the property time zone', () => {
+    expect(pastCheckInIssue('2026-10-18', now, IST)).toBeNull();
+    expect(pastCheckInIssue('2026-11-01', now, IST)).toBeNull();
+  });
+
+  it('yesterday is refused on stay.check_in with the date it must be on or after', () => {
+    expect(pastCheckInIssue('2026-10-17', now, IST)).toEqual({
+      path: 'stay.check_in',
+      code: 'OUT_OF_RANGE',
+      message: 'Check-in must be today (2026-10-18) or later',
+    });
+  });
+
+  it('uses the property day, not the UTC day', () => {
+    // 01:00 IST on 19 Oct is still 18 Oct in UTC.
+    const early = ist('2026-10-19T01:00:00');
+    expect(new Date(early).toISOString().slice(0, 10)).toBe('2026-10-18');
+    expect(pastCheckInIssue('2026-10-18', early, IST)).not.toBeNull();
+    expect(pastCheckInIssue('2026-10-18', early, 'UTC')).toBeNull();
   });
 });

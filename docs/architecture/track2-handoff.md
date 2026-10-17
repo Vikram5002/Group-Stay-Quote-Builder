@@ -4,7 +4,7 @@ What Track 3 deploys, what Track 4 can use as evidence, how to run and test it, 
 
 ## What it is
 
-A React 18 single-page app (Vite, TypeScript, Tailwind, React Router, TanStack Query). It has ten screens: sign-in, dashboard, quote builder, quote detail, review queue, availability calendar, policy, imports and exports, evidence, and experiment log, plus a design-system gallery. All nine work packages (T2-01 to T2-09) are built and merged.
+A React 18 single-page app (Vite, TypeScript, Tailwind, React Router, TanStack Query). It has a public landing page and ten screens: sign-in, dashboard, quote builder, quote detail, review queue, availability calendar, policy, imports and exports, evidence, and experiment log, plus a design-system gallery. All nine work packages (T2-01 to T2-09) are built and merged.
 
 ## For Track 3: building and deploying
 
@@ -30,8 +30,8 @@ A React 18 single-page app (Vite, TypeScript, Tailwind, React Router, TanStack Q
 
 ## For Track 4: evidence the web app gives you
 
-- **Screenshots.** `docs/ui/screenshots/` holds 17 screenshots taken by `npm run screenshots -w @c32/web` (mock data, one story: the fixture, the shortage, the below-floor quote through approval, then every other screen and a phone view). Retake them after any UI change.
-- **Test reports.** `npm run test -w @c32/web` (222 unit and component tests, including axe) and `npm run e2e -w @c32/web` (11 end-to-end tests in real Chromium: the three rubric flows, axe on every screen, keyboard, phone width). The e2e HTML report is written to `apps/web/playwright-report/`.
+- **Screenshots.** `docs/ui/screenshots/` holds 20 screenshots taken by `npm run screenshots -w @c32/web` (mock data, starting with the landing page, then one story: the fixture, the shortage, the below-floor quote through approval, then every other screen and a phone view). Retake them after any UI change.
+- **Test reports.** `npm run test -w @c32/web` (253 unit and component tests, including axe) and `npm run e2e -w @c32/web` (17 end-to-end tests in real Chromium: the three rubric flows, the landing page, axe on every screen, keyboard, phone width). The e2e HTML report is written to `apps/web/playwright-report/`.
 - **Public checks.** The Evidence page runs the three public checks from `data/fixtures/fixture.json` against whichever API is connected and downloads the result as JSON.
 - **Ledger, stages and experiment log.** Today these are data in the app, not in the API:
   - Ledger rows: `apps/web/src/features/evidence/ledger.ts`. Replace the rows with the contents of `evidence/ledger.csv`.

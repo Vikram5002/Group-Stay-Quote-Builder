@@ -27,7 +27,12 @@ export type ImportRecord = Record<string, string | number | null>;
 
 export type ParsedImport =
   | { ok: true; rows: ImportRecord[]; columns: readonly string[] }
-  | { ok: false; code: 'INVALID_JSON' | 'REQUIRED' | 'INVALID_TYPE'; message: string };
+  | {
+      ok: false;
+      code: 'INVALID_JSON' | 'REQUIRED' | 'INVALID_TYPE' | 'UNKNOWN_FIELD' | 'INCONSISTENT';
+      /** Why the file cannot be read, as one sentence for the file field. */
+      message: string;
+    };
 
 /** Whole numbers become numbers; anything else stays text so the row schema can reject it. */
 function cellValue(column: string, raw: string): string | number | null {
@@ -45,7 +50,36 @@ export function fileFormat(fileName: string): 'csv' | 'json' | null {
   return null;
 }
 
-/** Read a CSV or JSON import file into records. Header and shape problems are returned, not thrown. */
+const list = (names: readonly string[]) => names.join(', ');
+
+/** The header problem, in one sentence, or null when the columns are right. */
+function columnProblem(
+  where: 'The header row' | 'The rows',
+  expected: readonly string[],
+  missing: readonly string[],
+  unknown: readonly string[],
+): string | null {
+  if (missing.length === 0 && unknown.length === 0) return null;
+  const tail = `Expected: ${list(expected)}.`;
+  if (where === 'The rows') {
+    const parts = [
+      ...(missing.length > 0 ? [`are missing ${list(missing)}`] : []),
+      ...(unknown.length > 0 ? [`have unknown columns ${list(unknown)}`] : []),
+    ];
+    return `The rows ${parts.join(' and ')}. ${tail}`;
+  }
+  if (unknown.length === 0) return `The header row is missing: ${list(missing)}. ${tail}`;
+  if (missing.length === 0) return `The header row has unknown columns: ${list(unknown)}. ${tail}`;
+  return `The header row is missing: ${list(missing)}, and has unknown columns: ${list(unknown)}. ${tail}`;
+}
+
+const NO_ROWS = { ok: false, code: 'REQUIRED', message: 'The file has no data rows.' } as const;
+
+/**
+ * Read a CSV or JSON import file into records for the preview. File-level problems (not JSON, the
+ * wrong shape or columns, no rows) are returned as one sentence for the file field, with the
+ * same rules as the server's parseImport; row-level problems are left to the server's check.
+ */
 export function parseImportText(
   kind: ImportKind,
   format: 'csv' | 'json',
@@ -56,14 +90,43 @@ export function parseImportText(
   if (format === 'json') {
     let data: unknown;
     try {
-      data = JSON.parse(text);
+      data = JSON.parse(text.startsWith('﻿') ? text.slice(1) : text);
     } catch {
-      return { ok: false, code: 'INVALID_JSON', message: 'The file is not valid JSON.' };
+      return {
+        ok: false,
+        code: 'INVALID_JSON',
+        message: 'The file is not valid JSON. Check for a missing comma, quote or bracket.',
+      };
     }
-    if (!Array.isArray(data)) {
-      return { ok: false, code: 'INVALID_TYPE', message: 'The JSON file must be a list of rows.' };
+    // Like the server: a list of rows, or { "rows": [...] }.
+    const items: unknown = Array.isArray(data)
+      ? data
+      : data !== null && typeof data === 'object'
+        ? (data as { rows?: unknown }).rows
+        : undefined;
+    if (!Array.isArray(items)) {
+      return {
+        ok: false,
+        code: 'INVALID_TYPE',
+        message: 'The JSON file must be a list of rows, or { "rows": [...] }.',
+      };
     }
-    const rows = data.map((item): ImportRecord => {
+    if (items.length === 0) return NO_ROWS;
+    const objects = items.filter(
+      (item): item is Record<string, unknown> =>
+        item !== null && typeof item === 'object' && !Array.isArray(item),
+    );
+    // Columns that are wrong for the whole file; a single odd row is the server's row check.
+    if (objects.length > 0) {
+      const inEvery = (key: string) => objects.every((o) => key in o);
+      const missing = expected.filter((c) => !objects.some((o) => c in o));
+      const unknown = Object.keys(objects[0] ?? {}).filter(
+        (k) => !expected.includes(k) && inEvery(k),
+      );
+      const problem = columnProblem('The rows', expected, missing, unknown);
+      if (problem) return { ok: false, code: 'REQUIRED', message: problem };
+    }
+    const rows = items.map((item): ImportRecord => {
       const record: ImportRecord = {};
       if (item && typeof item === 'object') {
         for (const [key, value] of Object.entries(item as Record<string, unknown>)) {
@@ -80,13 +143,24 @@ export function parseImportText(
   if (!header) return { ok: false, code: 'REQUIRED', message: 'The file is empty.' };
   const names = header.map((h) => h.trim());
   const missing = expected.filter((c) => !names.includes(c));
-  if (missing.length > 0) {
+  const problem = columnProblem(
+    'The header row',
+    expected,
+    missing,
+    names.filter((c) => !expected.includes(c)),
+  );
+  if (problem) {
+    return { ok: false, code: missing.length > 0 ? 'REQUIRED' : 'UNKNOWN_FIELD', message: problem };
+  }
+  const twice = names.filter((c, i) => names.indexOf(c) !== i);
+  if (twice.length > 0) {
     return {
       ok: false,
-      code: 'REQUIRED',
-      message: `The header row is missing: ${missing.join(', ')}. Expected: ${expected.join(', ')}.`,
+      code: 'INCONSISTENT',
+      message: `A column appears twice in the header row: ${list([...new Set(twice)])}.`,
     };
   }
+  if (body.length === 0) return NO_ROWS;
   const rows = body.map((cells) => {
     const record: ImportRecord = {};
     names.forEach((name, index) => {

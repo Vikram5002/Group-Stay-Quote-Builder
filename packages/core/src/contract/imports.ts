@@ -46,6 +46,11 @@ export const ImportRowIssue = z.strictObject({
   code: ValidationIssueCode,
   message: z.string(),
   severity: z.enum(['error', 'warning']),
+  /**
+   * The value as written in the file (CSV cell text, or JSON), when the issue is about one cell.
+   * An empty CSV cell is "". Absent for header, shape and missing-field issues.
+   */
+  value: z.string().optional(),
 });
 export type ImportRowIssue = z.infer<typeof ImportRowIssue>;
 

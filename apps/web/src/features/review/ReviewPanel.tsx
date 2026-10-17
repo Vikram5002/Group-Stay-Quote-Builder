@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ApproveRequest, REASON_DESCRIPTIONS, RejectRequest, parseWith } from '@c32/core';
 import type { Quote } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Badge, Button, Card, Dialog, TextAreaField } from '../../components';
+import { Alert, Badge, Button, Card, Dialog, ProblemAlert, TextAreaField } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatCountdown, formatIst } from '../../lib/format';
 import { REASON_LABEL } from '../quotes/labels';
@@ -10,6 +10,7 @@ import { useNow, useQuoteAction } from '../quotes/queries';
 import { ArithmeticTrail, TotalsTable } from '../quotes/ResultPanels';
 import { StatusBadge } from '../quotes/StatusBadge';
 import { TermsComparison } from './TermsComparison';
+import { counted } from '../../lib/plural';
 
 export type ReviewResult = { kind: 'approved' | 'rejected'; quote: Quote };
 
@@ -83,7 +84,7 @@ export function ReviewPanel({
         </div>
         <p className="mt-1 text-sm text-ink-muted">
           Requested by {quote.created_by.user_id} ({quote.created_by.role}) · {evaluation.check_in}{' '}
-          to {evaluation.check_out} · {evaluation.requested_rooms} rooms ·{' '}
+          to {evaluation.check_out} · {counted(evaluation.requested_rooms, 'room')} ·{' '}
           {quote.valid_until && (
             <>
               hold {formatCountdown(quote.valid_until, now)} (
@@ -164,9 +165,12 @@ export function ReviewPanel({
         </p>
         {error && (
           <div className="mb-3">
-            <Alert tone="danger" title={error.friendly.title}>
-              {error.friendly.message} {error.friendly.nextStep}
-            </Alert>
+            <ProblemAlert
+              error={error}
+              title={
+                open === 'approve' ? 'Could not approve the quote' : 'Could not reject the quote'
+              }
+            />
           </div>
         )}
         <TextAreaField

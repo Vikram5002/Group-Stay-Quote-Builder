@@ -8,7 +8,7 @@ import { buildQuote, goTo, issueQuote, openApp, signIn, signOut } from './helper
  * Takes the UI screenshots that Track 4 uses as evidence. It is skipped in normal runs:
  *   npm run screenshots -w @c32/web
  * It tells one story with the built-in mock API (the fixture, a shortage and a below-floor quote
- * through to approval) and saves PNGs to docs/ui/screenshots.
+ * through to approval) and saves PNGs to docs/ui/screenshots (the front page first, then the app).
  */
 const OUT = fileURLToPath(new URL('../../../docs/ui/screenshots/', import.meta.url));
 
@@ -26,7 +26,25 @@ test.describe('evidence screenshots', () => {
     test.setTimeout(180_000);
     mkdirSync(OUT, { recursive: true });
 
-    await openApp(page);
+    // The front page, then the interactive calculator below the fold, then on to sign-in.
+    await openApp(page, '/');
+    await page.waitForTimeout(2200);
+    await shot(page, '00-landing-hero');
+    await page.getByRole('button', { name: '15% discount' }).click();
+    await page.evaluate(() => document.getElementById('try')?.scrollIntoView());
+    await page.waitForTimeout(1400);
+    await shot(page, '00b-landing-calculator-15-percent-discount');
+    await page.evaluate(() => document.getElementById('holds')?.scrollIntoView());
+    await page.getByRole('button', { name: 'Issue the quote' }).click();
+    await page.getByLabel('Fast-forward time').fill('60');
+    await page.waitForTimeout(1200);
+    await shot(page, '00c-landing-hold-clock');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page
+      .getByRole('link', { name: /^Sign in/ })
+      .first()
+      .click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
     await shot(page, '01-sign-in');
 
     await signIn(page, 'Asha', 'Sales');

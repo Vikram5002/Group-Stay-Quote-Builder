@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
+import { DEFAULT_POLICY } from '@c32/core';
 import type { Quote, QuoteRequest, Role } from '@c32/core';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { axe } from 'vitest-axe';
@@ -10,6 +11,7 @@ import { createApiClient, newIdempotencyKey } from '../../lib/api';
 import { makeMockToken } from '../../mocks/auth';
 import { createTestApi } from '../../mocks/server';
 import { mockSession } from '../auth/auth';
+import { maxExtensionHours } from './QuoteActions';
 
 const BASE = 'http://api.test';
 const { server, store } = createTestApi();
@@ -134,6 +136,71 @@ describe('quote detail', () => {
     expect(await screen.findByText('Validity extended')).toBeInTheDocument();
   });
 
+  it("limits extra hours to the policy's validity window for an Owner", async () => {
+    store.policy = { ...store.policy, validity_hours: 24 };
+    const quote = await seed();
+    const u = userEvent.setup();
+    renderDetail(quote.quote_id, 'Owner', 'Meera');
+
+    await u.click(await screen.findByRole('button', { name: 'Extend validity' }));
+    const dialog = screen.getByRole('dialog');
+    const hours = within(dialog).getByLabelText('Extra hours');
+    await waitFor(() => expect(hours).toHaveAttribute('max', '24'));
+    await u.clear(hours);
+    await u.type(hours, '30');
+    await u.click(within(dialog).getByRole('button', { name: 'Extend' }));
+
+    expect(within(dialog).getByText('Must be between 1 and 24')).toBeInTheDocument();
+    expect(store.quotes.get(quote.quote_id)?.version).toBe(1);
+    store.policy = { ...store.policy, validity_hours: 72 };
+  });
+
+  it('never offers more hours than remain before the stay cutoff', async () => {
+    const quote = await seed();
+    // Check-in 1 Nov IST, cutoff 24 h before: 31 Oct 00:00 IST = 30 Oct 18:30 UTC.
+    const near = { ...quote, valid_until: '2026-10-30T12:30:00.000Z' };
+    expect(maxExtensionHours(near, { ...DEFAULT_POLICY, validity_hours: 72 })).toBe(6);
+    expect(maxExtensionHours(quote, { ...DEFAULT_POLICY, validity_hours: 24 })).toBe(24);
+    expect(maxExtensionHours(quote, undefined)).toBeNull();
+  });
+
+  it("shows the server's refusal inside the extend dialog, which stays open", async () => {
+    store.policy = { ...store.policy, validity_hours: 24 };
+    const quote = await seed();
+    const u = userEvent.setup();
+    // Sales cannot read the policy, so the server is the one that refuses.
+    renderDetail(quote.quote_id);
+
+    await u.click(await screen.findByRole('button', { name: 'Extend validity' }));
+    const dialog = screen.getByRole('dialog');
+    const hours = within(dialog).getByLabelText('Extra hours');
+    await u.clear(hours);
+    await u.type(hours, '30');
+    await u.click(within(dialog).getByRole('button', { name: 'Extend' }));
+
+    expect(
+      await within(dialog).findByText('An extension can be at most 24 hours'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Extra hours')).toHaveValue(30);
+    expect(screen.queryByText(/Reload the quote/)).not.toBeInTheDocument();
+    store.policy = { ...store.policy, validity_hours: 72 };
+  });
+
+  it("shows a refused cancellation inside its dialog with the server's reason", async () => {
+    const quote = await seed();
+    const u = userEvent.setup();
+    renderDetail(quote.quote_id);
+
+    await u.click(await screen.findByRole('button', { name: 'Cancel quote' }));
+    // Someone else cancels it after this page loaded.
+    store.quotes.set(quote.quote_id, { ...quote, status: 'CANCELLED' });
+    const dialog = screen.getByRole('dialog');
+    await u.click(within(dialog).getByRole('button', { name: 'Cancel quote' }));
+
+    expect(await within(dialog).findByText('Cannot cancel a CANCELLED quote')).toBeInTheDocument();
+  });
+
   it('cancels after a confirmation dialog and releases the rooms', async () => {
     const quote = await seed();
     const u = userEvent.setup();
@@ -172,6 +239,70 @@ describe('quote detail', () => {
     expect(screen.getAllByText('Pending review').length).toBeGreaterThan(0);
   });
 
+  describe('review state follows the quote, not the original evaluation', () => {
+    const ownerClient = createApiClient({
+      baseUrl: BASE,
+      getToken: () => makeMockToken({ user_id: 'meera', role: 'Owner' }),
+    });
+    const approve = (id: string) =>
+      ownerClient.approveQuote(
+        id,
+        { reason: 'Repeat client, strategic account' },
+        { idempotencyKey: newIdempotencyKey() },
+      );
+    const header = async () =>
+      (await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' }))
+        .parentElement as HTMLElement;
+
+    it('a pending below-floor quote needs review', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      renderDetail(quote.quote_id);
+      expect(within(await header()).getByText('Needs review')).toBeInTheDocument();
+      expect(screen.getByText('Owner review required')).toBeInTheDocument();
+    });
+
+    it('an approved quote shows who approved it, when and why', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      await approve(quote.quote_id);
+      renderDetail(quote.quote_id);
+
+      expect(within(await header()).getByText('Approved')).toBeInTheDocument();
+      expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
+      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.getByText('Approved below the floor')).toBeInTheDocument();
+      expect(
+        screen.getByText(/^Approved by meera on 20 Oct 2026.*: Repeat client, strategic account$/),
+      ).toBeInTheDocument();
+    });
+
+    it('stays approved, not "needs review", once confirmed', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      await approve(quote.quote_id);
+      const u = userEvent.setup();
+      renderDetail(quote.quote_id);
+      await u.click(await screen.findByRole('button', { name: 'Confirm quote' }));
+
+      await waitFor(() => expect(store.quotes.get(quote.quote_id)?.status).toBe('CONFIRMED'));
+      expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
+      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.getByText(/^Approved by meera on/)).toBeInTheDocument();
+    });
+
+    it('a quote cancelled before any decision no longer asks for review', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      const client = createApiClient({
+        baseUrl: BASE,
+        getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+      });
+      await client.cancelQuote(quote.quote_id, {}, { idempotencyKey: newIdempotencyKey() });
+      renderDetail(quote.quote_id);
+
+      expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
+      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.getByText('Closed before an Owner decided')).toBeInTheDocument();
+    });
+  });
+
   it('says so when the quote does not exist', async () => {
     renderDetail('01ARZ3NDEKTSV4RRFFQ69G5FAV');
     expect(
@@ -191,7 +322,7 @@ describe('quote detail', () => {
     expect(screen.queryByRole('button', { name: 'Confirm quote' })).not.toBeInTheDocument();
   });
 
-  it('turns a server refusal into a plain message and refreshes the quote', async () => {
+  it("shows the server's refusal and refreshes the quote", async () => {
     const quote = await seed();
     const u = userEvent.setup();
     renderDetail(quote.quote_id);
@@ -201,8 +332,8 @@ describe('quote detail', () => {
     store.quotes.set(quote.quote_id, { ...quote, valid_until: '2020-01-01T00:00:00.000Z' });
     await u.click(confirm);
 
-    expect(await screen.findByText('Quote has expired')).toBeInTheDocument();
-    expect(screen.getByText(/Re-quote to hold the rooms again/)).toBeInTheDocument();
+    expect(await screen.findByText('Could not confirm the quote')).toBeInTheDocument();
+    expect(screen.getByText(/Quote expired at 2020-01-01/)).toBeInTheDocument();
     expect(await screen.findByText('This quote expired')).toBeInTheDocument();
   });
 

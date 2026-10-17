@@ -1,5 +1,6 @@
 import { Count, DataTable, Money, Unknown } from '../../components';
 import type { ImportRecord } from '../../lib/imports';
+import { counted } from '../../lib/plural';
 
 const PREVIEW_ROWS = 10;
 
@@ -23,7 +24,7 @@ export function FilePreview({
   return (
     <div>
       <p className="mb-2 text-sm font-semibold">
-        {rows.length} row{rows.length === 1 ? '' : 's'} read from the file
+        {counted(rows.length, 'row')} read from the file
         {rows.length > PREVIEW_ROWS ? ` (showing the first ${PREVIEW_ROWS})` : ''}
       </p>
       <DataTable

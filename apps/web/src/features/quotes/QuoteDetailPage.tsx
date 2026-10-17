@@ -9,7 +9,9 @@ import { DECISION_LABEL, OPEN_STATUSES } from './labels';
 import { QuoteActions } from './QuoteActions';
 import { useNow, useQuote, useQuoteAudit } from './queries';
 import { ArithmeticTrail, DecisionSummary, TotalsTable } from './ResultPanels';
+import { reviewBadge, reviewBanner, reviewState } from './reviewState';
 import { StatusBadge } from './StatusBadge';
+import { counted } from '../../lib/plural';
 
 function Countdown({ quote }: { quote: Quote }) {
   const now = useNow();
@@ -49,12 +51,13 @@ function Summary({ quote }: { quote: Quote }) {
             <ul className="flex flex-col gap-1">
               {evaluation.lines?.map((line, i) => (
                 <li key={`${line.check_in}-${i}`}>
-                  {line.rooms} rooms, {line.check_in} to {line.check_out} ({line.nights} nights)
+                  {counted(line.rooms, 'room')}, {line.check_in} to {line.check_out} (
+                  {counted(line.nights, 'night')})
                 </li>
               ))}
             </ul>
           ) : (
-            `${evaluation.check_in} to ${evaluation.check_out} (${evaluation.nights} nights)`
+            `${evaluation.check_in} to ${evaluation.check_out} (${counted(evaluation.nights, 'night')})`
           )}
         </dd>
         <dt className="text-ink-muted">Room type</dt>
@@ -158,6 +161,8 @@ export function QuoteDetailPage() {
   }
 
   const q = quote.data;
+  const review = reviewState(q);
+  const badge = reviewBadge(review);
   return (
     <div className="mx-auto max-w-5xl">
       <p className="text-sm">
@@ -168,8 +173,11 @@ export function QuoteDetailPage() {
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">{q.request.organiser.name}</h1>
         <StatusBadge status={q.status} />
-        <Badge tone="neutral">{DECISION_LABEL[q.evaluation.decision]}</Badge>
-        {q.review_required && <Badge tone="warning">Review required after amendment</Badge>}
+        {review.kind === 'none' ? (
+          <Badge tone="neutral">{DECISION_LABEL[q.evaluation.decision]}</Badge>
+        ) : (
+          badge && <Badge tone={badge.tone}>{badge.label}</Badge>
+        )}
       </div>
 
       {q.status === 'EXPIRED' && (
@@ -192,21 +200,12 @@ export function QuoteDetailPage() {
         <div className="flex flex-col gap-6">
           <Countdown quote={q} />
           {session && <QuoteActions quote={q} role={session.user.role} />}
-          <DecisionSummary evaluation={q.evaluation} />
+          <DecisionSummary evaluation={q.evaluation} review={reviewBanner(q, review)} />
           <TotalsTable totals={q.evaluation.totals} />
           <ArithmeticTrail trail={q.evaluation.trail} />
         </div>
         <div className="flex flex-col gap-6">
           <Summary quote={q} />
-          {q.approval && (
-            <Card title="Approval">
-              <p className="text-sm">
-                Approved by {q.approval.approved_by.user_id} on{' '}
-                <time dateTime={q.approval.approved_at}>{formatIst(q.approval.approved_at)}</time>.
-              </p>
-              <p className="mt-1 text-sm">Reason: {q.approval.reason}</p>
-            </Card>
-          )}
           {audit.isError ? (
             <Alert tone="warning" title="The audit timeline could not be loaded">
               The quote is shown without it.

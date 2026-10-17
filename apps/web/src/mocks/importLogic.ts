@@ -1,11 +1,8 @@
-import { InventoryImportRow, parseWith, RateImportRow } from '@c32/core';
-import type { ImportKind, ImportReport, ImportRowIssue } from '@c32/core';
-import { parseImportText } from '../lib/imports';
+import { parseImport } from '@c32/core';
+import type { ImportKind, ImportReport } from '@c32/core';
 import type { ImportRecord } from '../lib/imports';
 import { mockHash } from './store';
 import type { MockStore, StoredUpload } from './store';
-
-const keyOf = (row: ImportRecord) => `${String(row.date)}|${String(row.room_type)}`;
 
 interface Checked {
   report: ImportReport;
@@ -13,108 +10,27 @@ interface Checked {
 }
 
 /**
- * Dry run: read the file, check every row with the contract's row schema, and report problems by
- * row number (the first data row is row 1). Nothing is written. Empty cells are unknown (null)
- * and only produce a warning, never a zero.
+ * Dry run with the same parser the API uses (parseImport in @c32/core), so the mock reports the
+ * same row problems, messages and values: row numbers from 1, unknown room types rejected, rows
+ * with errors skipped, and empty cells imported as unknown (null) with a warning, never zero.
+ * Nothing is written. Only the ledger checks against held rooms are left to the real API.
  */
 export function checkImport(importId: string, upload: StoredUpload): Checked {
   const { kind, format, text } = upload;
-  const base = { import_id: importId, kind, content_sha256: mockHash(text ?? '') };
-  const parsed = parseImportText(kind, format, text ?? '');
-
-  if (!parsed.ok) {
-    const issue: ImportRowIssue = {
-      row: 1,
-      field: 'file',
-      code: parsed.code,
-      message: parsed.message,
-      severity: 'error',
-    };
-    return {
-      rows: [],
-      report: {
-        ...base,
-        status: 'REJECTED',
-        rows_total: 0,
-        rows_accepted: 0,
-        rows_rejected: 0,
-        issues: [issue],
-      },
-    };
-  }
-
-  const schema = kind === 'inventory' ? InventoryImportRow : RateImportRow;
-  const issues: ImportRowIssue[] = [];
-  const accepted: ImportRecord[] = [];
-  const firstSeen = new Map<string, number>();
-
-  parsed.rows.forEach((record, index) => {
-    const row = index + 1;
-    const result = parseWith(schema, record);
-    if (!result.ok) {
-      for (const issue of result.issues) {
-        issues.push({
-          row,
-          field: issue.path || 'row',
-          code: issue.code,
-          message: issue.message,
-          severity: 'error',
-        });
-      }
-      return;
-    }
-    const key = keyOf(record);
-    const earlier = firstSeen.get(key);
-    if (earlier !== undefined) {
-      issues.push({
-        row,
-        field: 'date',
-        code: 'INCONSISTENT',
-        message: `Duplicate of row ${earlier}: the same date and room type appear twice`,
-        severity: 'error',
-      });
-      return;
-    }
-    firstSeen.set(key, row);
-
-    if (kind === 'inventory' && record.rooms === null) {
-      issues.push({
-        row,
-        field: 'rooms',
-        code: 'REQUIRED',
-        message: 'Empty: availability is unknown, so no rooms can be held on this night',
-        severity: 'warning',
-      });
-    }
-    if (kind === 'rates') {
-      for (const field of ['rate_per_room_night_inr', 'variable_cost_per_room_night_inr']) {
-        if (record[field] === null) {
-          issues.push({
-            row,
-            field,
-            code: 'REQUIRED',
-            message: 'Empty: treated as unknown, so quotes that need it go to review',
-            severity: 'warning',
-          });
-        }
-      }
-    }
-    accepted.push(record);
-  });
-
-  const rejected = new Set(issues.filter((i) => i.severity === 'error').map((i) => i.row)).size;
-  const hash = mockHash(JSON.stringify(accepted));
+  const parsed = parseImport(kind, format, text ?? '');
+  const rows = parsed.rows as ImportRecord[];
+  const rejected = new Set(parsed.issues.filter((i) => i.severity === 'error').map((i) => i.row));
   return {
-    rows: accepted,
+    rows,
     report: {
-      ...base,
-      content_sha256: hash,
-      // Like the real service: rows with errors are skipped, only an unreadable file is rejected.
-      status: 'VALIDATED',
-      rows_total: parsed.rows.length,
-      rows_accepted: accepted.length,
-      rows_rejected: rejected,
-      issues,
+      import_id: importId,
+      kind,
+      content_sha256: mockHash(parsed.rejected ? (text ?? '') : JSON.stringify(rows)),
+      status: parsed.rejected ? 'REJECTED' : 'VALIDATED',
+      rows_total: parsed.rows_total,
+      rows_accepted: parsed.rejected ? 0 : rows.length,
+      rows_rejected: parsed.rejected ? parsed.rows_total : rejected.size,
+      issues: parsed.issues,
     },
   };
 }

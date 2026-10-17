@@ -39,7 +39,9 @@ export function knownError(err: unknown): KnownError | null {
       errors: [{ path: 'cursor', code: 'INVALID_FORMAT', message: 'Invalid cursor' }],
     };
   }
-  if (err instanceof ServiceError) return { code: err.code, detail: err.message };
+  if (err instanceof ServiceError) {
+    return { code: err.code, detail: err.message, ...(err.issues ? { errors: err.issues } : {}) };
+  }
   if (err instanceof HoldConflictError) {
     return { code: 'HOLD_CONFLICT', detail: `Rooms are no longer available on ${err.date}` };
   }

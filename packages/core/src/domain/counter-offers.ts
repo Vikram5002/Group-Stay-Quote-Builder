@@ -1,6 +1,7 @@
 import type { ReasonCode } from '../contract/codes.js';
 import type { CounterOffer, Evaluation, InclusionInput } from '../contract/quote.js';
 import type { ResolvedQuoteRequest } from './request.js';
+import { counted } from './plural.js';
 
 /**
  * Counter-offer generator (blueprint 6.4, FR-12). When a quote breaches the floor or is short of
@@ -71,9 +72,14 @@ export function counterOffers(
 
   if (reasons.includes('PARTIAL_AVAILABILITY') && isClean(baseEval)) {
     out.push(
-      offer('PARTIAL_ROOMS', `Offer ${base.rooms} rooms instead of ${request.rooms}`, baseEval, {
-        rooms: base.rooms,
-      }),
+      offer(
+        'PARTIAL_ROOMS',
+        `Offer ${counted(base.rooms, 'room')} instead of ${request.rooms}`,
+        baseEval,
+        {
+          rooms: base.rooms,
+        },
+      ),
     );
   }
 

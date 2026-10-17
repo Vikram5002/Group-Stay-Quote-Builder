@@ -1,0 +1,398 @@
+@import '@fontsource-variable/inter/opsz.css';
+
+/*
+ * Landing page design system. It follows the calm, editorial look of Fynd's own site: a soft grey
+ * page, white and light-grey rounded cards, black pill buttons, large tightly spaced sentence-case
+ * headlines and big plain numbers. Everything is scoped to .lp-root so the app keeps its own look.
+ * The Inter font is bundled with the app (no third-party request). Motion is decoration only and
+ * the reduced-motion block at the end switches it off.
+ */
+
+.lp-root {
+  --lp-ink: #101319;
+  --lp-muted: #5b5c5d;
+  --lp-line: #e3e3e3;
+  --lp-bg: #f2f2f2;
+  --lp-card: #f8f8f9;
+  --lp-white: #fff;
+  --lp-blue: #5c98f7;
+  --lp-green: #7ccf9a;
+  --lp-orange: #f0a868;
+  font-family:
+    'Inter Variable', Inter, 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  font-optical-sizing: auto;
+  color: var(--lp-ink);
+  background: var(--lp-white);
+  -webkit-font-smoothing: antialiased;
+}
+
+.lp-root :focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.lp-muted {
+  color: var(--lp-muted);
+}
+
+/* Type */
+.lp-h1 {
+  font-size: clamp(2.2rem, 4vw, 3.45rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+}
+.lp-h2 {
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.032em;
+  line-height: 1.08;
+}
+.lp-h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+.lp-lead {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--lp-muted);
+}
+.lp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--lp-ink);
+}
+.lp-eyebrow::before {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--lp-dot, var(--lp-blue));
+}
+.lp-big {
+  font-size: clamp(2rem, 3.2vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.lp-big--stat {
+  font-size: clamp(1.5rem, 2.2vw, 1.85rem);
+}
+
+/* Buttons: black pill, outline pill */
+.lp-btn,
+.lp-btn-outline,
+.lp-btn-light {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.lp-btn {
+  background: var(--lp-ink);
+  color: #fff;
+  border: 1px solid var(--lp-ink);
+}
+.lp-btn:hover {
+  background: #2b303a;
+  transform: translateY(-1px);
+}
+.lp-btn-outline {
+  background: #fff;
+  color: var(--lp-ink);
+  border: 1px solid #c9c9c9;
+}
+.lp-btn-outline:hover {
+  background: var(--lp-card);
+  border-color: var(--lp-ink);
+}
+.lp-btn-light {
+  background: #fff;
+  color: var(--lp-ink);
+  border: 1px solid #fff;
+}
+.lp-btn-light:hover {
+  background: var(--lp-bg);
+  transform: translateY(-1px);
+}
+.lp-btn svg,
+.lp-btn-light svg {
+  transition: transform 0.2s ease;
+}
+.lp-btn:hover svg,
+.lp-btn-light:hover svg {
+  transform: translateX(3px);
+}
+
+/* Cards */
+.lp-card {
+  position: relative;
+  border-radius: 1rem;
+  background: var(--lp-card);
+  padding: 1.5rem;
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 0.3s ease,
+    background-color 0.3s ease;
+}
+.lp-card--lift:hover {
+  transform: translateY(-4px);
+  background: #fff;
+  box-shadow:
+    0 0 0 1px var(--lp-line),
+    0 18px 36px -20px rgb(16 19 25 / 0.28);
+}
+.lp-card--white {
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--lp-line);
+}
+.lp-arrow {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  color: var(--lp-ink);
+  opacity: 0.45;
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+.lp-card--lift:hover .lp-arrow {
+  opacity: 1;
+  transform: translate(3px, -3px);
+}
+.lp-icon-disc {
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--lp-line);
+  transition: transform 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.lp-card--lift:hover .lp-icon-disc {
+  transform: scale(1.1) rotate(-6deg);
+}
+
+/* Tabs and chips with the small colour dot */
+.lp-tab {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 0.75rem;
+  padding: 0 1.25rem;
+  font-weight: 500;
+  color: var(--lp-muted);
+  background: transparent;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.lp-tab[aria-selected='true'] {
+  background: #fff;
+  color: var(--lp-ink);
+  box-shadow: 0 0 0 1px var(--lp-line);
+}
+.lp-tab:hover {
+  color: var(--lp-ink);
+}
+.lp-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: var(--d, var(--lp-blue));
+}
+.lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 0 0 1px var(--lp-line);
+}
+
+/* Hero */
+.lp-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(48rem 26rem at var(--mx, 78%) var(--my, 30%), #fff 0%, transparent 70%),
+    var(--lp-bg);
+}
+.lp-blob {
+  position: absolute;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(60px);
+  opacity: 0.7;
+  animation: lp-drift 18s ease-in-out infinite;
+}
+.lp-blob--a {
+  width: 26rem;
+  height: 26rem;
+  right: -6rem;
+  top: -8rem;
+  background: #fff;
+}
+.lp-blob--b {
+  width: 20rem;
+  height: 20rem;
+  bottom: -9rem;
+  left: 30%;
+  background: #e4e9f5;
+  animation-delay: -7s;
+}
+@keyframes lp-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2rem, 1.5rem, 0) scale(1.08);
+  }
+}
+.lp-float {
+  animation: lp-float 6s ease-in-out infinite;
+  animation-delay: var(--fd, 0s);
+}
+@keyframes lp-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--r, 0deg));
+  }
+  50% {
+    transform: translateY(-10px) rotate(var(--r, 0deg));
+  }
+}
+
+/* Reveal on scroll */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--d, 0ms);
+}
+.lp-reveal[data-in='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+.lp-pop {
+  animation: lp-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes lp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes lp-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.lp-progress {
+  transition: width 0.6s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.lp-ring {
+  transition:
+    stroke-dashoffset 0.35s linear,
+    stroke 0.35s ease;
+}
+.lp-scroll-bar {
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+
+/* A slow marquee of what the product does, like Fynd's logo strip. */
+.lp-marquee {
+  display: flex;
+  width: max-content;
+  gap: 3rem;
+  animation: lp-marquee 34s linear infinite;
+}
+.lp-marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes lp-marquee {
+  to {
+    transform: translateX(calc(-50% - 1.5rem));
+  }
+}
+
+/* Details/summary FAQ */
+.lp-faq summary {
+  list-style: none;
+  cursor: pointer;
+}
+.lp-faq summary::-webkit-details-marker {
+  display: none;
+}
+.lp-faq[open] .lp-faq-plus {
+  transform: rotate(45deg);
+}
+.lp-faq-plus {
+  transition: transform 0.25s ease;
+}
+.lp-faq[open] .lp-faq-body {
+  animation: lp-pop 0.3s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal,
+  .lp-reveal[data-in] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .lp-blob,
+  .lp-float,
+  .lp-marquee,
+  .lp-pop,
+  .lp-faq[open] .lp-faq-body {
+    animation: none !important;
+  }
+  .lp-card--lift:hover,
+  .lp-btn:hover,
+  .lp-btn-light:hover {
+    transform: none !important;
+  }
+  .lp-card--lift:hover .lp-arrow,
+  .lp-card--lift:hover .lp-icon-disc,
+  .lp-btn:hover svg,
+  .lp-btn-light:hover svg {
+    transform: none !important;
+  }
+}

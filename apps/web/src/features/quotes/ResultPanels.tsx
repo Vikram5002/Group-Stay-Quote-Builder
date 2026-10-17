@@ -11,79 +11,105 @@ import {
   Unknown,
 } from '../../components';
 import { formatInr, formatIst } from '../../lib/format';
-import type { LiveTotals } from './usePreview';
+import { meterStatus } from './meterStatus';
+import type { ReviewBanner } from './reviewState';
+import type { LiveMeterState } from './usePreview';
+import { counted } from '../../lib/plural';
 
-/** Always-visible contribution meter. Shows Unknown, never zero, when a cost is missing. */
-export function LiveMeter({ live, updating }: { live: LiveTotals | null; updating: boolean }) {
-  if (!live) {
+const METER_NOTE: Record<LiveMeterState['kind'], string> = {
+  start:
+    'Fill in the group, dates and rooms. The price against the Sales limit will appear here and update as you change the discount or rate.',
+  invalid: 'Enter valid values to see the price check.',
+  error: 'The server could not check these values, so no price check is shown.',
+  checking: 'Checking with the server…',
+  estimate: 'Estimate from your rate. The server confirms it next.',
+  server: 'Confirmed by the server.',
+};
+
+/**
+ * Always-visible contribution meter. Shows Unknown, never zero, when a cost is missing. It says
+ * "Confirmed by the server" only for the server's answer to exactly the current form.
+ */
+export function LiveMeter({ state }: { state: LiveMeterState }) {
+  const note = (
+    <p className="mt-3 text-xs text-ink-muted" role="status">
+      {METER_NOTE[state.kind]}
+    </p>
+  );
+  if (!('totals' in state) || !state.totals) {
     return (
-      <Card title="Live price check">
-        <p className="text-sm text-ink-muted">
-          Fill in the group, dates and rooms. The contribution against the floor will appear here
-          and update as you change the rate.
-        </p>
+      <Card title="Live price check" aria-busy={state.kind === 'checking' || undefined}>
+        {state.kind === 'start' ? (
+          <p className="text-sm text-ink-muted">{METER_NOTE.start}</p>
+        ) : (
+          note
+        )}
       </Card>
     );
   }
-  const { totals, source } = live;
+  const { totals } = state;
+  const checking = state.kind === 'checking';
+  const status = state.evaluation ? meterStatus(state.evaluation, totals) : null;
   // What the package would earn at full price: the discount taken back off the contribution.
   const beforeDiscount =
     totals.contribution_inr === null || totals.room_revenue_inr === null
       ? null
       : totals.contribution_inr + (totals.list_revenue_inr - totals.room_revenue_inr);
   return (
-    <Card title="Live price check" aria-busy={updating || undefined}>
-      {totals.contribution_inr === null || totals.contribution_floor_inr === null ? (
-        <p className="text-sm">
-          A cost is unknown, so the price cannot be checked yet: the owner reviews it.
-        </p>
-      ) : (
-        <ContributionMeter
-          label="Contribution after discount"
-          okText="Within the Sales limit"
-          belowText="Over the limit: owner review"
-          contribution={totals.contribution_inr}
-          floor={totals.contribution_floor_inr}
-          max={Math.max(beforeDiscount ?? 0, totals.contribution_floor_inr)}
-        />
-      )}
-      <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
-        <dt>Total revenue at full price</dt>
-        <dd className="font-semibold">
-          <Money value={totals.list_revenue_inr} />
-        </dd>
-        <dt>Contribution before discount</dt>
-        <dd className="font-semibold">
-          <Money value={beforeDiscount} />
-        </dd>
-        <dt>Discount (Sales limit {totals.max_discount_pct}%)</dt>
-        <dd className="font-semibold">
-          {totals.discount_pct === null ? 'Unknown' : `${totals.discount_pct}%`}
-        </dd>
-        <dt>Revenue after discount</dt>
-        <dd className="font-semibold">
-          <Money value={totals.room_revenue_inr} />
-        </dd>
-        <dt>Contribution after discount</dt>
-        <dd className="font-semibold">
-          <Money value={totals.contribution_inr} />
-        </dd>
-        <dt>Full price per room-night</dt>
-        <dd className="font-semibold">
-          <Money value={totals.floor_rate_per_room_night_inr} />
-        </dd>
-        <dt>Minimum safe rate per room-night</dt>
-        <dd className="font-semibold">
-          <Money value={totals.min_rate_per_room_night_inr} />
-        </dd>
-      </dl>
-      <p className="mt-3 text-xs text-ink-muted" role="status">
-        {source === 'estimate'
-          ? 'Estimate from your rate. The server confirms it next.'
-          : updating
-            ? 'Checking with the server…'
-            : 'Confirmed by the server.'}
-      </p>
+    <Card title="Live price check" aria-busy={checking || undefined}>
+      <div className={checking ? 'opacity-60' : undefined}>
+        {totals.contribution_inr === null || totals.contribution_floor_inr === null ? (
+          status?.tone === 'danger' ? (
+            // Nothing can be offered, so there is no price to check: say why instead.
+            <Badge tone="danger">{status.label}</Badge>
+          ) : (
+            <p className="text-sm">
+              A cost is unknown, so the price cannot be checked yet: the owner reviews it.
+            </p>
+          )
+        ) : (
+          <ContributionMeter
+            label="Contribution after discount"
+            okText="Within the Sales limit"
+            belowText="Over the limit: owner review"
+            contribution={totals.contribution_inr}
+            floor={totals.contribution_floor_inr}
+            max={Math.max(beforeDiscount ?? 0, totals.contribution_floor_inr)}
+            {...(status ? { status } : {})}
+          />
+        )}
+        <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+          <dt>Total revenue at full price</dt>
+          <dd className="font-semibold">
+            <Money value={totals.list_revenue_inr} />
+          </dd>
+          <dt>Contribution before discount</dt>
+          <dd className="font-semibold">
+            <Money value={beforeDiscount} />
+          </dd>
+          <dt>Discount (Sales limit {totals.max_discount_pct}%)</dt>
+          <dd className="font-semibold">
+            {totals.discount_pct === null ? 'Unknown' : `${totals.discount_pct}%`}
+          </dd>
+          <dt>Revenue after discount</dt>
+          <dd className="font-semibold">
+            <Money value={totals.room_revenue_inr} />
+          </dd>
+          <dt>Contribution after discount</dt>
+          <dd className="font-semibold">
+            <Money value={totals.contribution_inr} />
+          </dd>
+          <dt>Full price per room-night</dt>
+          <dd className="font-semibold">
+            <Money value={totals.floor_rate_per_room_night_inr} />
+          </dd>
+          <dt>Minimum safe rate per room-night</dt>
+          <dd className="font-semibold">
+            <Money value={totals.min_rate_per_room_night_inr} />
+          </dd>
+        </dl>
+      </div>
+      {note}
     </Card>
   );
 }
@@ -95,7 +121,7 @@ const DECISION_VIEW: Record<
   OFFER: { tone: 'success', title: () => 'Ready to offer' },
   PARTIAL_OFFER: {
     tone: 'info',
-    title: (e) => `Partial offer: ${e.offered_rooms} of ${e.requested_rooms} rooms`,
+    title: (e) => `Partial offer: ${e.offered_rooms} of ${counted(e.requested_rooms, 'room')}`,
   },
   REVIEW: { tone: 'warning', title: () => 'Owner review required' },
   DECLINE: { tone: 'danger', title: () => 'This request cannot be offered' },
@@ -103,19 +129,26 @@ const DECISION_VIEW: Record<
 
 export function DecisionSummary({
   evaluation,
+  review,
   onUseRate,
   onUseRooms,
 }: {
   evaluation: Evaluation;
+  /**
+   * A saved quote's current review state (see reviewState.ts). It replaces the evaluation's own
+   * title, which only says what the engine found when the quote was issued.
+   */
+  review?: ReviewBanner | null;
   /** Offered on the builder only. A saved quote cannot be edited, so these are omitted there. */
   onUseRate?: (rate: number) => void;
   onUseRooms?: (rooms: number) => void;
 }) {
-  const view = DECISION_VIEW[evaluation.decision];
+  const decision = DECISION_VIEW[evaluation.decision];
+  const view = review ?? { tone: decision.tone, title: decision.title(evaluation) };
   const partial = evaluation.offered_rooms > 0 && evaluation.shortfall_rooms > 0;
   return (
     <div className="flex flex-col gap-4">
-      <Alert tone={view.tone} title={view.title(evaluation)}>
+      <Alert tone={view.tone} title={view.title}>
         {evaluation.reasons.length > 0 ? (
           <ul className="list-disc pl-5">
             {evaluation.reasons.map((reason) => (
@@ -125,14 +158,15 @@ export function DecisionSummary({
         ) : evaluation.auto_confirm_allowed ? (
           'It meets the contribution floor and can be confirmed without approval.'
         ) : undefined}
+        {review?.note && <p className="mt-2 font-semibold">{review.note}</p>}
       </Alert>
 
       {partial && (
         <Card title="Partial offer">
           <p className="text-sm">
-            Only {evaluation.offered_rooms} of {evaluation.requested_rooms} rooms can be held on
-            every night. You are {evaluation.shortfall_rooms} short. The quote will hold{' '}
-            {evaluation.offered_rooms} rooms and never more than are available.
+            Only {evaluation.offered_rooms} of {counted(evaluation.requested_rooms, 'room')} can be
+            held on every night. You are {evaluation.shortfall_rooms} short. The quote will hold{' '}
+            {counted(evaluation.offered_rooms, 'room')} and never more than are available.
           </p>
           {onUseRooms && (
             <Button
@@ -140,7 +174,7 @@ export function DecisionSummary({
               className="mt-3"
               onClick={() => onUseRooms(evaluation.offered_rooms)}
             >
-              Change the request to {evaluation.offered_rooms} rooms
+              Change the request to {counted(evaluation.offered_rooms, 'room')}
             </Button>
           )}
         </Card>

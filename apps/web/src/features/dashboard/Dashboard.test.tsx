@@ -151,3 +151,27 @@ describe('dashboard', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+describe('dashboard counts read as sentences', () => {
+  it('one open quote is singular', async () => {
+    await create({});
+    renderDashboard();
+    expect(
+      await screen.findByText('Contribution on 1 open quote that is offered or pending review.', {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^1 quote$/)).toBeInTheDocument();
+  });
+
+  it('two open quotes are plural', async () => {
+    await create({ rooms: 2 });
+    await create({ rooms: 3 });
+    renderDashboard();
+    expect(
+      await screen.findByText('Contribution on 2 open quotes that are offered or pending review.', {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+  });
+});

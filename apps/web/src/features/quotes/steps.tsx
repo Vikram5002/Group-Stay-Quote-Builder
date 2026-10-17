@@ -1,24 +1,44 @@
 import { INCLUSION_BASES } from '@c32/core';
-import { Button, Card, CheckboxField, SelectField, TextField } from '../../components';
+import type { Policy } from '@c32/core';
+import { Alert, Button, Card, CheckboxField, SelectField, TextField } from '../../components';
 import { newInclusion, newLine, ROOM_TYPES } from './form';
 import type { InclusionBasisValue, InclusionForm, LineForm, QuoteForm } from './form';
+import { counted } from '../../lib/plural';
 
 interface StepProps {
   form: QuoteForm;
   patch: (changes: Partial<QuoteForm>) => void;
-  /** Field errors by request path. Only shown after the person tries to continue. */
+  /**
+   * Field errors by request path, for fields the person has changed or left, or all of them
+   * after they try to continue. Each input's name is its request path.
+   */
   errors: Record<string, string>;
 }
 
 const err = (errors: Record<string, string>, path: string) =>
   errors[path] ? { error: errors[path] } : {};
 
-export function GroupStep({ form, patch, errors }: StepProps) {
+export function GroupStep({
+  form,
+  patch,
+  errors,
+  today,
+  tooLate,
+  policy,
+}: StepProps & {
+  /** Today in the property time zone: the earliest check-in. */
+  today: string;
+  /** The server says this check-in leaves too little time before the stay cutoff. */
+  tooLate: boolean;
+  /** For the numbers in the too-late warning, when this role can read the policy. */
+  policy?: Policy | undefined;
+}) {
   return (
     <Card title="Group and dates">
       <div className="grid gap-4 md:grid-cols-2">
         <TextField
           label="Organiser name"
+          name="organiser.name"
           required
           value={form.organiser}
           onChange={(e) => patch({ organiser: e.target.value })}
@@ -27,20 +47,24 @@ export function GroupStep({ form, patch, errors }: StepProps) {
         />
         <TextField
           label="Reference (optional)"
+          name="organiser.reference"
           value={form.reference}
           onChange={(e) => patch({ reference: e.target.value })}
           {...err(errors, 'organiser.reference')}
         />
         <TextField
           label="Check-in date"
+          name="stay.check_in"
           type="date"
           required
+          min={today}
           value={form.checkIn}
           onChange={(e) => patch({ checkIn: e.target.value })}
           {...err(errors, 'stay.check_in')}
         />
         <TextField
           label="Nights"
+          name="stay.nights"
           type="number"
           inputMode="numeric"
           min={1}
@@ -52,6 +76,16 @@ export function GroupStep({ form, patch, errors }: StepProps) {
           {...err(errors, 'stay.nights')}
         />
       </div>
+      {tooLate && (
+        <div className="mt-4">
+          <Alert tone="warning" title="Too late to quote for this date">
+            {policy
+              ? `A quote must stay open at least ${counted(policy.min_validity_hours, 'hour')} before the stay cutoff, ${counted(policy.stay_cutoff_hours, 'hour')} before check-in.`
+              : 'A quote must stay open for a minimum time before the stay cutoff, and this check-in is too close.'}{' '}
+            The request will be declined. Choose a later date.
+          </Alert>
+        </div>
+      )}
     </Card>
   );
 }
@@ -71,7 +105,7 @@ export function RoomsStep({ form, patch, errors }: StepProps) {
             {...err(errors, 'room_type')}
           >
             {ROOM_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
+              <option key={t.code} value={t.code}>
                 {t.label}
               </option>
             ))}
@@ -183,6 +217,7 @@ function InclusionRow({
       <div className="grid gap-4 md:grid-cols-2">
         <TextField
           label={`Inclusion ${index + 1} name`}
+          name={path('name')}
           required
           value={inclusion.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -191,6 +226,7 @@ function InclusionRow({
         />
         <SelectField
           label="Charged"
+          name={path('basis')}
           value={inclusion.basis}
           onChange={(e) => onChange({ basis: e.target.value as InclusionBasisValue })}
         >
@@ -202,6 +238,7 @@ function InclusionRow({
         </SelectField>
         <TextField
           label="Cost to the hotel per unit (INR)"
+          name={path('unit_cost_inr')}
           type="number"
           inputMode="numeric"
           min={0}
@@ -213,6 +250,7 @@ function InclusionRow({
         <div className="flex flex-col justify-end gap-3">
           <CheckboxField
             label="Cost is not known yet"
+            name={path('unit_cost_inr')}
             hint="The quote will need Owner review. It is never treated as zero."
             checked={inclusion.costUnknown}
             onChange={(e) => onChange({ costUnknown: e.target.checked })}
@@ -220,15 +258,19 @@ function InclusionRow({
         </div>
         <CheckboxField
           label="Already included in the room rate"
+          name={path('price_inr')}
           checked={inclusion.includedInRate}
           onChange={(e) => onChange({ includedInRate: e.target.checked })}
         />
         {!inclusion.includedInRate && (
           <TextField
             label="Extra price charged per unit (INR)"
+            name={path('price_inr')}
             type="number"
             inputMode="numeric"
             min={0}
+            required
+            hint="Charged on top of the rate. Enter 0 if there is no extra charge."
             value={inclusion.price}
             onChange={(e) => onChange({ price: e.target.value })}
             {...err(errors, path('price_inr'))}
@@ -251,6 +293,7 @@ export function PricingStep({ form, patch, errors }: StepProps) {
         <div className="grid gap-4 md:grid-cols-2">
           <TextField
             label="Discount off full price (%)"
+            name="discount_pct"
             type="number"
             inputMode="numeric"
             min={0}
@@ -262,6 +305,7 @@ export function PricingStep({ form, patch, errors }: StepProps) {
           />
           <TextField
             label="Or a fixed rate per room-night (INR)"
+            name="rate_per_room_night_inr"
             type="number"
             inputMode="numeric"
             min={0}
@@ -272,6 +316,7 @@ export function PricingStep({ form, patch, errors }: StepProps) {
           />
           <TextField
             label="Guests per room"
+            name="guests_per_room_units"
             type="number"
             inputMode="numeric"
             min={1}

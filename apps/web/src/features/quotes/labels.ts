@@ -1,0 +1,46 @@
+import type { Decision, QuoteEventType, QuoteStatus } from '@c32/core';
+import type { Tone } from '../../components';
+
+export const STATUS_LABEL: Record<QuoteStatus, string> = {
+  OFFERED: 'Offered',
+  PENDING_REVIEW: 'Pending review',
+  CONFIRMED: 'Confirmed',
+  DECLINED: 'Declined',
+  REJECTED: 'Rejected',
+  EXPIRED: 'Expired',
+  CANCELLED: 'Cancelled',
+};
+
+export const STATUS_TONE: Record<QuoteStatus, Tone> = {
+  OFFERED: 'info',
+  PENDING_REVIEW: 'warning',
+  CONFIRMED: 'success',
+  DECLINED: 'danger',
+  REJECTED: 'danger',
+  EXPIRED: 'neutral',
+  CANCELLED: 'neutral',
+};
+
+export const DECISION_LABEL: Record<Decision, string> = {
+  OFFER: 'Offer',
+  PARTIAL_OFFER: 'Partial offer',
+  REVIEW: 'Needs review',
+  DECLINE: 'Decline',
+};
+
+export const EVENT_LABEL: Record<QuoteEventType, string> = {
+  QUOTE_CREATED: 'Quote created',
+  QUOTE_DECLINED: 'Quote declined',
+  HOLD_ACQUIRED: 'Rooms held',
+  HOLD_RELEASED: 'Rooms released',
+  APPROVED: 'Approved by Owner',
+  REJECTED: 'Rejected by Owner',
+  CONFIRMED: 'Confirmed',
+  EXTENDED: 'Validity extended',
+  AMENDED: 'Amended',
+  CANCELLED: 'Cancelled',
+  EXPIRED: 'Expired',
+};
+
+/** A quote still holds rooms and has a countdown while it is in one of these statuses. */
+export const OPEN_STATUSES: readonly QuoteStatus[] = ['OFFERED', 'PENDING_REVIEW'];

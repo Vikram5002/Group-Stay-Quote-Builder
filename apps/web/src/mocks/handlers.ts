@@ -140,8 +140,11 @@ export function createHandlers(store: MockStore) {
     }
   }
 
+  /** No hold is ever taken while availability is unknown (the engine reports that reason). */
   function heldRooms(quote: Quote) {
-    return quote.evaluation.offered_rooms;
+    return quote.evaluation.reasons.includes('UNKNOWN_AVAILABILITY')
+      ? 0
+      : quote.evaluation.offered_rooms;
   }
 
   function save(quote: Quote, changes: Partial<Quote>): Quote {
@@ -183,9 +186,6 @@ export function createHandlers(store: MockStore) {
     return next;
   }
 
-  const validUntil = () =>
-    new Date(store.now().getTime() + store.policy.validity_hours * 3_600_000).toISOString();
-
   const termsHash = (request: QuoteRequest, rooms: number, rate: number | null) =>
     mockHash(JSON.stringify({ request, rooms, rate }));
 
@@ -209,15 +209,16 @@ export function createHandlers(store: MockStore) {
       if (actor instanceof Response) return actor;
       const body = await readBody(request, QuoteRequest);
       if (body.error) return body.error;
-      const evaluation = evaluate({
+      const { evaluation, validity } = evaluate({
         request: body.value,
         policy: store.policy,
         inventory: store.inventory,
         ratePlan: store.ratePlan,
+        nowMs: store.now().getTime(),
       });
       return HttpResponse.json({
         evaluation,
-        valid_until: evaluation.decision === 'DECLINE' ? null : validUntil(),
+        valid_until: evaluation.decision === 'DECLINE' ? null : validity.valid_until,
         terms_hash: termsHash(
           body.value,
           evaluation.offered_rooms,
@@ -232,11 +233,12 @@ export function createHandlers(store: MockStore) {
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), QuoteRequest);
         if (body.error) return body.error;
-        const evaluation = evaluate({
+        const { evaluation, validity } = evaluate({
           request: body.value,
           policy: store.policy,
           inventory: store.inventory,
           ratePlan: store.ratePlan,
+          nowMs: store.now().getTime(),
         });
         const status = INITIAL_STATUS[evaluation.decision];
         const now = iso();
@@ -253,7 +255,7 @@ export function createHandlers(store: MockStore) {
             body.value.rate_per_room_night_inr ?? null,
           ),
           issued_at: now,
-          valid_until: status === 'DECLINED' ? null : validUntil(),
+          valid_until: status === 'DECLINED' ? null : validity.valid_until,
           created_by: actor,
           created_at: now,
           updated_at: now,
@@ -262,7 +264,7 @@ export function createHandlers(store: MockStore) {
         };
         store.quotes.set(quote.quote_id, quote);
         store.addEvent(quote, status === 'DECLINED' ? 'QUOTE_DECLINED' : 'QUOTE_CREATED', actor);
-        if (status !== 'DECLINED') {
+        if (status !== 'DECLINED' && heldRooms(quote) > 0) {
           moveRooms(quote, heldRooms(quote), 'available', 'held');
           store.addEvent(quote, 'HOLD_ACQUIRED', actor);
         }
@@ -410,11 +412,12 @@ export function createHandlers(store: MockStore) {
         // Release rooms first, then re-check the floor (BR-16).
         moveRooms(quote, current - body.value.rooms, 'confirmed', 'available');
         const request2 = { ...quote.request, rooms: body.value.rooms };
-        const evaluation = evaluate({
+        const { evaluation } = evaluate({
           request: request2,
           policy: store.policy,
           inventory: store.inventory,
           ratePlan: store.ratePlan,
+          nowMs: store.now().getTime(),
         });
         const next = save(quote, {
           request: request2,

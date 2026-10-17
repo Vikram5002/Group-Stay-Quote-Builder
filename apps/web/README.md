@@ -23,7 +23,7 @@ npm run build      # type-check and production build
 
 - `src/lib/api/`: typed client for every route in the contract. Responses are checked against the `@c32/core` schemas, errors become `ApiError` with a stable code, and every mutating call needs an `Idempotency-Key`.
 - `src/lib/api/errors.ts`: maps each error code to a plain-language message and next step (for example `QUOTE_EXPIRED` offers a re-quote).
-- `src/mocks/`: MSW handlers that follow the contract (paths, roles, status codes, problem+json, idempotency, holds, expiry, four-eyes approval). Seed data follows the case fixture. The evaluator in `evaluate.ts` is a stand-in until the real rules engine is in `@c32/core`.
+- `src/mocks/`: MSW handlers that follow the contract (paths, roles, status codes, problem+json, idempotency, holds, expiry, four-eyes approval). Seed data follows the case fixture. The evaluator in `evaluate.ts` calls the real rules engine in `@c32/core`.
 - `src/features/auth/`: mock sign-in (pick a name and a role), route guard and role-based menu. The shape is kept so the Cognito hosted UI can replace it.
 - `@c32/core` is imported from its source through an alias, so no build step is needed first.
 
@@ -53,6 +53,13 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - An unknown contribution is called out and never treated as zero. A server refusal is explained inside the dialog and what was typed is kept.
 - A pending quote shows an Owner a link straight to its place in the queue.
 
+## Work package T2-06: Availability calendar and Policy
+
+- `/availability` shows a night-by-night heatmap for a room type and date range. Each night shows available, held and confirmed rooms as numbers and a segmented bar (colour is never the only signal). A night with unknown availability shows `Unknown`, never zero, and nights without inventory show `Not on sale`. Choosing a night lists the quotes holding it, with links.
+- `/policy` (Owner only) edits the floor mode and amounts, validity, stay cutoff, minimum validity, minimum partial rooms, default guests per room and time zone. It uses the same schema as the server, keeps a blank guests value as unknown (never 1), and saves with a version check: if someone else saved first you are told, and can load the latest version.
+- The API has no policy history yet, so the screen lists only the changes saved during the current visit and says so.
+- The mock API now runs the real rules engine from `@c32/core` (decisions, reasons, counter-offers and the validity window) instead of a stand-in, so screens are tested against real engine output. Only storage, holds and the terms hash are mocked.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -63,4 +70,4 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Not in this work package
 
-Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-06 to T2-08).
+Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-07 and T2-08).

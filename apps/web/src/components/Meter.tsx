@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { cn } from '../lib/cn';
 import { formatInr } from '../lib/format';
 import { Badge } from './Badge';
+import type { Tone } from './Badge';
 
 /**
  * Contribution meter with a labelled floor marker. The caller passes numbers (the quote
@@ -11,10 +12,16 @@ export function ContributionMeter({
   contribution,
   floor,
   max,
+  status,
 }: {
   contribution: number | null;
   floor: number;
   max: number;
+  /**
+   * The badge, when the caller knows more than the numbers, for example that nothing can be
+   * offered. Without it the badge compares the contribution with the floor.
+   */
+  status?: { tone: Tone; label: string };
 }) {
   const labelId = useId();
   const scale = Math.max(max, floor, contribution ?? 0, 1);
@@ -27,7 +34,9 @@ export function ContributionMeter({
         <span id={labelId} className="text-sm font-semibold">
           Contribution
         </span>
-        {contribution === null ? (
+        {status ? (
+          <Badge tone={status.tone}>{status.label}</Badge>
+        ) : contribution === null ? (
           <Badge tone="unknown">Unknown</Badge>
         ) : below ? (
           <Badge tone="danger">Below floor: review required</Badge>

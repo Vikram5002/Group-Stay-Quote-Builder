@@ -6,6 +6,8 @@ import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { Providers } from '../../app/Providers';
 import { createTestRouter } from '../../app/router';
 import { createTestApi } from '../../mocks/server';
+import { createApiClient, newIdempotencyKey } from '../../lib/api';
+import { makeMockToken } from '../../mocks/auth';
 import { mockSession } from '../auth/auth';
 
 const { server, store } = createTestApi(() => new Date('2026-10-20T06:00:00Z'));
@@ -255,6 +257,60 @@ describe('quote builder: the live meter never shows stale numbers as confirmed',
     await u.click(screen.getByLabelText(/Organiser name/));
     await u.tab();
     expect(screen.getByText('Enter a name')).toBeInTheDocument();
+  });
+});
+
+describe('quote builder: the live meter names the decision', () => {
+  const meter = () => screen.getByRole('complementary', { name: 'Live contribution' });
+
+  it('says no rooms are available when another quote holds them all', async () => {
+    // Another quote holds all 10 standard rooms on 1 and 2 Nov.
+    const client = createApiClient({
+      baseUrl: 'http://api.test',
+      getToken: () => makeMockToken({ user_id: 'ravi', role: 'Sales' }),
+    });
+    await client.createQuote(
+      {
+        organiser: { name: 'Earlier Group' },
+        stay: { check_in: '2026-11-01', nights: 2 },
+        room_type: 'standard',
+        rooms: 10,
+        rate_per_room_night_inr: 2000,
+      },
+      { idempotencyKey: newIdempotencyKey() },
+    );
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await u.clear(screen.getByLabelText(/^Rooms/));
+    await u.type(screen.getByLabelText(/^Rooms/), '5');
+    await next(u);
+    await next(u);
+
+    expect(await screen.findByText('This request cannot be offered')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(meter()).getByText('Cannot offer: no rooms available')).toBeInTheDocument(),
+    );
+    expect(within(meter()).queryByText(/Below floor/)).not.toBeInTheDocument();
+  });
+
+  it('says the dates are not on sale when there is no inventory', async () => {
+    const u = user();
+    renderBuilder();
+    await u.type(screen.getByLabelText(/Organiser name/), 'Winter Group');
+    await u.type(screen.getByLabelText(/Check-in date/), '2026-12-20');
+    await next(u);
+    await next(u);
+    await next(u);
+
+    expect(await screen.findByText('This request cannot be offered')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(meter()).getByText('Cannot offer: not on sale on these dates'),
+      ).toBeInTheDocument(),
+    );
+    expect(within(meter()).queryByText(/review required/)).not.toBeInTheDocument();
   });
 });
 

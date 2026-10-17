@@ -11,6 +11,7 @@ import {
   Unknown,
 } from '../../components';
 import { formatIst } from '../../lib/format';
+import { meterStatus } from './meterStatus';
 import type { ReviewBanner } from './reviewState';
 import type { LiveMeterState } from './usePreview';
 
@@ -54,6 +55,7 @@ export function LiveMeter({ state }: { state: LiveMeterState }) {
           contribution={totals.contribution_inr}
           floor={totals.contribution_floor_inr}
           max={Math.max(totals.room_revenue_inr ?? 0, totals.contribution_floor_inr * 2)}
+          {...(state.evaluation ? { status: meterStatus(state.evaluation, totals) } : {})}
         />
         <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
           <dt>Contribution</dt>

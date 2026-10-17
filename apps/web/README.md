@@ -29,6 +29,15 @@ npm run build      # type-check and production build
 
 Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_API_BASE_URL` (see `.env.example`) to use a real API.
 
+## Work package T2-03: Quote Builder wizard
+
+- `/quotes/new` is a four-step wizard: group and dates, rooms and type, pricing and inclusions, review and issue.
+- Validation uses the same Zod schema as the server (`QuoteRequest` from `@c32/core`), so the two cannot drift. Messages are plain language.
+- A live contribution meter with a labelled floor marker sits beside the form. When only the rate changes it updates at once using the shared `price()` function and the server's last cost per room-night, marked as an estimate until the server confirms. Anything else waits for the server.
+- The review step shows the decision, reasons, partial-offer card, floor-safe alternatives (for example "Use rate 1800"), totals, the arithmetic trail and the hold expiry in IST.
+- Issuing is never optimistic and carries one idempotency key per request, so a double click replays the same quote.
+- Unknown values show as `Unknown`, never zero.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -39,4 +48,4 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Not in this work package
 
-Cognito sign-in (needs the Track 3 user pool), the quote builder (T2-03) and the remaining screens (T2-04 to T2-08).
+Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-04 to T2-08).

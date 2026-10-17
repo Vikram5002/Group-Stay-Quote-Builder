@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 import { DesignSystemPage } from '../features/design-system/DesignSystemPage';
+import { QuoteBuilderPage } from '../features/quotes/QuoteBuilderPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { SignInPage } from '../features/auth/SignInPage';
 import { AppShell } from './AppShell';
@@ -16,6 +18,11 @@ const quoteDetailItem = {
   description: 'Result, arithmetic trail, countdown, audit timeline and actions.',
 };
 
+/** Screens that are built. Everything else shows a placeholder until its work package lands. */
+const SCREENS: Record<string, ReactNode> = {
+  '/quotes/new': <QuoteBuilderPage />,
+};
+
 export const routes: RouteObject[] = [
   { path: '/sign-in', element: <SignInPage /> },
   {
@@ -28,7 +35,7 @@ export const routes: RouteObject[] = [
             path: item.path,
             element: (
               <RequireRole roles={item.roles}>
-                <PlaceholderPage item={item} />
+                {SCREENS[item.path] ?? <PlaceholderPage item={item} />}
               </RequireRole>
             ),
           })),

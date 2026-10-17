@@ -7,7 +7,7 @@ Pure rules engine and API contract. Imported by the API (authoritative) and by t
 ```
 src/
 ├── contract/   Zod schemas, codes, routes, OpenAPI builder (contract v0.1)
-├── domain/     Calendar, integer money, floor rule, pricing engine (decision engine: T1.03 to T1.05)
+├── domain/     Calendar, time zones, clock, money, floor, pricing, validity, validation, null policy
 ├── fixtures/   Tested mapping from data/fixtures/fixture.json into domain inputs
 └── index.ts    Public exports
 scripts/        generate-openapi.ts (writes docs/api/openapi.json)
@@ -38,3 +38,34 @@ const { totals, floor_ok, trail } = price({
 | `floor_ok`                    | Contribution at least the floor; equal passes (BR-06)          |
 | `min_rate_per_room_night_inr` | Flat rate that just meets the floor, rounded up (BR-20)        |
 | any of the above              | `null` when an input it depends on is unknown, never 0 (BR-07) |
+
+## Validation, validity and unknowns (T1.03)
+
+```ts
+import {
+  DEFAULT_POLICY,
+  computeValidity,
+  isExpired,
+  systemClock,
+  unknownPricingReasons,
+  validateQuoteRequest,
+} from '@c32/core';
+
+const r = validateQuoteRequest(body, '/v1/quotes');
+if (!r.ok) return r.problem; // 422 VALIDATION_FAILED with field paths and codes
+// r.value.stay: { check_in, check_out, nights, night_dates } (nights or check_out filled in)
+
+const v = computeValidity(systemClock.now(), r.value.stay.check_in, DEFAULT_POLICY);
+// v.valid_until (UTC), v.limited_by, v.too_late -> TOO_LATE_TO_QUOTE
+isExpired(v.valid_until, clock.now()); // authoritative on every read and confirm
+
+unknownPricingReasons(nights, extras); // ['UNKNOWN_COST'] / ['UNKNOWN_RATE']; never treated as 0
+```
+
+| Piece                       | Rule                                                                     |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `validateQuoteRequest`      | Rejects bad and unknown fields with stable codes (FR-06, BR-18)          |
+| `computeValidity`           | min(issued + validity, check-in start in property zone - cutoff) (BR-09) |
+| `isExpired`                 | Expired from `valid_until` onward                                        |
+| `Clock`                     | `systemClock` in services; `fixedClock` / `ManualClock` in tests         |
+| `formatInZone` / `toUtcIso` | IST for display, UTC for storage (G13)                                   |

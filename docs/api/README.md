@@ -36,8 +36,8 @@
 | GET    | `/v1/quotes`                             | all          | live            |
 | GET    | `/v1/quotes/{id}`                        | all          | live            |
 | POST   | `/v1/quotes/{id}/confirm`                | Sales, Owner | live            |
-| POST   | `/v1/quotes/{id}/approve`                | Owner        | planned (T1.10) |
-| POST   | `/v1/quotes/{id}/reject`                 | Owner        | planned (T1.10) |
+| POST   | `/v1/quotes/{id}/approve`                | Owner        | live            |
+| POST   | `/v1/quotes/{id}/reject`                 | Owner        | live            |
 | POST   | `/v1/quotes/{id}/extend`                 | Sales, Owner | planned (T1.11) |
 | POST   | `/v1/quotes/{id}/amendments`             | Sales, Owner | planned (T1.11) |
 | POST   | `/v1/quotes/{id}/cancel`                 | Sales, Owner | planned (T1.11) |

@@ -1,5 +1,7 @@
 import {
+  ApproveRequest,
   ListQuotesQuery,
+  RejectRequest,
   Ulid,
   parseWith,
   validateQuoteRequest,
@@ -13,9 +15,16 @@ import { confirmQuote } from '../services/confirm-quote.js';
 import { createQuote } from '../services/create-quote.js';
 import { ServiceError } from '../services/errors.js';
 import { previewQuote } from '../services/preview-quote.js';
+import { approveQuote, rejectQuote } from '../services/review.js';
 import type { Handlers } from './operations.js';
 
 /** Quote operations (blueprint section 9). Each handler validates, calls one service, returns. */
+
+function reasonBody(req: Request, schema: typeof ApproveRequest | typeof RejectRequest) {
+  const b = parseWith(schema, req.body);
+  if (!b.ok) throw new ValidationFailure(b.issues);
+  return b.value.reason;
+}
 
 function bodyRequest(req: Request) {
   const v = validateQuoteRequest(req.body, req.path);
@@ -75,4 +84,14 @@ export const quoteHandlers: Handlers = {
     const body: QuoteEventList = { items: await getEvents(deps.data, id) };
     return { status: 200, body };
   },
+
+  approveQuote: async ({ req, deps, actor }) => ({
+    status: 200,
+    body: await approveQuote(deps, quoteId(req), actor, reasonBody(req, ApproveRequest)),
+  }),
+
+  rejectQuote: async ({ req, deps, actor }) => ({
+    status: 200,
+    body: await rejectQuote(deps, quoteId(req), actor, reasonBody(req, RejectRequest)),
+  }),
 };

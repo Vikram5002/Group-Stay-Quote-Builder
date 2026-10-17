@@ -34,6 +34,8 @@ export interface NightPrice {
 export interface PricingExtras {
   revenue_inr: number | null;
   cost_inr: number | null;
+  /** Optional per-item arithmetic shown in the trail, for example one line per inclusion. */
+  detail?: readonly string[];
 }
 
 export interface PricingInput {
@@ -189,6 +191,7 @@ export function explainPricing(input: PricingInput, t: QuoteTotals): string[] {
   );
 
   const hasExtras = extras.revenue_inr !== 0 || extras.cost_inr !== 0;
+  if (extras.detail !== undefined) trail.push(...extras.detail);
   if (hasExtras) {
     trail.push(
       `inclusions revenue ${extras.revenue_inr ?? 'unknown'}, inclusions cost ${extras.cost_inr ?? 'unknown'}`,

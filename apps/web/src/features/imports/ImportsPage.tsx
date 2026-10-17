@@ -7,6 +7,7 @@ import { Alert, Button, Card, SelectField, TextField } from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
 import {
   fileFormat,
+  MAX_IMPORT_BYTES,
   readFileText,
   IMPORT_COLUMNS,
   IMPORT_KIND_LABEL,
@@ -60,6 +61,12 @@ export function ImportsPage() {
     const format = fileFormat(file.name);
     if (!format) {
       setFileError('Use a .csv or .json file.');
+      return;
+    }
+    if (file.size > MAX_IMPORT_BYTES) {
+      setFileError(
+        'That file is over 2 MB. Split it into smaller files and import them one by one.',
+      );
       return;
     }
     let text: string;

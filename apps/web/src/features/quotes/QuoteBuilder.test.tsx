@@ -175,6 +175,18 @@ describe('quote builder: forms and live meter', () => {
     expect(screen.getByText(/A required cost is unknown/)).toBeInTheDocument();
   });
 
+  it('starts a fresh form when New quote is chosen again', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u, 'Acme Offsite');
+    await next(u);
+    expect(screen.getByRole('heading', { name: 'Rooms and type' })).toBeInTheDocument();
+
+    await u.click(screen.getByRole('link', { name: 'New quote' }));
+    expect(screen.getByRole('heading', { name: 'Group and dates' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('');
+  });
+
   it('goes back without losing what was typed', async () => {
     const u = user();
     renderBuilder();

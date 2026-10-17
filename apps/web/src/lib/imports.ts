@@ -13,6 +13,9 @@ export const IMPORT_COLUMNS: Record<ImportKind, readonly string[]> = {
   ],
 };
 
+/** The API refuses bigger files (MAX_IMPORT_BYTES in apps/api), so say so before uploading. */
+export const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+
 export const IMPORT_KIND_LABEL: Record<ImportKind, string> = {
   inventory: 'Inventory (rooms per night)',
   rates: 'Rates and costs',

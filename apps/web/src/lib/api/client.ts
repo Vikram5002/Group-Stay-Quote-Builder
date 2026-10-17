@@ -31,6 +31,13 @@ export interface ApiClientOptions {
   baseUrl?: string;
   /** Returns the current access token, or null when signed out. */
   getToken: () => string | null;
+  /**
+   * How the caller is identified. "bearer" sends the access token (Cognito in AWS). "dev" sends
+   * x-dev-user, which only the local API accepts. Defaults to bearer.
+   */
+  authStyle?: 'bearer' | 'dev';
+  /** Who is signed in, for the dev style. */
+  getDevUser?: () => { user_id: string; role: string } | null;
   /** Called on a 401 so the app can send the person back to sign-in. */
   onUnauthenticated?: () => void;
   fetchImpl?: typeof fetch;
@@ -66,8 +73,13 @@ export function createApiClient(options: ApiClientOptions) {
     const url = `${baseUrl}${spec.path}${qs ? `?${qs}` : ''}`;
 
     const headers: Record<string, string> = { Accept: 'application/json' };
-    const token = options.getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    if (options.authStyle === 'dev') {
+      const user = options.getDevUser?.();
+      if (user) headers['x-dev-user'] = `${user.user_id}:${user.role}`;
+    } else {
+      const token = options.getToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+    }
     if (spec.body !== undefined) headers['Content-Type'] = 'application/json';
     if (spec.idempotencyKey) headers['Idempotency-Key'] = spec.idempotencyKey;
 

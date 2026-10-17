@@ -1,0 +1,51 @@
+name: web
+
+# Track 2: unit tests, build and end-to-end tests for apps/web. It is a separate workflow so it
+# never waits on, or is blocked by, the DynamoDB service container that ci.yml needs.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'apps/web/**'
+      - 'packages/core/**'
+      - '.github/workflows/web.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # The root install provides @c32/core's dependencies (zod); apps/web is not a workspace yet.
+      - run: npm ci
+      - run: npm install --no-audit --no-fund
+        working-directory: apps/web
+      - run: npx tsc -b --noEmit
+        working-directory: apps/web
+      - run: npm test
+        working-directory: apps/web
+      - run: npm run build
+        working-directory: apps/web
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run e2e
+        working-directory: apps/web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7

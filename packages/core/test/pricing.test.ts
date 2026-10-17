@@ -196,3 +196,32 @@ describe('extras (inclusions arrive in T1.05; blueprint 5.6 numbers)', () => {
     expect(r.floor_ok).toBe(true);
   });
 });
+
+describe('input guards and edge cases', () => {
+  it('zero rooms: nothing to spread over, so margin and minimum rate are unknown', () => {
+    const r = price(pkg(0));
+    expect(r.totals).toMatchObject({
+      room_nights: 0,
+      room_revenue_inr: 0,
+      contribution_inr: 0,
+      contribution_margin_pct: null,
+      min_rate_per_room_night_inr: null,
+      shortfall_inr: 20000,
+    });
+    expect(r.floor_ok).toBe(false);
+  });
+
+  it.each([
+    ['fractional rooms', { ...pkg(10), rooms: 2.5 }],
+    ['negative rooms', { ...pkg(10), rooms: -1 }],
+    ['too many rooms', { ...pkg(10), rooms: 501 }],
+    ['fractional rate', pkg(10, 1999.5)],
+    ['negative rate', pkg(10, -1)],
+    ['fractional cost', { ...pkg(10), nights: flatNights('2026-11-01', 2, 2000, 0.5) }],
+    ['too many nights', { ...pkg(10), nights: flatNights('2026-11-01', 29, 2000, 800) }],
+    ['fractional extras', { ...pkg(10), extras: { revenue_inr: 0, cost_inr: 1.5 } }],
+    ['negative extras revenue', { ...pkg(10), extras: { revenue_inr: -1, cost_inr: 0 } }],
+  ])('rejects %s', (_label, input) => {
+    expect(() => price(input as PricingInput)).toThrow(RangeError);
+  });
+});

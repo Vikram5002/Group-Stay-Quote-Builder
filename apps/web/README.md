@@ -68,6 +68,14 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - The upload goes straight to the presigned URL the API returns. In mock mode the mock server stands in for that URL, parses the file, applies a commit to its in-memory data, and serves downloads. The evidence download is an empty archive until the real bundle exists.
 - `src/lib/csv.ts` is a small CSV reader and writer; `src/lib/imports.ts` holds the column lists and file reading used by both the preview and the mock.
 
+## Work package T2-08: Evidence page and Experiment log
+
+- `/evidence` shows the three saved stages (baseline v0, negotiated scope, final v1) side by side with a table of what each covers, the evidence ledger with every claim tagged by type and source, and a download link for the evidence bundle. A stage stays "Awaiting files from Track 4" until its files exist.
+- The ledger rows are the blueprint's starting ledger. Claims tagged Derived (E01 and E02) are recomputed in the browser from the case fixture using the shared pricing function, and shown with whether they match.
+- "Run the public checks" previews the three public checks from `data/fixtures/fixture.json` against the connected API (mock or real). They are previews, so nothing is held or saved. The result can be downloaded as JSON.
+- `/experiments` is the growth experiment log: role played, channel, send and response times in IST, the quote and version, what was said, and the tier reached. No response is shown as "No response yet", never as zero. Only people who agreed to play a role are logged, and the page says that role-play is process evidence, not market demand.
+- The API has no experiment route yet, so the log is kept in this browser only (`src/features/experiments/store.ts`) with a CSV export to commit as evidence. A server-backed store can replace it without changing the screen.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -78,4 +86,4 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Not in this work package
 
-Cognito sign-in (needs the Track 3 user pool), the evidence page and experiment log (T2-08).
+Cognito sign-in (needs the Track 3 user pool), Track 2's remaining items are the end-to-end tests and the final polish (T2-09).

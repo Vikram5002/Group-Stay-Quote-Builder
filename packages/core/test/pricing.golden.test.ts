@@ -107,3 +107,34 @@ describe('T03 to T05 rate sweep around the floor (BR-06)', () => {
     }
   });
 });
+
+describe('T18 minimum safe rate: 7 rooms x 3 nights, cost 800, floor 20000', () => {
+  it('rounds (20000 + 16800) / 21 = 1752.38 up to 1753 (BR-20)', () => {
+    const r = price(atRate(1000, 7, 3));
+    expect(r.totals.room_nights).toBe(21);
+    expect(r.totals.variable_cost_inr).toBe(16800);
+    expect(r.totals.min_rate_per_room_night_inr).toBe(1753);
+  });
+
+  it('fails one rupee below the minimum and passes at it', () => {
+    const below = price(atRate(1752, 7, 3));
+    expect(below.totals.contribution_inr).toBe(19992);
+    expect(below.floor_ok).toBe(false);
+
+    const at = price(atRate(1753, 7, 3));
+    expect(at.totals.contribution_inr).toBe(20013);
+    expect(at.floor_ok).toBe(true);
+  });
+
+  it('is never negative when costs alone already clear the floor', () => {
+    const r = price({ ...atRate(500), floor: { ...DEFAULT_POLICY, contribution_floor_inr: 0 } });
+    expect(r.totals.min_rate_per_room_night_inr).toBe(800);
+    const free = price({
+      rooms: 10,
+      nights: flatNights('2026-11-01', 2, 500, 0),
+      floor: { ...DEFAULT_POLICY, contribution_floor_inr: 0 },
+      extras: { revenue_inr: 5000, cost_inr: 0 },
+    });
+    expect(free.totals.min_rate_per_room_night_inr).toBe(0);
+  });
+});

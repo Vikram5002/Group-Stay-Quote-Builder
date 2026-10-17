@@ -43,19 +43,20 @@ describe('zip writer', () => {
       const script =
         'import zipfile,sys,json; z=zipfile.ZipFile(sys.argv[1]); ' +
         'print(json.dumps({"bad": z.testzip(), "names": z.namelist()}))';
-      for (const python of ['python3', 'python']) {
-        let out: string;
+      // The first interpreter that actually runs (Windows has a non-working python3 alias).
+      const python = ['python3', 'python'].find((cmd) => {
         try {
-          out = execFileSync(python, ['-c', script, file], { encoding: 'utf8' });
-        } catch (err) {
-          if ((err as NodeJS.ErrnoException).code === 'ENOENT') continue; // not installed
-          throw err; // installed but the zip is broken: fail
+          execFileSync(cmd, ['--version'], { stdio: 'ignore' });
+          return true;
+        } catch {
+          return false;
         }
-        const result = JSON.parse(out) as { bad: string | null; names: string[] };
-        expect(result.bad).toBeNull();
-        expect(result.names).toEqual(entries.map((e) => e.path));
-        return;
-      }
+      });
+      if (!python) return; // no Python here; the round-trip test still covers the format
+      const out = execFileSync(python, ['-c', script, file], { encoding: 'utf8' });
+      const result = JSON.parse(out) as { bad: string | null; names: string[] };
+      expect(result.bad).toBeNull();
+      expect(result.names).toEqual(entries.map((e) => e.path));
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

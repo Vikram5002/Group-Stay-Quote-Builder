@@ -22,6 +22,7 @@ export function parseCsv(text: string): string[][] {
   let cell = '';
   let quoted = false;
   let line = 1;
+  let quoteLine = 1;
   let i = 0;
 
   const endCell = () => {
@@ -59,6 +60,7 @@ export function parseCsv(text: string): string[][] {
     if (ch === '"') {
       if (cell !== '') throw new CsvSyntaxError(line, 'quote in the middle of an unquoted cell');
       quoted = true;
+      quoteLine = line;
       i++;
     } else if (ch === ',') {
       endCell();
@@ -72,7 +74,7 @@ export function parseCsv(text: string): string[][] {
       i++;
     }
   }
-  if (quoted) throw new CsvSyntaxError(line, 'unterminated quoted cell');
+  if (quoted) throw new CsvSyntaxError(quoteLine, 'unterminated quoted cell');
   if (cell !== '' || row.length > 0) endRow();
 
   while (rows.length > 0 && rows.at(-1)?.every((c) => c === '')) rows.pop();

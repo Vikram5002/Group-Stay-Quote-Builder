@@ -2,18 +2,17 @@
 
 ## Branches and commits
 
-- One branch per work package, named after its ID: `T<track>.<nn>`.
-  Work package `T1-01` lives on branch `T1.01`, `T2-03` on `T2.03`, and so on.
-- `main` is the integration branch. It only receives merges from finished work-package branches.
-- Each branch is cut from the latest `main`.
-- Every meaningful change is committed and pushed to the branch straight away.
-- No pull requests. When the work package's "done when" line passes (`npm run verify`), the owner merges the branch into `main` with `git merge --no-ff` and pushes.
+- **One branch per track**, named `T1`, `T2`, `T3`, `T4`. All of a track's work packages are built on that branch, one after another.
+- The end of each work package is marked with an annotated **tag** named after its ID: work package `T1-01` is tag `T1.01`, `T2-03` is tag `T2.03`, and so on.
+- `main` is the integration branch. When a work package's "done when" line passes (`npm run verify`), the track owner tags it and merges the track branch into `main` with `git merge --no-ff`.
+- Before merging, bring `main` into the track branch and re-run `npm run verify`, so `main` never goes red.
+- Every meaningful change is committed and pushed straight away, in small commits.
 - Commit messages are short, lowercase, plain words with no prefix and no colon, for example `quote request schema`.
 - Changes to `packages/core` should be walked through with someone from a different track before merging.
 
-## Track 1: Core Engine and API
+## Track 1: Core Engine and API (branch `T1`)
 
-| Branch  | Work package                                                                          | Weeks   | Done when                                                                                       |
+| Tag     | Work package                                                                          | Weeks   | Done when                                                                                       |
 | ------- | ------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------- |
 | `T1.01` | Monorepo, tooling, contract freeze (Zod schemas, error codes, OpenAPI)                | 1       | Repo builds; lint, typecheck, tests green; contract v0.1 published; API `/health` skeleton (M0) |
 | `T1.02` | Core pricing engine: revenue, cost, contribution, margin, floor, minimum safe rate    | 1 to 2  | T01, T03, T04, T05, T18 pass                                                                    |
@@ -30,8 +29,8 @@
 | `T1.13` | Expiry worker and nightly reconciliation                                              | 8       | Holds released exactly once; zero drift                                                         |
 | `T1.14` | Hardening, optional mutation testing, bug bash                                        | 9 to 10 | No open critical bugs; release candidate (M4)                                                   |
 
-Other tracks follow the same rule with their own IDs (`T2.01` to `T2.09`, `T3.01` to `T3.11`, `T4.01` to `T4.09`).
+Other tracks follow the same rule on branches `T2`, `T3` and `T4`, with tags `T2.01` to `T2.09`, `T3.01` to `T3.11` and `T4.01` to `T4.09`.
 
 ## Tags
 
-`baseline-v0`, `scope-negotiated`, `core-v0.1` (M1), `rc-1` (M4), `final-v1` (M5).
+Work-package tags as above, plus milestone tags `baseline-v0`, `scope-negotiated`, `core-v0.1` (M1), `rc-1` (M4), `final-v1` (M5).

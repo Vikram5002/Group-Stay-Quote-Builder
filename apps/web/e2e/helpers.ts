@@ -47,6 +47,9 @@ interface QuoteInput {
 /** Fill the quote builder and stop on the review step. */
 export async function buildQuote(page: Page, input: QuoteInput) {
   await goTo(page, 'New quote');
+  // An earlier quote left unissued in this tab is offered as a draft; these flows start afresh.
+  const startOver = page.getByRole('button', { name: 'Start over' });
+  if (await startOver.isVisible()) await startOver.click();
   await page.getByLabel('Organiser name').fill(input.organiser);
   await page.getByLabel('Check-in date').fill(input.checkIn ?? '2026-11-01');
   if (input.nights) await page.getByLabel('Nights').fill(input.nights);

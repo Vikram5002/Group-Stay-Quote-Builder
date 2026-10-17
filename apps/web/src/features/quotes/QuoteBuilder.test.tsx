@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
 import { axe } from 'vitest-axe';
@@ -9,6 +9,7 @@ import { createTestApi } from '../../mocks/server';
 import { createApiClient, newIdempotencyKey } from '../../lib/api';
 import { makeMockToken } from '../../mocks/auth';
 import { mockSession } from '../auth/auth';
+import { initialForm, newInclusion } from './form';
 
 const { server, store } = createTestApi(() => new Date('2026-10-20T06:00:00Z'));
 
@@ -24,6 +25,7 @@ afterAll(() => {
 });
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
+  sessionStorage.clear();
   store.quotes.clear();
   store.events.length = 0;
   store.idempotency.clear();
@@ -36,12 +38,14 @@ beforeEach(() => {
   }
 });
 
-function renderBuilder() {
-  return render(
+function renderBuilder(path = '/quotes/new') {
+  const router = createTestRouter([path]);
+  const view = render(
     <Providers initialSession={mockSession('Sales', 'Asha')} baseUrl="http://api.test">
-      <RouterProvider router={createTestRouter(['/quotes/new'])} />
+      <RouterProvider router={router} />
     </Providers>,
   );
+  return { ...view, router };
 }
 
 const user = () => userEvent.setup();
@@ -224,6 +228,8 @@ describe('quote builder: forms and live meter', () => {
     expect(screen.getByRole('heading', { name: 'Rooms and type' })).toBeInTheDocument();
 
     await u.click(screen.getByRole('link', { name: 'New quote' }));
+    // What was typed is kept as a draft, so starting again is a choice.
+    await u.click(await screen.findByRole('button', { name: 'Start over' }));
     expect(screen.getByRole('heading', { name: 'Group and dates' })).toBeInTheDocument();
     expect(screen.getByLabelText(/Organiser name/)).toHaveValue('');
   });
@@ -382,6 +388,132 @@ describe('quote builder: check-in dates', () => {
     await waitFor(() =>
       expect(within(meter()).getByText('Cannot offer: too late to quote')).toBeInTheDocument(),
     );
+  });
+});
+
+describe('quote builder: the URL, drafts and leaving', () => {
+  const stepHeading = (name: string) => screen.findByRole('heading', { name });
+
+  it('puts the step in the URL, so browser Back and Forward move between steps', async () => {
+    const u = user();
+    const { router } = renderBuilder();
+    await fillGroup(u, 'Acme Offsite');
+    await next(u);
+    expect(router.state.location.search).toBe('?step=2');
+    await next(u);
+    expect(router.state.location.search).toBe('?step=3');
+
+    await act(() => router.navigate(-1));
+    expect(await stepHeading('Rooms and type')).toBeInTheDocument();
+    await act(() => router.navigate(-1));
+    expect(await stepHeading('Group and dates')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Acme Offsite');
+    await act(() => router.navigate(1));
+    expect(await stepHeading('Rooms and type')).toBeInTheDocument();
+  });
+
+  it('never opens a later step than the form allows', async () => {
+    renderBuilder('/quotes/new?step=4');
+    expect(await stepHeading('Group and dates')).toBeInTheDocument();
+  });
+
+  it('asks before leaving with unsaved input; staying keeps it', async () => {
+    const u = user();
+    const { router } = renderBuilder();
+    await fillGroup(u, 'Acme Offsite');
+    await act(() => router.navigate('/'));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Leave this quote?' });
+    await u.click(within(dialog).getByRole('button', { name: 'Stay on this page' }));
+    expect(router.state.location.pathname).toBe('/quotes/new');
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Acme Offsite');
+  });
+
+  it('keeps a draft after leaving and offers to resume it or start over', async () => {
+    const u = user();
+    const { router } = renderBuilder();
+    await fillGroup(u, 'Acme Offsite');
+    await next(u);
+    await act(() => router.navigate('/'));
+    const dialog = await screen.findByRole('dialog', { name: 'Leave this quote?' });
+    await u.click(within(dialog).getByRole('button', { name: 'Leave' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+
+    await act(() => router.navigate('/quotes/new'));
+    expect(await screen.findByText(/You have a draft for Acme Offsite/)).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Resume draft' }));
+    expect(await stepHeading('Rooms and type')).toBeInTheDocument();
+    expect(router.state.location.search).toBe('?step=2');
+    await u.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Acme Offsite');
+  });
+
+  it('starting over clears the draft', async () => {
+    sessionStorage.setItem(
+      'c32.quote-draft',
+      JSON.stringify({ step: 0, form: { ...initialForm, organiser: 'Old Group' } }),
+    );
+    const u = user();
+    renderBuilder();
+    await u.click(await screen.findByRole('button', { name: 'Start over' }));
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('');
+    expect(sessionStorage.getItem('c32.quote-draft')).toBeNull();
+  });
+
+  it('a resumed inclusion and a new one stay separate', async () => {
+    // After a reload the id counter starts again, so a saved id can equal the next new one.
+    const nextId = Number(newInclusion().id.slice('inc-'.length)) + 1;
+    const breakfast = {
+      id: `inc-${nextId}`,
+      name: 'Breakfast',
+      basis: 'per_guest_night' as const,
+      unitCost: '150',
+      costUnknown: false,
+      includedInRate: true,
+      price: '',
+    };
+    sessionStorage.setItem(
+      'c32.quote-draft',
+      JSON.stringify({
+        step: 2,
+        form: { ...initialForm, organiser: 'Old Group', inclusions: [breakfast] },
+      }),
+    );
+    const u = user();
+    renderBuilder();
+    await u.click(await screen.findByRole('button', { name: 'Resume draft' }));
+    // The draft was saved with check-in blank, so the wizard starts at the first open step.
+    await u.type(await screen.findByLabelText(/Check-in date/), '2026-11-01');
+    await next(u);
+    await next(u);
+    await u.click(screen.getByRole('button', { name: 'Add inclusion' }));
+    await u.type(screen.getByLabelText(/Inclusion 2 name/), 'Dinner');
+    expect(screen.getByLabelText(/Inclusion 1 name/)).toHaveValue('Breakfast');
+  });
+
+  it('warns the browser before a reload or closing the tab with unsaved input', async () => {
+    const u = user();
+    renderBuilder();
+    const clean = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(clean);
+    expect(clean.defaultPrevented).toBe(false);
+
+    await fillGroup(u, 'Acme Offsite');
+    const dirty = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(dirty);
+    expect(dirty.defaultPrevented).toBe(true);
+  });
+
+  it('issuing the quote leaves without asking and clears the draft', async () => {
+    const u = user();
+    const { router } = renderBuilder();
+    await toReview(u, { rate: '2000' });
+    const issue = await screen.findByRole('button', { name: 'Issue quote' });
+    await waitFor(() => expect(issue).toBeEnabled());
+    await u.click(issue);
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/quotes\/[0-9A-Z]{26}$/));
+    expect(screen.queryByRole('dialog', { name: 'Leave this quote?' })).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('c32.quote-draft')).toBeNull();
   });
 });
 

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FLOOR_MODES } from '@c32/core';
 import type { Policy } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
+import { LeaveGuard } from '../../app/LeaveGuard';
 import {
   Alert,
   Button,
@@ -135,6 +136,9 @@ export function PolicyPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
+      <LeaveGuard when={dirty && !save.isPending} title="Leave without saving?">
+        Your changes to the policy are not saved. If you leave, they are lost.
+      </LeaveGuard>
       {heading}
       <p className="mt-1 text-ink-muted">
         Rules the quote engine follows for this property. Version {policy.version}. A save is

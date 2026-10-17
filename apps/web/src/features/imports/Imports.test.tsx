@@ -299,3 +299,17 @@ describe('accessibility (axe)', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+describe('file size', () => {
+  it('refuses a file over 2 MB before uploading anything', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'inventory.csv', {
+      type: 'text/csv',
+    });
+    await u.upload(screen.getByLabelText(/File \(CSV or JSON\)/), big);
+    expect(await screen.findByText(/over 2 MB/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check file' })).toBeDisabled();
+    expect(store.uploads.size).toBe(0);
+  });
+});

@@ -85,6 +85,36 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - The mock API keeps its data in memory, so the tests load the app once and move around with the menu. The browser clock is pinned so the November 2026 case dates stay in the future.
 - Fixes found by running the app in a browser: sign-out now starts the next person at the dashboard, the dashboard and calendar refresh as soon as a quote is issued or changed, each availability night is named by its visible text, and every screen sets its tab title.
 
+## Run against the real API
+
+Track 1's API runs locally (from the repo root; Docker is needed for DynamoDB Local):
+
+```
+npm run db:up -w @c32/api       # DynamoDB Local on port 8100
+npm run seed -w @c32/api        # create the table and load the case fixture
+npm run dev -w @c32/api         # API on http://localhost:3000
+```
+
+Then point the web app at it with a `.env.local` file in `apps/web`:
+
+```
+VITE_API_MODE=api
+VITE_API_BASE_URL=http://localhost:3000
+VITE_AUTH_MODE=dev
+```
+
+and run `npm run dev` here. `VITE_AUTH_MODE=dev` sends the `x-dev-user: <name>:<Role>` header the local API accepts, using the name and role chosen on the sign-in page. Without it the app sends a bearer token, which is what the deployed API expects from Cognito.
+
+Differences to expect from the mock: the real API seeds only the two fixture nights (10 standard rooms on 1 and 2 Nov 2026), uses the real clock, and rejects import files over 2 MB (the import screen says so before uploading). The upload link points at the API's local file store, which stands in for S3.
+
+A smoke test for this setup is in `e2e/real-api.e2e.ts`. It is skipped unless you ask for it, and it only uses previews, so it can be repeated without using up rooms:
+
+```
+E2E_REAL_API=1 E2E_BASE_URL=http://localhost:5173 npx playwright test e2e/real-api.e2e.ts
+```
+
+Status: the header handling is unit tested, and the smoke test's steps pass against the built-in mock. It has not yet been run against a live API, because that needs Docker for DynamoDB Local.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.

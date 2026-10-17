@@ -11,22 +11,27 @@ export function ApiProvider({
   children,
   baseUrl = import.meta.env.VITE_API_BASE_URL ?? '',
   fetchImpl,
+  authStyle = import.meta.env.VITE_AUTH_MODE === 'dev' ? 'dev' : 'bearer',
 }: {
   children: ReactNode;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+  authStyle?: 'bearer' | 'dev';
 }) {
-  const { getToken, signOut } = useAuth();
+  const { getToken, signOut, session } = useAuth();
+  const user = session?.user ?? null;
 
   const client = useMemo(
     () =>
       createApiClient({
         baseUrl,
         getToken,
+        authStyle,
+        getDevUser: () => user,
         onUnauthenticated: signOut,
         ...(fetchImpl ? { fetchImpl } : {}),
       }),
-    [baseUrl, getToken, signOut, fetchImpl],
+    [baseUrl, getToken, signOut, fetchImpl, authStyle, user],
   );
 
   const queryClient = useMemo(

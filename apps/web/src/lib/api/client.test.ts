@@ -357,3 +357,48 @@ describe('policy and health', () => {
     expect(stale.code).toBe('VERSION_CONFLICT');
   });
 });
+
+describe('how the caller is identified', () => {
+  const health = JSON.stringify({
+    status: 'ok',
+    service: 'c32-api',
+    version: 'dev',
+    contract_version: '0.1.0',
+  });
+
+  async function headersSentWith(options: Partial<Parameters<typeof createApiClient>[0]>) {
+    let sent: Headers | undefined;
+    const client = createApiClient({
+      baseUrl: 'http://api.test',
+      getToken: () => 'token-123',
+      fetchImpl: (_url, init) => {
+        sent = new Headers(init?.headers);
+        return Promise.resolve(new Response(health, { status: 200 }));
+      },
+      ...options,
+    });
+    await client.getHealth();
+    return sent as Headers;
+  }
+
+  it('sends a bearer token by default, as Cognito expects', async () => {
+    const headers = await headersSentWith({});
+    expect(headers.get('authorization')).toBe('Bearer token-123');
+    expect(headers.get('x-dev-user')).toBeNull();
+  });
+
+  it('sends only x-dev-user in dev style, as the local API expects', async () => {
+    const headers = await headersSentWith({
+      authStyle: 'dev',
+      getDevUser: () => ({ user_id: 'asha', role: 'Sales' }),
+    });
+    expect(headers.get('x-dev-user')).toBe('asha:Sales');
+    expect(headers.get('authorization')).toBeNull();
+  });
+
+  it('sends no identity in dev style when nobody is signed in', async () => {
+    const headers = await headersSentWith({ authStyle: 'dev', getDevUser: () => null });
+    expect(headers.get('x-dev-user')).toBeNull();
+    expect(headers.get('authorization')).toBeNull();
+  });
+});

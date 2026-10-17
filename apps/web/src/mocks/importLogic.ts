@@ -109,7 +109,8 @@ export function checkImport(importId: string, upload: StoredUpload): Checked {
     report: {
       ...base,
       content_sha256: hash,
-      status: rejected > 0 ? 'REJECTED' : 'VALIDATED',
+      // Like the real service: rows with errors are skipped, only an unreadable file is rejected.
+      status: 'VALIDATED',
       rows_total: parsed.rows.length,
       rows_accepted: accepted.length,
       rows_rejected: rejected,

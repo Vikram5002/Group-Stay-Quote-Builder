@@ -62,7 +62,7 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Work package T2-07: Imports and exports
 
-- `/imports` lets an Owner import inventory or rates from a CSV or JSON file: choose a file, see it as it will be read (an empty cell shows as `Unknown`, never zero), run a dry-run check, read the row-by-row problems (errors and warnings with row numbers), then confirm the import. A file with any error cannot be imported. Importing the same content again reports "Nothing changed".
+- `/imports` lets an Owner import inventory or rates from a CSV or JSON file: choose a file, see it as it will be read (an empty cell shows as `Unknown`, never zero), run a dry-run check, read the row-by-row problems (errors and warnings with row numbers), then confirm the import. Rows with errors are skipped and listed, and only a file that cannot be read is refused whole (this matches the real API). Importing the same content again reports "Nothing changed".
 - A template download shows the expected columns. Sales and Viewers see the export section only.
 - Exports: a short-lived download link for quotes (CSV or JSON) and for the evidence bundle. Unknown values are empty cells in the CSV.
 - The upload goes straight to the presigned URL the API returns. In mock mode the mock server stands in for that URL, parses the file, applies a commit to its in-memory data, and serves downloads. The evidence download is an empty archive until the real bundle exists.
@@ -113,7 +113,16 @@ A smoke test for this setup is in `e2e/real-api.e2e.ts`. It is skipped unless yo
 E2E_REAL_API=1 E2E_BASE_URL=http://localhost:5173 npx playwright test e2e/real-api.e2e.ts
 ```
 
-Status: the header handling is unit tested, and the smoke test's steps pass against the built-in mock. It has not yet been run against a live API, because that needs Docker for DynamoDB Local.
+Status: run live on 17 Oct 2026 against the local API with DynamoDB Local (Docker). The smoke test, the three rubric flows (one at a time, each on a freshly seeded database) and `e2e/real-api-actions.e2e.ts` (policy save, file import through the API's upload link, quote and evidence downloads, extend, cancel) all pass. Cognito is still untested, because it needs Track 3's user pool.
+
+To run the data-changing tests, reset the database first, since they use up rooms:
+
+```
+docker rm -f c32-dynamodb; npm run db:up -w @c32/api; npm run seed -w @c32/api
+E2E_REAL_API_ACTIONS=1 E2E_BASE_URL=http://localhost:5175 npx playwright test e2e/real-api-actions.e2e.ts
+```
+
+Start the API with `CORS_ORIGINS=<the web origin>` if the web app is not on port 5173, and keep `.env.local` out of the picture for unit tests (they ignore it).
 
 ## Rules the components enforce
 

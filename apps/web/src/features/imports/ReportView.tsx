@@ -6,7 +6,7 @@ const HEADLINE: Record<
   { tone: 'success' | 'info' | 'danger'; title: string }
 > = {
   VALIDATED: { tone: 'success', title: 'The file passed the check' },
-  REJECTED: { tone: 'danger', title: 'The file has problems, so nothing can be imported' },
+  REJECTED: { tone: 'danger', title: 'The file cannot be read, so nothing can be imported' },
   COMMITTED: { tone: 'success', title: 'Imported' },
   UNCHANGED: { tone: 'info', title: 'Nothing changed: this file matches what is already loaded' },
 };
@@ -30,7 +30,10 @@ export function ReportView({
   busy: boolean;
   onCommit: () => void;
 }) {
-  const head = HEADLINE[report.status];
+  const partial = report.status === 'VALIDATED' && report.rows_rejected > 0;
+  const head = partial
+    ? { tone: 'info' as const, title: 'Some rows have errors and will be skipped' }
+    : HEADLINE[report.status];
   const errors = report.issues.filter((i) => i.severity === 'error').length;
   const warnings = report.issues.length - errors;
 
@@ -69,9 +72,16 @@ export function ReportView({
 
       {report.status === 'VALIDATED' && (
         <div>
-          <Button loading={busy} onClick={onCommit}>
+          <Button loading={busy} disabled={report.rows_accepted === 0} onClick={onCommit}>
             Import {report.rows_accepted} row{report.rows_accepted === 1 ? '' : 's'}
           </Button>
+          {partial && (
+            <p className="mt-2 text-sm">
+              {report.rows_rejected} row{report.rows_rejected === 1 ? ' has' : 's have'} errors and
+              will not be imported. Fix {report.rows_rejected === 1 ? 'it' : 'them'} in the file and
+              import again to add {report.rows_rejected === 1 ? 'it' : 'them'}.
+            </p>
+          )}
           {warnings > 0 && (
             <p className="mt-2 text-sm text-ink-muted">
               Warnings do not block the import. Empty values are stored as unknown.
@@ -81,7 +91,7 @@ export function ReportView({
       )}
       {report.status === 'REJECTED' && (
         <p className="text-sm">
-          Fix the rows listed above, then choose the file and check it again.
+          Fix the problem listed above, then choose the file and check it again.
         </p>
       )}
     </section>

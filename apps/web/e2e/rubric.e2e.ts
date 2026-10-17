@@ -83,7 +83,7 @@ test.describe('rubric flows', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Discount Group' })).toBeVisible();
     const comparison = page.getByRole('table', { name: /Requested terms compared/ });
     await expect(comparison).toContainText('1,700');
-    await expect(comparison).toContainText('1,800');
+    await expect(comparison).toContainText('2,000');
 
     await page.getByRole('button', { name: 'Approve…' }).click();
     const dialog = page.getByRole('dialog');

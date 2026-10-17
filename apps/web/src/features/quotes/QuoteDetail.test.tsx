@@ -78,7 +78,7 @@ describe('quote detail', () => {
       .getByRole('heading', { name: 'Totals' })
       .closest('section') as HTMLElement;
     expect(within(totals).getByText(/40,000/)).toBeInTheDocument();
-    expect(within(totals).getByText(/24,000/)).toBeInTheDocument();
+    expect(within(totals).getAllByText(/24,000/).length).toBeGreaterThan(0);
     expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
     expect(screen.getByRole('heading', { name: 'Hold countdown' })).toBeInTheDocument();

@@ -73,7 +73,7 @@ describe('public checks from the fixture', () => {
     expect(evaluation.decision).toBe('OFFER');
     expect(evaluation.totals.room_revenue_inr).toBe(40000);
     expect(evaluation.totals.contribution_inr).toBe(24000);
-    expect(evaluation.totals.min_rate_per_room_night_inr).toBe(1800);
+    expect(evaluation.totals.min_rate_per_room_night_inr).toBe(2000);
     expect(evaluation.auto_confirm_allowed).toBe(true);
   });
 
@@ -105,10 +105,10 @@ describe('public checks from the fixture', () => {
     expect(evaluation.reasons).toContain('FLOOR_BREACH');
     expect(evaluation.auto_confirm_allowed).toBe(false);
     expect(evaluation.totals.contribution_inr).toBe(18000);
-    expect(evaluation.totals.shortfall_inr).toBe(2000);
+    expect(evaluation.totals.shortfall_inr).toBe(6000); // 300 under on 20 room-nights
     expect(evaluation.counter_offers[0]).toMatchObject({
       type: 'RAISE_RATE',
-      rate_per_room_night_inr: 1800,
+      rate_per_room_night_inr: 2000,
     });
   });
 

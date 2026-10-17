@@ -120,12 +120,11 @@ describe('policy screen', () => {
     expect(store.policy.version).toBe(1);
 
     await setValue(u, /Quote validity/, '72');
-    await u.selectOptions(screen.getByLabelText('Floor mode'), 'per_room_night');
-    await setValue(u, /Floor per room-night/, '');
+    await setValue(u, /Total rooms/, '0');
     await u.click(save());
-    expect(screen.getByText('Required when the floor mode is per room-night')).toBeInTheDocument();
+    expect(screen.getByText('Must be between 1 and 500')).toBeInTheDocument();
 
-    await u.selectOptions(screen.getByLabelText('Floor mode'), 'absolute');
+    await setValue(u, /Total rooms/, '10');
     await setValue(u, /Minimum validity/, '100');
     await u.click(save());
     expect(screen.getByText(/cannot exceed validity_hours/)).toBeInTheDocument();

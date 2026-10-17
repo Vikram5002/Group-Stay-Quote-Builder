@@ -108,10 +108,10 @@ describe('review queue', () => {
     expect(within(table).getByRole('columnheader', { name: 'Raise the rate' })).toBeInTheDocument();
     const rate = within(table).getByRole('row', { name: /Rate per room-night/ });
     expect(rate).toHaveTextContent(/1,700/);
-    expect(rate).toHaveTextContent(/1,800/);
+    expect(rate).toHaveTextContent(/2,000/);
     const contribution = within(table).getByRole('row', { name: /^Contribution/ });
     expect(contribution).toHaveTextContent(/18,000/);
-    expect(contribution).toHaveTextContent(/20,000/);
+    expect(contribution).toHaveTextContent(/24,000/);
   });
 
   it('says plainly when the contribution is unknown, never as zero', async () => {

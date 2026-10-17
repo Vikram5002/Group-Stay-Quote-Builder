@@ -1,20 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FLOOR_MODES } from '@c32/core';
 import type { Policy } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Card, SelectField, Spinner, TextField } from '../../components';
+import { Alert, Button, Card, Spinner, TextField } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatIst } from '../../lib/format';
-import { describeChanges, formFromPolicy, parsePolicy } from './policyForm';
-import type { FloorModeValue, PolicyForm } from './policyForm';
+import { describeChanges, floorRatePreview, formFromPolicy, parsePolicy } from './policyForm';
+import type { PolicyForm } from './policyForm';
 
 const POLICY_KEY = ['policy'] as const;
-
-const MODE_LABEL: Record<FloorModeValue, string> = {
-  absolute: 'One floor for the whole package',
-  per_room_night: 'A floor per room-night, scaled by volume',
-};
 
 interface SavedChange {
   version: number;
@@ -160,21 +154,8 @@ export function PolicyPage() {
       )}
 
       <form onSubmit={submit} noValidate className="mt-6 flex flex-col gap-6">
-        <Card title="Contribution floor">
+        <Card title="Floor and rooms">
           <div className="grid gap-4 md:grid-cols-2">
-            <SelectField
-              label="Floor mode"
-              value={form.floorMode}
-              onChange={(e) => set({ floorMode: e.target.value as FloorModeValue })}
-              hint={MODE_LABEL[form.floorMode]}
-            >
-              {FLOOR_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m === 'absolute' ? 'Package floor' : 'Per room-night floor'}
-                </option>
-              ))}
-            </SelectField>
-            <div />
             <TextField
               label="Package floor (INR)"
               type="number"
@@ -182,20 +163,30 @@ export function PolicyPage() {
               min={0}
               value={form.contributionFloor}
               onChange={(e) => set({ contributionFloor: e.target.value })}
-              hint="Minimum contribution for the whole package."
+              hint="Divided by total rooms to give the minimum rate per room-night."
               {...err('contribution_floor_inr')}
             />
             <TextField
-              label="Floor per room-night (INR)"
+              label="Total rooms in the hotel"
               type="number"
               inputMode="numeric"
-              min={0}
-              value={form.floorPerRoomNight}
-              onChange={(e) => set({ floorPerRoomNight: e.target.value })}
-              hint="Used when the mode is per room-night. Leave blank if unknown."
-              {...err('floor_per_room_night_inr')}
+              min={1}
+              value={form.totalRooms}
+              onChange={(e) => set({ totalRooms: e.target.value })}
+              hint="Saving a new number updates every future night's rooms."
+              {...err('total_rooms_units')}
             />
           </div>
+          <p className="mt-4" aria-live="polite">
+            {floorRatePreview(form) === null ? (
+              'Enter both numbers to see the floor rate.'
+            ) : (
+              <>
+                Floor rate: <strong>₹{floorRatePreview(form)?.toLocaleString('en-IN')}</strong> per
+                room per night, variable cost included. Quotes below it need owner review.
+              </>
+            )}
+          </p>
         </Card>
 
         <Card title="Validity and rooms">

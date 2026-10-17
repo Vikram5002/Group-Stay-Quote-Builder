@@ -7,7 +7,7 @@ describe('derived ledger claims', () => {
     expect(checks.map((c) => c.id)).toEqual(['E01', 'E02']);
     expect(checks.every((c) => c.matches)).toBe(true);
     expect(checks[0]?.recomputed).toBe('Revenue 40000, contribution 24000');
-    expect(checks[1]?.recomputed).toBe('Minimum safe rate 1800');
+    expect(checks[1]?.recomputed).toBe('Minimum safe rate 2000');
   });
 
   it('only offers recomputation for claims tagged Derived', () => {

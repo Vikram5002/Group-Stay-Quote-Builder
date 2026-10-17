@@ -49,7 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['Owner'],
     label: 'Policy',
     workPackage: 'T2-06',
-    description: 'Floor mode and amounts, validity and cutoff.',
+    description: 'Package floor, total rooms, validity and cutoff.',
   },
   {
     path: '/evidence',

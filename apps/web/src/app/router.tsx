@@ -11,9 +11,9 @@ import { PolicyPage } from '../features/policy/PolicyPage';
 import { ReviewQueuePage } from '../features/review/ReviewQueuePage';
 import { QuoteDetailPage } from '../features/quotes/QuoteDetailPage';
 import { QuoteBuilderRoute } from '../features/quotes/QuoteBuilderRoute';
-import { RequireAuth } from '../features/auth/RequireAuth';
 import { SignInPage } from '../features/auth/SignInPage';
 import { AppShell } from './AppShell';
+import { RequireAuthOrLanding } from './RequireAuthOrLanding';
 import { RequireRole } from './RequireRole';
 import { NotFoundPage } from './NotFoundPage';
 import { PlaceholderPage } from './PlaceholderPage';
@@ -34,7 +34,7 @@ const SCREENS: Record<string, ReactNode> = {
 export const routes: RouteObject[] = [
   { path: '/sign-in', element: <SignInPage /> },
   {
-    element: <RequireAuth />,
+    element: <RequireAuthOrLanding />,
     children: [
       {
         element: <AppShell />,

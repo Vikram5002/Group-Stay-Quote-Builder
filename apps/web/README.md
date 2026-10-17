@@ -132,9 +132,16 @@ Start the API with `CORS_ORIGINS=<the web origin>` if the web app is not on port
 - Every text and background colour pair is checked against WCAG 2.1 AA in `src/lib/contrast.test.ts`.
 - Focus is visible, the first tab stop is a skip link, and focus moves to the main content after navigation.
 
+## Landing page
+
+- A signed-out visitor at `/` sees a landing page that explains what the product is for; every other address, and the return from the Cognito hosted sign-in (`?code=` or `?error=`), goes through the normal sign-in check. Signed-in people go straight to the dashboard.
+- It is interactive and uses the project's own engine, so the numbers are true: a hero quote card with counting figures, a four-step tour (pause and step controls), a quote calculator (rooms, nights, rate and an unknown breakfast cost, with presets, the minimum safe rate and the arithmetic trail), a hold clock (issue, fast-forward, confirm or let the rooms be released), a features grid, role tabs and proof figures from the fixture.
+- Motion is decoration only: for visitors who asked for less motion nothing animates, the tour does not auto-play and every section is visible at once. It adds no dependency (plain CSS, `IntersectionObserver` and inline icons) and loads nothing from a third party.
+- Code is in `src/features/landing/`, and `src/app/RequireAuthOrLanding.tsx` decides who sees it. Tests: `Landing.test.tsx` (including axe) and `e2e/landing.e2e.ts` (axe with real contrast in Chromium, each tour step, reduced motion).
+
 ## Evidence, handoff and CI
 
-- `npm run screenshots` takes the 17 UI screenshots Track 4 uses as evidence and saves them to `docs/ui/screenshots/`. Retake them after any UI change.
+- `npm run screenshots` takes the 20 UI screenshots Track 4 uses as evidence and saves them to `docs/ui/screenshots/`. Retake them after any UI change.
 - `docs/architecture/track2-handoff.md` covers what Track 3 needs to deploy the app, what Track 4 can use as evidence, and the viva questions.
 - Track 2's design decisions are D-056 to D-066 in `docs/architecture/decisions.md`.
 - `.github/workflows/web.yml` runs the type check, unit tests, build and end-to-end tests on every push that touches `apps/web` or `packages/core`. It is separate from `ci.yml`, so it does not need the DynamoDB container.

@@ -1,6 +1,6 @@
 {
   "id": "S15",
-  "title": "Corporate offsite: 4 rooms x 2 nights at 3000 under the absolute floor",
+  "title": "Corporate offsite: 4 rooms x 2 nights at 3000, above the floor rate",
   "source": "business scenario (illustrative numbers)",
   "synthetic": true,
   "policy": {},
@@ -51,25 +51,15 @@
   ],
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
-    "decision": "REVIEW",
-    "reasons": [
-      "FLOOR_BREACH"
-    ],
+    "decision": "OFFER",
+    "reasons": [],
     "totals": {
       "room_revenue_inr": 24000,
       "variable_cost_inr": 6400,
       "contribution_inr": 17600,
-      "min_rate_per_room_night_inr": 3300
+      "contribution_floor_inr": 9600,
+      "floor_headroom_inr": 8000
     },
-    "counter_offers": [
-      {
-        "type": "RAISE_RATE",
-        "rate_per_room_night_inr": 3300
-      },
-      {
-        "type": "CHANGE_VOLUME",
-        "rooms": 5
-      }
-    ]
+    "counter_offers": []
   }
 }

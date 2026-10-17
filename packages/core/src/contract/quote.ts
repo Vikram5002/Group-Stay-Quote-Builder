@@ -140,7 +140,10 @@ export const QuoteTotals = z.strictObject({
   inclusions_cost_inr: Inr.nullable(),
   contribution_inr: Inr.nullable(),
   contribution_margin_pct: Pct.nullable(),
-  contribution_floor_inr: Inr,
+  /** Floor rate x room-nights - variable cost (D-056); null when the variable cost is unknown. */
+  contribution_floor_inr: Inr.nullable(),
+  /** Minimum rate per room-night: package floor / total rooms, variable cost included. */
+  floor_rate_per_room_night_inr: Inr,
   floor_headroom_inr: Inr.nullable(),
   shortfall_inr: Inr.nullable(),
   min_rate_per_room_night_inr: Inr.nullable(),

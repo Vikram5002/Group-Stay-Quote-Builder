@@ -1,11 +1,9 @@
 {
   "id": "S08",
-  "title": "10 then 8 rooms free: partial offer for 8 (per-room-night floor)",
+  "title": "10 then 8 rooms free: partial offer for 8 at the floor rate",
   "source": "T10, D-020",
   "synthetic": true,
-  "policy": {
-    "floor_mode": "per_room_night"
-  },
+  "policy": {},
   "request": {
     "organiser": {
       "name": "Fictional Events Pvt Ltd"
@@ -41,7 +39,7 @@
     "offered_rooms": 8,
     "shortfall_rooms": 4,
     "totals": {
-      "contribution_floor_inr": 16000
+      "contribution_floor_inr": 19200
     }
   }
 }

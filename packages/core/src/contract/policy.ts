@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { FloorMode } from './codes.js';
-import { LIMITS, PropertyId, UnitInr, Units } from './primitives.js';
+import { LIMITS, PropertyId, Units } from './primitives.js';
 
 const hours = (min: number) => z.int().min(min).max(LIMITS.MAX_POLICY_HOURS);
 
@@ -19,15 +18,16 @@ const PolicyFields = z.strictObject({
     message: 'Must be an IANA time zone, for example Asia/Kolkata',
     params: { code: 'INVALID_FORMAT' },
   }),
-  /** Which floor applies (decision G1). */
-  floor_mode: FloorMode,
-  /** absolute mode: minimum contribution for the whole package. */
+  /**
+   * Package floor (D-056): divided by the hotel's total rooms it gives the floor rate, the
+   * minimum rate per room-night. The floor rate already includes the variable cost.
+   */
   contribution_floor_inr: z
     .int()
     .min(0)
     .max(LIMITS.MAX_UNIT_INR * 100),
-  /** per_room_night mode: minimum contribution per room-night, scaled by volume. */
-  floor_per_room_night_inr: UnitInr.nullable(),
+  /** Rooms the hotel has (owner setting). Divides the package floor; sets each night's total. */
+  total_rooms_units: z.int().min(1).max(LIMITS.MAX_ROOMS),
   validity_hours: hours(1),
   stay_cutoff_hours: hours(0),
   /** If the computed validity window is shorter than this, the quote is TOO_LATE_TO_QUOTE. */
@@ -42,10 +42,7 @@ const PolicyFields = z.strictObject({
 type PolicyShape = z.infer<typeof PolicyFields>;
 
 function checkPolicy(
-  p: Pick<
-    PolicyShape,
-    'min_validity_hours' | 'validity_hours' | 'floor_mode' | 'floor_per_room_night_inr'
-  >,
+  p: Pick<PolicyShape, 'min_validity_hours' | 'validity_hours'>,
   ctx: z.RefinementCtx,
 ) {
   if (p.min_validity_hours > p.validity_hours) {
@@ -54,14 +51,6 @@ function checkPolicy(
       path: ['min_validity_hours'],
       message: 'min_validity_hours cannot exceed validity_hours',
       params: { code: 'INCONSISTENT' },
-    });
-  }
-  if (p.floor_mode === 'per_room_night' && p.floor_per_room_night_inr === null) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['floor_per_room_night_inr'],
-      message: 'floor_per_room_night_inr is required when floor_mode is per_room_night',
-      params: { code: 'REQUIRED' },
     });
   }
 }
@@ -77,15 +66,13 @@ export type PolicyUpdateRequest = z.infer<typeof PolicyUpdateRequest>;
 
 /**
  * Defaults, from the assumption register (blueprint appendix A). HYPOTHESIS values are tuned
- * in the pilot. The floor matches the fixture (contribution_floor_inr: 20000); the
- * per-room-night alternative is that floor over the fixture's 20 room-nights (1000).
+ * in the pilot. Floor and rooms match the fixture: 20000 over 10 rooms is a floor rate of 2000.
  */
 export const DEFAULT_POLICY: Readonly<Policy> = Object.freeze({
   property_id: 'p1',
   timezone: 'Asia/Kolkata', // A8
-  floor_mode: 'absolute', // A1
-  contribution_floor_inr: 20000,
-  floor_per_room_night_inr: 1000,
+  contribution_floor_inr: 20000, // fixture; / 10 rooms = 2000 per room-night (D-056)
+  total_rooms_units: 10, // fixture inventory
   validity_hours: 72, // A2 (HYPOTHESIS)
   stay_cutoff_hours: 24, // A3 (HYPOTHESIS)
   min_validity_hours: 2, // A13 (HYPOTHESIS)

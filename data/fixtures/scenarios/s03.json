@@ -1,6 +1,6 @@
 {
   "id": "S03",
-  "title": "Rate exactly at the minimum safe rate passes",
+  "title": "Rate exactly at the floor rate (2000) passes",
   "source": "T03",
   "synthetic": true,
   "policy": {},
@@ -14,13 +14,14 @@
     },
     "room_type": "standard",
     "rooms": 10,
-    "rate_per_room_night_inr": 1800
+    "rate_per_room_night_inr": 2000
   },
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "OFFER",
     "totals": {
-      "contribution_inr": 20000,
+      "contribution_inr": 24000,
+      "contribution_floor_inr": 24000,
       "floor_headroom_inr": 0
     }
   }

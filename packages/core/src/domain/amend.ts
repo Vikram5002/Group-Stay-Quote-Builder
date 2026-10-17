@@ -58,13 +58,13 @@ export function amendTotals(
     floorPolicy,
   );
   const floorOk =
-    next.contribution_inr === null
+    next.contribution_inr === null || next.contribution_floor_inr === null
       ? null
       : floorPasses(next.contribution_inr, next.contribution_floor_inr);
 
   const released = (fromRooms - toRooms) * nights;
   const trail = [`amended ${fromRooms} to ${toRooms} rooms: ${released} room-nights released`];
-  if (next.contribution_inr === null) {
+  if (floorOk === null) {
     trail.push('contribution unknown, so the floor cannot be checked');
   } else {
     const verdict = floorOk

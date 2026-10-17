@@ -43,7 +43,8 @@ export interface MappedFixture {
  * Documented transform from the fixture into domain inputs:
  * - inventory rows -> InventoryNight with nothing held or confirmed; null rooms stay null.
  * - the quote's rate and variable cost -> a flat rate plan on every inventory night.
- * - contribution_floor_inr -> absolute package floor in the policy (decision G1 default).
+ * - contribution_floor_inr -> the package floor; total_rooms_units is the inventory's rooms, so
+ *   the floor rate is 20000 / 10 = 2000 per room-night (D-056).
  * - the quote -> a request starting on the earliest inventory date. No override rate is sent,
  *   so the engine prices from the rate plan.
  */
@@ -57,7 +58,11 @@ export function mapC32Fixture(raw: unknown): MappedFixture {
   const q = fx.records.quote;
 
   return {
-    policy: { ...DEFAULT_POLICY, contribution_floor_inr: q.contribution_floor_inr },
+    policy: {
+      ...DEFAULT_POLICY,
+      contribution_floor_inr: q.contribution_floor_inr,
+      total_rooms_units: Math.max(1, ...rows.map((r) => r.rooms ?? 0)),
+    },
     inventory: rows.map((r) => ({
       date: r.date,
       room_type: r.room_type,

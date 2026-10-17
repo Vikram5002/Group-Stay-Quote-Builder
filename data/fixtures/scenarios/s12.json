@@ -18,8 +18,6 @@
   "now": "2026-10-31T12:00:00+05:30",
   "expect": {
     "decision": "DECLINE",
-    "reasons": [
-      "TOO_LATE_TO_QUOTE"
-    ]
+    "reasons": ["TOO_LATE_TO_QUOTE"]
   }
 }

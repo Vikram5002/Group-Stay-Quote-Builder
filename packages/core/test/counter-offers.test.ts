@@ -43,30 +43,26 @@ function offersFor(request: object, context: EvaluationContext = ctx()): Counter
 const types = (offers: CounterOffer[]) => offers.map((o) => o.type);
 
 describe('RAISE_RATE (blueprint 9.3 example)', () => {
-  it('rate 1500 breaches the floor: raise to the minimum safe rate 1800', () => {
+  it('rate 1500 breaches the floor: raise to the floor rate 2000', () => {
     expect(offersFor({ rate_per_room_night_inr: 1500 })).toEqual([
       {
         type: 'RAISE_RATE',
-        summary: 'Raise the rate to 1800 per room-night (minimum safe rate)',
-        rate_per_room_night_inr: 1800,
+        summary: 'Raise the rate to 2000 per room-night (minimum safe rate)',
+        rate_per_room_night_inr: 2000,
         rooms: 10,
-        contribution_inr: 20000,
+        contribution_inr: 24000,
         floor_headroom_inr: 0,
       },
     ]);
-  });
-
-  it('CHANGE_VOLUME is not offered when inventory cannot reach 29 room-nights', () => {
-    expect(types(offersFor({ rate_per_room_night_inr: 1500 }))).not.toContain('CHANGE_VOLUME');
   });
 });
 
 describe('REPRICE_INCLUSION (blueprint 6.4)', () => {
   const offers = offersFor({ inclusions: [breakfast] });
 
-  it('bundled breakfast: raise to 2100, or charge breakfast separately', () => {
+  it('bundled breakfast: raise to 2300 (floor rate + breakfast), or charge breakfast separately', () => {
     expect(types(offers)).toEqual(['RAISE_RATE', 'REPRICE_INCLUSION']);
-    expect(offers[0]).toMatchObject({ rate_per_room_night_inr: 2100, contribution_inr: 20000 });
+    expect(offers[0]).toMatchObject({ rate_per_room_night_inr: 2300, contribution_inr: 24000 });
   });
 
   it('charging at unit cost makes breakfast cost-neutral: contribution back to 24000', () => {
@@ -76,7 +72,7 @@ describe('REPRICE_INCLUSION (blueprint 6.4)', () => {
       inclusions: [{ ...breakfast, included_in_rate: false, price_inr: 150 }],
       rooms: 10,
       contribution_inr: 24000,
-      floor_headroom_inr: 4000,
+      floor_headroom_inr: 0,
     });
   });
 
@@ -95,35 +91,24 @@ describe('PARTIAL_ROOMS', () => {
         summary: 'Offer 10 rooms instead of 12',
         rooms: 10,
         contribution_inr: 24000,
-        floor_headroom_inr: 4000,
+        floor_headroom_inr: 0,
       },
     ]);
   });
 
   it('a partial that also breaches the floor gets fixes priced for the sellable rooms', () => {
-    // night 2 has 8 rooms: 8 x 2 = 16 room-nights earn 19200 < 20000
+    // night 2 has 8 rooms; 1900 is under the floor rate on all 16 room-nights
     const inventory = [withRooms(10)[0]!, { ...withRooms(8)[1]! }];
-    const offers = offersFor({ rooms: 12 }, ctx({ inventory }));
+    const offers = offersFor({ rooms: 12, rate_per_room_night_inr: 1900 }, ctx({ inventory }));
     expect(types(offers)).toEqual(['RAISE_RATE']);
-    expect(offers[0]).toMatchObject({ rooms: 8, rate_per_room_night_inr: 2050 }); // ceil(32800 / 16)
+    expect(offers[0]).toMatchObject({ rooms: 8, rate_per_room_night_inr: 2000 });
   });
 });
 
-describe('CHANGE_VOLUME (absolute floor)', () => {
-  it('rate 1500 with 30 rooms in stock: 15 rooms (30 room-nights) restore the floor', () => {
+describe('CHANGE_VOLUME (D-056)', () => {
+  it('is never offered: more rooms raise the floor as fast as the contribution', () => {
     const offers = offersFor({ rate_per_room_night_inr: 1500 }, ctx({ inventory: withRooms(30) }));
-    expect(offers.at(-1)).toEqual({
-      type: 'CHANGE_VOLUME',
-      summary: 'Book 15 rooms instead of 10 to meet the floor at this rate',
-      rooms: 15,
-      contribution_inr: 21000,
-      floor_headroom_inr: 1000,
-    });
-  });
-
-  it('a small group under the absolute floor can be told the smallest booking that works', () => {
-    const offers = offersFor({ rooms: 3 }, ctx({ inventory: withRooms(30) }));
-    expect(offers.find((o) => o.type === 'CHANGE_VOLUME')).toMatchObject({ rooms: 9 });
+    expect(types(offers)).not.toContain('CHANGE_VOLUME');
   });
 });
 
@@ -147,7 +132,11 @@ describe('every counter-offer is floor-safe when re-run (FR-12)', () => {
     ['rate 1500', { rate_per_room_night_inr: 1500 }, ctx({ inventory: withRooms(30) })],
     ['bundled breakfast', { inclusions: [breakfast] }, ctx()],
     ['12 rooms', { rooms: 12 }, ctx()],
-    ['3 rooms', { rooms: 3 }, ctx({ inventory: withRooms(30) })],
+    [
+      'partial below the floor rate',
+      { rooms: 12, rate_per_room_night_inr: 1900 },
+      ctx({ inventory: [withRooms(10)[0]!, withRooms(8)[1]!] }),
+    ],
   ])('%s', (_label, request, context) => {
     const offers = offersFor(request, context);
     expect(offers.length).toBeGreaterThan(0);

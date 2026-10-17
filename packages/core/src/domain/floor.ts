@@ -1,24 +1,34 @@
 import type { Policy } from '../contract/policy.js';
-import { assertInt } from './money.js';
+import { assertInt, ceilDiv } from './money.js';
 
 /** The policy fields the floor depends on. */
-export type FloorPolicy = Pick<
-  Policy,
-  'floor_mode' | 'contribution_floor_inr' | 'floor_per_room_night_inr'
->;
+export type FloorPolicy = Pick<Policy, 'contribution_floor_inr' | 'total_rooms_units'>;
 
 /**
- * Contribution floor in INR for a package of `roomNights` (decision G1, D-001).
- * - absolute: the package floor, whatever the volume.
- * - per_room_night: floor per room-night times room-nights, so it scales with volume.
+ * Floor rate (D-056): the minimum rate per room-night, package floor / total rooms, rounded up
+ * so it never lands under the floor. It already includes the variable cost: a room sold at the
+ * floor rate earns the floor rate minus its cost. Example: 20000 / 10 rooms = 2000.
  */
-export function floorFor(policy: FloorPolicy, roomNights: number): number {
+export function floorRate(policy: FloorPolicy): number {
+  assertInt('contribution_floor_inr', policy.contribution_floor_inr);
+  assertInt('total_rooms_units', policy.total_rooms_units, 1);
+  return ceilDiv(policy.contribution_floor_inr, policy.total_rooms_units);
+}
+
+/**
+ * The floor expressed as contribution for a package: floor rate x room-nights - variable cost.
+ * A package passes when its contribution reaches it, which with a flat rate and no inclusions is
+ * exactly "rate >= floor rate"; a bundled inclusion's cost must also be covered. Null when the
+ * variable cost is unknown (never treated as 0).
+ */
+export function floorFor(
+  policy: FloorPolicy,
+  roomNights: number,
+  variableCostInr: number | null,
+): number | null {
   assertInt('roomNights', roomNights);
-  if (policy.floor_mode === 'absolute') return policy.contribution_floor_inr;
-  if (policy.floor_per_room_night_inr === null) {
-    throw new RangeError('floor_per_room_night_inr is required in per_room_night mode');
-  }
-  return policy.floor_per_room_night_inr * roomNights;
+  if (variableCostInr === null) return null;
+  return floorRate(policy) * roomNights - variableCostInr;
 }
 
 /** BR-06: the floor passes when contribution is at least the floor (equal passes). */

@@ -34,9 +34,7 @@
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "REVIEW",
-    "reasons": [
-      "UNKNOWN_COST"
-    ],
+    "reasons": ["UNKNOWN_COST"],
     "totals": {
       "contribution_inr": null
     }

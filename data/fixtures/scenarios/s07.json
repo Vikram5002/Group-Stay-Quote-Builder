@@ -28,9 +28,7 @@
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "DECLINE",
-    "reasons": [
-      "NO_INVENTORY_DATA"
-    ],
+    "reasons": ["NO_INVENTORY_DATA"],
     "offered_rooms": 0
   }
 }

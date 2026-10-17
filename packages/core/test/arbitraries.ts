@@ -23,18 +23,10 @@ export const nightCount = fc.integer({ min: 1, max: 28 });
 /** A value that is sometimes unknown. */
 export const maybe = <T>(arb: fc.Arbitrary<T>) => fc.option(arb, { nil: null, freq: 4 });
 
-export const floorPolicy: fc.Arbitrary<FloorPolicy> = fc.oneof(
-  fc.record({
-    floor_mode: fc.constant('absolute' as const),
-    contribution_floor_inr: fc.integer({ min: 0, max: 200_000 }),
-    floor_per_room_night_inr: fc.constant(null),
-  }),
-  fc.record({
-    floor_mode: fc.constant('per_room_night' as const),
-    contribution_floor_inr: fc.constant(0),
-    floor_per_room_night_inr: fc.integer({ min: 0, max: 5_000 }),
-  }),
-);
+export const floorPolicy: fc.Arbitrary<FloorPolicy> = fc.record({
+  contribution_floor_inr: fc.integer({ min: 0, max: 200_000 }),
+  total_rooms_units: fc.integer({ min: 1, max: 200 }),
+});
 
 export const policy: fc.Arbitrary<Policy> = fc
   .tuple(floorPolicy, fc.integer({ min: 1, max: 20 }))

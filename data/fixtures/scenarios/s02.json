@@ -18,9 +18,7 @@
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "PARTIAL_OFFER",
-    "reasons": [
-      "PARTIAL_AVAILABILITY"
-    ],
+    "reasons": ["PARTIAL_AVAILABILITY"],
     "offered_rooms": 10,
     "shortfall_rooms": 2
   }

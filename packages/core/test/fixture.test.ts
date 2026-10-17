@@ -38,7 +38,7 @@ describe('C32 fixture mapping', () => {
       ['2026-11-01', 2000, 800],
       ['2026-11-02', 2000, 800],
     ]);
-    expect(fx.policy).toMatchObject({ floor_mode: 'absolute', contribution_floor_inr: 20000 });
+    expect(fx.policy).toMatchObject({ contribution_floor_inr: 20000, total_rooms_units: 10 });
     expect(fx.inventory.map((n) => [n.date, n.total_units, n.available_units])).toEqual([
       ['2026-11-01', 10, 10],
       ['2026-11-02', 10, 10],

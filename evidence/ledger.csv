@@ -1,6 +1,6 @@
 id,claim,type,source,confidence,next_test
 E01,10 rooms x 2 nights x 2000 = 40000 room revenue; contribution 24000,Derived,"fixture.json; tests T01, S01; live dev API (02-final/public-checks-live.json)",High (arithmetic),n/a
-E02,The minimum safe rate on the fixture is 1800 (rounded up),Derived,"Formula; tests T03, T18, P4",High (arithmetic),n/a
+E02,The minimum safe rate on the fixture is 2000 (package floor 20000 / 10 rooms; cost included),Derived,"Formula; tests T03, T18, P4",High (arithmetic),n/a
 E03,"12 requested with 10 available gives a partial offer for 10 and never over-holds, even under 20 parallel requests",Observed,"Tests T02, T12 against DynamoDB Local; live dev API",High (tested),n/a
 E04,A below-floor quote cannot be confirmed until a different Owner approves it,Observed,"Tests T05, T16, T17; live dev API with Cognito users",High (tested),n/a
 E05,Expired quotes release their rooms exactly once,Observed,"Tests T13, T15, worker race test",High (tested),Watch ExpiredReleased on dev

@@ -31,7 +31,7 @@ test.describe('real API (seeded with the case fixture)', () => {
   test('a rate below the floor needs review and offers the minimum safe rate', async ({ page }) => {
     await buildQuote(page, { organiser: 'Smoke Group', rooms: '10', rate: '1700' });
     await expect(page.getByText('Owner review required')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Use rate 1800' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Use rate 2000' })).toBeVisible();
   });
 
   test('the three public checks pass against the real API', async ({ page }) => {

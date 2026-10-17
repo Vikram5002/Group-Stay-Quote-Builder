@@ -59,7 +59,8 @@ describe('T01 fixture quote through the full pipeline', () => {
       room_revenue_inr: 40000,
       variable_cost_inr: 16000,
       contribution_inr: 24000,
-      min_rate_per_room_night_inr: 1800,
+      contribution_floor_inr: 24000,
+      min_rate_per_room_night_inr: 2000,
     });
   });
 
@@ -127,25 +128,24 @@ describe('T10 night 1 has 10 available, night 2 has 8; request 12', () => {
     expect(e.totals).toMatchObject({ room_nights: 16, contribution_inr: 19200 });
   });
 
-  it('per-room-night floor (16 x 1000 = 16000): a clean PARTIAL_OFFER for 8', () => {
-    const policy = { ...fx.policy, floor_mode: 'per_room_night' as const };
-    const { evaluation: e } = run({ rooms: 12 }, ctx({ inventory, policy }));
+  it('8 rooms at the floor rate meet the floor (16 x 2000 - 12800 = 19200): a clean PARTIAL_OFFER', () => {
+    const { evaluation: e } = run({ rooms: 12 }, ctx({ inventory }));
     expect(e).toMatchObject({
       decision: 'PARTIAL_OFFER',
       reasons: ['PARTIAL_AVAILABILITY'],
       auto_confirm_allowed: false,
     });
-    expect(e.totals.contribution_floor_inr).toBe(16000);
+    expect(e.totals.contribution_floor_inr).toBe(19200);
   });
 
-  it('absolute floor (20000): 19200 breaches it, so the partial goes to REVIEW (D-019)', () => {
-    const { evaluation: e } = run({ rooms: 12 }, ctx({ inventory }));
+  it('a partial offer below the floor rate goes to REVIEW (D-019)', () => {
+    const { evaluation: e } = run({ rooms: 12, rate_per_room_night_inr: 1900 }, ctx({ inventory }));
     expect(e).toMatchObject({
       decision: 'REVIEW',
       reasons: ['FLOOR_BREACH', 'PARTIAL_AVAILABILITY'],
       auto_confirm_allowed: false,
     });
-    expect(e.totals.shortfall_inr).toBe(800);
+    expect(e.totals.shortfall_inr).toBe(1600); // 100 under on 16 room-nights
   });
 });
 
@@ -208,11 +208,12 @@ describe('T05 public check 3: a discount below the floor needs review', () => {
       offered_rooms: 10,
       auto_confirm_allowed: false,
     });
-    expect(e.totals).toMatchObject({ contribution_inr: 14000, shortfall_inr: 6000 });
+    expect(e.totals).toMatchObject({ contribution_inr: 14000, shortfall_inr: 10000 });
   });
 
-  it('rate exactly at the minimum safe rate (1800) is a clean OFFER', () => {
-    expect(run({ rate_per_room_night_inr: 1800 }).evaluation).toMatchObject({
+  it('rate exactly at the floor rate (2000) is a clean OFFER; 1800 is not', () => {
+    expect(run({ rate_per_room_night_inr: 1800 }).evaluation.decision).toBe('REVIEW');
+    expect(run({ rate_per_room_night_inr: 2000 }).evaluation).toMatchObject({
       decision: 'OFFER',
       auto_confirm_allowed: true,
     });
@@ -226,14 +227,14 @@ describe('T14 breakfast bundled at 150 per guest-night (assumption A6), 2 guests
     ],
   });
 
-  it('cost 6000 drops contribution to 18000: REVIEW with FLOOR_BREACH, shortfall 2000', () => {
+  it('cost 6000 drops contribution to 18000: REVIEW with FLOOR_BREACH, shortfall 6000', () => {
     expect(e.totals).toMatchObject({
       room_revenue_inr: 40000,
       variable_cost_inr: 16000,
       inclusions_cost_inr: 6000,
       inclusions_revenue_inr: 0,
       contribution_inr: 18000,
-      shortfall_inr: 2000,
+      shortfall_inr: 6000,
     });
     expect(e).toMatchObject({
       decision: 'REVIEW',
@@ -242,8 +243,8 @@ describe('T14 breakfast bundled at 150 per guest-night (assumption A6), 2 guests
     });
   });
 
-  it('minimum safe rate is (20000 + 16000 + 6000) / 20 = 2100', () => {
-    expect(e.totals.min_rate_per_room_night_inr).toBe(2100);
+  it('minimum safe rate is the floor rate plus breakfast per room-night: 2000 + 300 = 2300', () => {
+    expect(e.totals.min_rate_per_room_night_inr).toBe(2300);
     expect(e.trail).toContain(
       'Breakfast: 10 rooms x 2 guests x 2 nights = 40 guest-nights x 150 = 6000 cost, included in the rate',
     );

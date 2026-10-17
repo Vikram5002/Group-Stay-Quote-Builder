@@ -2559,27 +2559,15 @@
           "timezone": {
             "type": "string"
           },
-          "floor_mode": {
-            "type": "string",
-            "enum": ["absolute", "per_room_night"]
-          },
           "contribution_floor_inr": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100000000
           },
-          "floor_per_room_night_inr": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 1000000,
-                "description": "Whole Indian rupees per unit. Integer, 0 or more."
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "total_rooms_units": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
           },
           "validity_hours": {
             "type": "integer",
@@ -2623,9 +2611,8 @@
         "required": [
           "property_id",
           "timezone",
-          "floor_mode",
           "contribution_floor_inr",
-          "floor_per_room_night_inr",
+          "total_rooms_units",
           "validity_hours",
           "stay_cutoff_hours",
           "min_validity_hours",
@@ -2641,27 +2628,15 @@
           "timezone": {
             "type": "string"
           },
-          "floor_mode": {
-            "type": "string",
-            "enum": ["absolute", "per_room_night"]
-          },
           "contribution_floor_inr": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100000000
           },
-          "floor_per_room_night_inr": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 1000000,
-                "description": "Whole Indian rupees per unit. Integer, 0 or more."
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "total_rooms_units": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
           },
           "validity_hours": {
             "type": "integer",
@@ -2704,9 +2679,8 @@
         },
         "required": [
           "timezone",
-          "floor_mode",
           "contribution_floor_inr",
-          "floor_per_room_night_inr",
+          "total_rooms_units",
           "validity_hours",
           "stay_cutoff_hours",
           "min_validity_hours",
@@ -3120,6 +3094,19 @@
             ]
           },
           "contribution_floor_inr": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Whole Indian rupees. Integer; can be negative for headroom."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "floor_rate_per_room_night_inr": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991,
@@ -3174,6 +3161,7 @@
           "contribution_inr",
           "contribution_margin_pct",
           "contribution_floor_inr",
+          "floor_rate_per_room_night_inr",
           "floor_headroom_inr",
           "shortfall_inr",
           "min_rate_per_room_night_inr"

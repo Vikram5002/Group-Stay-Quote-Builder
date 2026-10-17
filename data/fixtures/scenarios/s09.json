@@ -36,9 +36,7 @@
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "DECLINE",
-    "reasons": [
-      "NO_CAPACITY"
-    ],
+    "reasons": ["NO_CAPACITY"],
     "offered_rooms": 0
   }
 }

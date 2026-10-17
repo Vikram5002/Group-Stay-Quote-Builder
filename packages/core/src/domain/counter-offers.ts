@@ -12,8 +12,9 @@ import type { ResolvedQuoteRequest } from './request.js';
  * 1. PARTIAL_ROOMS     offer the sellable rooms (when short)
  * 2. RAISE_RATE        charge the minimum safe rate
  * 3. REPRICE_INCLUSION charge a bundled inclusion separately, at its unit cost
- * 4. CHANGE_VOLUME     the fewest extra rooms that restore the floor (helps under an absolute floor)
  *
+ * CHANGE_VOLUME is no longer generated (D-056): the floor is a rate per room-night, so more rooms
+ * raise the floor as fast as the contribution and never fix a breach.
  * No counter-offers when a value is unknown (it cannot be proven safe) or for a DECLINE.
  * ALT_DATES is a COULD item and is not generated.
  */
@@ -51,8 +52,6 @@ export function counterOffers(
   request: ResolvedQuoteRequest,
   evaluation: Evaluation,
   reassess: Reassess,
-  /** Rooms sellable on every night; null when availability is not known. */
-  sellable: number | null,
 ): CounterOffer[] {
   const { reasons } = evaluation;
   const eligible =
@@ -111,23 +110,6 @@ export function counterOffers(
       );
     }
   });
-
-  if (sellable !== null) {
-    for (let rooms = base.rooms + 1; rooms <= sellable; rooms++) {
-      const e = reassess({ ...base, rooms });
-      if (isClean(e)) {
-        out.push(
-          offer(
-            'CHANGE_VOLUME',
-            `Book ${rooms} rooms instead of ${base.rooms} to meet the floor at this rate`,
-            e,
-            { rooms },
-          ),
-        );
-        break;
-      }
-    }
-  }
 
   return out;
 }

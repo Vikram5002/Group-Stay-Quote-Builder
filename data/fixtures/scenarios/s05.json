@@ -1,6 +1,6 @@
 {
   "id": "S05",
-  "title": "Discount to 1500: review, counter-offer the minimum safe rate",
+  "title": "Discount to 1500: review, counter-offer the floor rate 2000",
   "source": "rubric 5 pts, T05",
   "synthetic": true,
   "policy": {},
@@ -19,18 +19,16 @@
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "REVIEW",
-    "reasons": [
-      "FLOOR_BREACH"
-    ],
+    "reasons": ["FLOOR_BREACH"],
     "auto_confirm_allowed": false,
     "totals": {
       "contribution_inr": 14000,
-      "shortfall_inr": 6000
+      "shortfall_inr": 10000
     },
     "counter_offers": [
       {
         "type": "RAISE_RATE",
-        "rate_per_room_night_inr": 1800
+        "rate_per_room_night_inr": 2000
       }
     ]
   }

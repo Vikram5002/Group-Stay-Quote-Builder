@@ -28,12 +28,22 @@ export function LiveMeter({ live, updating }: { live: LiveTotals | null; updatin
   const { totals, source } = live;
   return (
     <Card title="Live contribution" aria-busy={updating || undefined}>
-      <ContributionMeter
-        contribution={totals.contribution_inr}
-        floor={totals.contribution_floor_inr}
-        max={Math.max(totals.room_revenue_inr ?? 0, totals.contribution_floor_inr * 2)}
-      />
+      {totals.contribution_floor_inr === null ? (
+        <p className="text-sm">
+          The variable cost is unknown, so the contribution and its floor are unknown too.
+        </p>
+      ) : (
+        <ContributionMeter
+          contribution={totals.contribution_inr}
+          floor={totals.contribution_floor_inr}
+          max={Math.max(totals.room_revenue_inr ?? 0, totals.contribution_floor_inr * 2)}
+        />
+      )}
       <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+        <dt>Floor rate per room-night</dt>
+        <dd className="font-semibold">
+          <Money value={totals.floor_rate_per_room_night_inr} />
+        </dd>
         <dt>Contribution</dt>
         <dd className="font-semibold">
           <Money value={totals.contribution_inr} />
@@ -170,6 +180,9 @@ export function TotalsTable({ totals }: { totals: QuoteTotals }) {
         </Row>
         <Row label="Contribution">
           <Money value={totals.contribution_inr} />
+        </Row>
+        <Row label="Floor rate per room-night (cost included)">
+          <Money value={totals.floor_rate_per_room_night_inr} />
         </Row>
         <Row label="Contribution floor">
           <Money value={totals.contribution_floor_inr} />

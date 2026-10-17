@@ -71,7 +71,7 @@ describe('quote builder: the three rubric flows', () => {
       .getByRole('heading', { name: 'Totals' })
       .closest('section') as HTMLElement;
     expect(within(totals).getByText(/40,000/)).toBeInTheDocument();
-    expect(within(totals).getByText(/24,000/)).toBeInTheDocument();
+    expect(within(totals).getAllByText(/24,000/).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Meets floor').length).toBeGreaterThan(0);
     expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
@@ -107,7 +107,7 @@ describe('quote builder: the three rubric flows', () => {
     expect(screen.getAllByText(/Below floor: review required/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Send for Owner review' })).toBeEnabled();
 
-    await u.click(screen.getByRole('button', { name: 'Use rate 1800' }));
+    await u.click(screen.getByRole('button', { name: 'Use rate 2000' }));
     expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Issue quote' })).toBeEnabled();
   });
@@ -123,7 +123,10 @@ describe('quote builder: the three rubric flows', () => {
       .getByRole('heading', { name: 'Totals' })
       .closest('section') as HTMLElement;
     expect(within(totals).getAllByText('Unknown').length).toBeGreaterThan(0);
-    expect(screen.getByRole('img', { name: /Contribution: Unknown/ })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/variable cost is unknown, so the contribution and its floor are unknown/)
+        .length,
+    ).toBeGreaterThan(0);
   });
 });
 

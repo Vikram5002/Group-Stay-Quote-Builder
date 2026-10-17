@@ -60,7 +60,7 @@ describe('unknown rate (UNKNOWN_RATE, BR-08)', () => {
     const { evaluation: e } = evaluate(v.value, ctx({ ratePlan }));
     expect(e).toMatchObject({ decision: 'REVIEW', reasons: ['UNKNOWN_RATE'] });
     expect(e.totals.room_revenue_inr).toBeNull();
-    expect(e.totals.min_rate_per_room_night_inr).toBe(1800);
+    expect(e.totals.min_rate_per_room_night_inr).toBe(2000);
   });
 
   it('an explicit override rate prices the quote', () => {
@@ -138,22 +138,20 @@ describe('request forms and room types', () => {
     expect(e).toMatchObject({ decision: 'DECLINE', reasons: ['NO_INVENTORY_DATA'] });
   });
 
-  it('per-room-night floor scales with the offered rooms', () => {
-    const policy = { ...fx.policy, floor_mode: 'per_room_night' as const };
-    const { evaluation: e } = run({ rooms: 3 }, ctx({ policy }));
+  it('the floor scales with the offered rooms, so a small group at the floor rate is an OFFER', () => {
+    const { evaluation: e } = run({ rooms: 3 });
     expect(e.totals).toMatchObject({
       room_nights: 6,
-      contribution_floor_inr: 6000,
+      contribution_floor_inr: 7200, // 6 x 2000 - 4800
       contribution_inr: 7200,
     });
     expect(e.decision).toBe('OFFER');
   });
 
-  it('under the absolute floor a small group is REVIEW (the 20000 floor does not scale)', () => {
-    expect(run({ rooms: 3 }).evaluation).toMatchObject({
-      decision: 'REVIEW',
-      reasons: ['FLOOR_BREACH'],
-    });
+  it('one room for one night at the floor rate is an OFFER (the small booking case)', () => {
+    expect(run({ rooms: 1, stay: { check_in: '2026-11-01', nights: 1 } }).evaluation.decision).toBe(
+      'OFFER',
+    );
   });
 });
 

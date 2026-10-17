@@ -1,7 +1,8 @@
 # Viva preparation: likely questions and answers
 
-Everyone should know: **40000** revenue, **16000** cost, **24000** contribution, floor
-**20000**, minimum safe rate **1800**, and that all data is synthetic.
+Everyone should know: **40000** revenue, **16000** cost, **24000** contribution, package floor
+**20000** over **10** rooms = floor rate **2000** per room-night (cost included), and that all
+data is synthetic.
 
 ## Product and business (Track 4 leads)
 
@@ -33,8 +34,9 @@ tier. Role-play results are process evidence, not market demand.
 ## Engineering (Track 1 leads)
 
 **Walk me through the fixture quote.** 10 rooms x 2 nights = 20 room-nights; 20 x 2000 = 40000
-revenue; 20 x 800 = 16000 cost; 24000 contribution, 4000 above the 20000 floor. Minimum safe
-rate = ceil((20000 + 16000) / 20) = 1800.
+revenue; 20 x 800 = 16000 cost; 24000 contribution. The floor rate is 20000 / 10 rooms = 2000
+per room-night with the cost included, so the floor is 20 x 2000 - 16000 = 24000: the fixture
+sits exactly on it, and 2000 is the minimum safe rate.
 
 **What happens with 12 rooms?** Sellable rooms are the minimum over every night (10), so it is a
 partial offer for 10 with a shortfall of 2. It can never hold 12: holds are DynamoDB
@@ -48,8 +50,13 @@ wins, 19 are declined, nothing is over-held.
 **What does null mean?** Unknown, never zero. An unknown cost makes contribution unknown, and the
 quote goes to review. We never guess.
 
-**Why is the floor absolute?** It matches the fixture field; we also implemented a per-room-night
-floor and flagged the choice as question 1 for the case owners, because it changes outcomes.
+**How does the floor work?** The owner sets a package floor and the hotel's total rooms; floor
+rate = package floor / total rooms (20000 / 10 = 2000 per room-night), and it already includes
+the variable cost. A quote passes when its rate meets the floor rate (bundled inclusions must also
+be covered), so one room for one night is judged as fairly as a large group. This replaced an
+absolute package floor that sent every small booking to review (D-056). We flag that the brief
+calls it a contribution floor: under the old rule 1800 passed on the fixture, under ours it needs
+review.
 
 **How is an approval protected?** It records the terms hash. Any change to rooms, dates, rate or
 inclusions changes the hash and voids the approval. The creator cannot approve their own quote.

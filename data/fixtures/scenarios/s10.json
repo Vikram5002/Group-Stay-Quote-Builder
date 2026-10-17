@@ -1,6 +1,6 @@
 {
   "id": "S10",
-  "title": "Breakfast bundled at 150 per guest-night: review, minimum rate 2100",
+  "title": "Breakfast bundled at 150 per guest-night: review, minimum rate 2300",
   "source": "T14 (assumption A6)",
   "synthetic": true,
   "policy": {},
@@ -26,13 +26,11 @@
   "now": "2026-10-17T10:00:00+05:30",
   "expect": {
     "decision": "REVIEW",
-    "reasons": [
-      "FLOOR_BREACH"
-    ],
+    "reasons": ["FLOOR_BREACH"],
     "totals": {
       "inclusions_cost_inr": 6000,
       "contribution_inr": 18000,
-      "min_rate_per_room_night_inr": 2100
+      "min_rate_per_room_night_inr": 2300
     }
   }
 }

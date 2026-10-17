@@ -148,19 +148,23 @@ describe('InclusionInput', () => {
 });
 
 describe('Policy', () => {
-  it('accepts the defaults (A1 absolute floor 20000, 72h validity, 24h cutoff)', () => {
+  it('accepts the defaults (package floor 20000 over 10 rooms, 72h validity, 24h cutoff)', () => {
     expect(parseWith(Policy, DEFAULT_POLICY).ok).toBe(true);
     expect(DEFAULT_POLICY).toMatchObject({
-      floor_mode: 'absolute',
       contribution_floor_inr: 20000,
+      total_rooms_units: 10,
       validity_hours: 72,
       stay_cutoff_hours: 24,
     });
   });
 
-  it('requires a per-room-night floor in per_room_night mode', () => {
-    const p = { ...DEFAULT_POLICY, floor_mode: 'per_room_night', floor_per_room_night_inr: null };
-    expect(codes(issuesFor(Policy, p))).toEqual(['floor_per_room_night_inr:REQUIRED']);
+  it('requires at least one room, and no longer accepts the old floor modes', () => {
+    expect(codes(issuesFor(Policy, { ...DEFAULT_POLICY, total_rooms_units: 0 }))).toEqual([
+      'total_rooms_units:OUT_OF_RANGE',
+    ]);
+    expect(codes(issuesFor(Policy, { ...DEFAULT_POLICY, floor_mode: 'absolute' }))).toEqual([
+      'floor_mode:UNKNOWN_FIELD',
+    ]);
   });
 
   it('rejects min validity above validity and an unknown time zone', () => {

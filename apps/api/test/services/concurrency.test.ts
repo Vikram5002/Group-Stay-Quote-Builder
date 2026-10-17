@@ -88,10 +88,10 @@ describe.skipIf(!hasDb)('concurrency (DynamoDB Local)', () => {
     ]);
 
     // Now 2026-10-20 10:00 IST, still well before the 2026-11-01 stay cutoff. B gets its 5 rooms
-    // held. 5 rooms x 2 nights earn 12000 < the absolute 20000 floor, so it is REVIEW (D-020).
+    // held, at the floor rate, so it is a clean OFFER.
     const b2 = await createQuote(h.deps, request({ rooms: 5 }), sales);
-    expect(b2.evaluation).toMatchObject({ decision: 'REVIEW', offered_rooms: 5 });
-    expect(b2.status).toBe('PENDING_REVIEW');
+    expect(b2.evaluation).toMatchObject({ decision: 'OFFER', offered_rooms: 5 });
+    expect(b2.status).toBe('OFFERED');
     expect(await getHoldLines(h.ctx, b2.quote_id)).toHaveLength(2);
     const nights = await getInventory(h.ctx, 'standard', '2026-11-01', '2026-11-02');
     expect(nights.map((n) => [n.available_units, n.held_units])).toEqual([

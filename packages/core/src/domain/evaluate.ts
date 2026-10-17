@@ -78,13 +78,8 @@ function decisionLine(outcome: DecisionOutcome): string {
   return `decision ${outcome.decision}${why}${auto}`;
 }
 
-interface Assessment extends EvaluationResult {
-  /** Rooms sellable on every night, or null when availability is not known. */
-  sellable: number | null;
-}
-
 /** Steps 2 to 6 without counter-offers; also what the counter-offer generator re-runs. */
-function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessment {
+function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
   const { policy } = ctx;
   const { stay } = request;
 
@@ -129,7 +124,6 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessme
 
   return {
     validity,
-    sellable: availability.kind === 'known' ? availability.sellable : null,
     evaluation: {
       decision: outcome.decision,
       reasons: outcome.reasons,
@@ -149,13 +143,13 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessme
 
 /** Evaluate a validated request: decision, totals, trail and floor-safe counter-offers. */
 export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
-  const { evaluation, validity, sellable } = assess(request, ctx);
+  const { evaluation, validity } = assess(request, ctx);
   const reassess = (r: ResolvedQuoteRequest) => assess(r, ctx).evaluation;
   return {
     validity,
     evaluation: {
       ...evaluation,
-      counter_offers: counterOffers(request, evaluation, reassess, sellable),
+      counter_offers: counterOffers(request, evaluation, reassess),
     },
   };
 }

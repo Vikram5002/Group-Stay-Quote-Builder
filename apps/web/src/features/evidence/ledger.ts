@@ -28,7 +28,7 @@ export const LEDGER: readonly LedgerEntry[] = [
   },
   {
     id: 'E02',
-    claim: 'Minimum safe rate on the fixture is 1800.',
+    claim: 'Minimum safe rate on the fixture is 2000 (floor 20000 / 10 rooms, D-056).',
     type: 'Derived',
     source: 'Formula; test T03, T18',
     confidence: 'High (arithmetic only)',

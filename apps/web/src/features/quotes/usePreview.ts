@@ -81,11 +81,8 @@ export function liveTotals(
   const { totals } = price({
     rooms: evaluation.offered_rooms,
     nights: flatNights(stay.check_in, stay.nights, rate, costPerRoomNight),
-    floor: {
-      floor_mode: 'absolute',
-      contribution_floor_inr: last.contribution_floor_inr,
-      floor_per_room_night_inr: null,
-    },
+    // The server's floor rate, expressed as a one-room floor so the estimate uses it exactly.
+    floor: { contribution_floor_inr: last.floor_rate_per_room_night_inr, total_rooms_units: 1 },
   });
   return { totals, source: 'estimate' };
 }

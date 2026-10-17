@@ -19,6 +19,16 @@ npm run build      # type-check and production build
 - `src/features/design-system/`: the gallery page at `/design-system`.
 - `src/lib/format.ts`: INR and IST formatters. A null value is always shown as `Unknown`, never as 0 or blank.
 
+## Work package T2-02: API client, mocks and sign-in
+
+- `src/lib/api/`: typed client for every route in the contract. Responses are checked against the `@c32/core` schemas, errors become `ApiError` with a stable code, and every mutating call needs an `Idempotency-Key`.
+- `src/lib/api/errors.ts`: maps each error code to a plain-language message and next step (for example `QUOTE_EXPIRED` offers a re-quote).
+- `src/mocks/`: MSW handlers that follow the contract (paths, roles, status codes, problem+json, idempotency, holds, expiry, four-eyes approval). Seed data follows the case fixture. The evaluator in `evaluate.ts` is a stand-in until the real rules engine is in `@c32/core`.
+- `src/features/auth/`: mock sign-in (pick a name and a role), route guard and role-based menu. The shape is kept so the Cognito hosted UI can replace it.
+- `@c32/core` is imported from its source through an alias, so no build step is needed first.
+
+Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_API_BASE_URL` (see `.env.example`) to use a real API.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -29,4 +39,4 @@ npm run build      # type-check and production build
 
 ## Not in this work package
 
-API client, mocks and sign-in (T2-02), the quote builder (T2-03) and the remaining screens (T2-04 to T2-08).
+Cognito sign-in (needs the Track 3 user pool), the quote builder (T2-03) and the remaining screens (T2-04 to T2-08).

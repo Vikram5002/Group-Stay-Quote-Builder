@@ -47,3 +47,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+      # Package both Lambda handlers and boot the API bundle (Track 3 deploys these).
+      - run: npm run bundle -w @c32/api

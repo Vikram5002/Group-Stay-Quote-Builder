@@ -29,3 +29,4 @@ export * from './domain/inclusions.js';
 export * from './domain/counter-offers.js';
 export * from './domain/ledger.js';
 export * from './domain/terms.js';
+export * from './domain/amend.js';

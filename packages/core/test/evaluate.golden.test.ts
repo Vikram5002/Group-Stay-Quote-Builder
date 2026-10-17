@@ -116,3 +116,35 @@ describe('T09 second night has no inventory row', () => {
     ]);
   });
 });
+
+describe('T10 night 1 has 10 available, night 2 has 8; request 12', () => {
+  const inventory = [night('2026-11-01', 10), night('2026-11-02', 8)];
+
+  it('sellable is the minimum over the nights: 8 rooms offered, shortfall 4', () => {
+    const { evaluation: e } = run({ rooms: 12 }, ctx({ inventory }));
+    expect(e).toMatchObject({ offered_rooms: 8, shortfall_rooms: 4 });
+    expect(e.reasons).toContain('PARTIAL_AVAILABILITY');
+    expect(e.totals).toMatchObject({ room_nights: 16, contribution_inr: 19200 });
+  });
+
+  it('per-room-night floor (16 x 1000 = 16000): a clean PARTIAL_OFFER for 8', () => {
+    const policy = { ...fx.policy, floor_mode: 'per_room_night' as const };
+    const { evaluation: e } = run({ rooms: 12 }, ctx({ inventory, policy }));
+    expect(e).toMatchObject({
+      decision: 'PARTIAL_OFFER',
+      reasons: ['PARTIAL_AVAILABILITY'],
+      auto_confirm_allowed: false,
+    });
+    expect(e.totals.contribution_floor_inr).toBe(16000);
+  });
+
+  it('absolute floor (20000): 19200 breaches it, so the partial goes to REVIEW (D-019)', () => {
+    const { evaluation: e } = run({ rooms: 12 }, ctx({ inventory }));
+    expect(e).toMatchObject({
+      decision: 'REVIEW',
+      reasons: ['FLOOR_BREACH', 'PARTIAL_AVAILABILITY'],
+      auto_confirm_allowed: false,
+    });
+    expect(e.totals.shortfall_inr).toBe(800);
+  });
+});

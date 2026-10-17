@@ -49,9 +49,12 @@ jobs:
 
       - name: Build the web app against the deployed API
         run: |
-          api=$(node -p "require('./infra/cdk-outputs.json')['c32-dev-api'].ApiUrl")
-          cd apps/web && npm install --no-audit --no-fund
-          VITE_API_MODE=api VITE_API_BASE_URL="$api" npm run build
+          out=./infra/cdk-outputs.json
+          export VITE_API_MODE=api VITE_AUTH_MODE=cognito
+          export VITE_API_BASE_URL=$(node -p "require('$out')['c32-dev-api'].ApiUrl")
+          export VITE_COGNITO_DOMAIN=$(node -p "require('$out')['c32-dev-auth'].HostedUiDomain")
+          export VITE_COGNITO_CLIENT_ID=$(node -p "require('$out')['c32-dev-auth'].UserPoolClientId")
+          cd apps/web && npm install --no-audit --no-fund && npm run build
 
       - name: Deploy the web app
         working-directory: infra

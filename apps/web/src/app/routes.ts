@@ -40,7 +40,6 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/imports',
-    roles: ['Owner'],
     label: 'Imports and exports',
     workPackage: 'T2-07',
     description: 'CSV or JSON upload and download with row-level reports.',

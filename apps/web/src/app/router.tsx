@@ -4,6 +4,7 @@ import type { RouteObject } from 'react-router-dom';
 import { DesignSystemPage } from '../features/design-system/DesignSystemPage';
 import { AvailabilityPage } from '../features/availability/AvailabilityPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { ImportsPage } from '../features/imports/ImportsPage';
 import { PolicyPage } from '../features/policy/PolicyPage';
 import { ReviewQueuePage } from '../features/review/ReviewQueuePage';
 import { QuoteDetailPage } from '../features/quotes/QuoteDetailPage';
@@ -23,6 +24,7 @@ const SCREENS: Record<string, ReactNode> = {
   '/review': <ReviewQueuePage />,
   '/availability': <AvailabilityPage />,
   '/policy': <PolicyPage />,
+  '/imports': <ImportsPage />,
 };
 
 export const routes: RouteObject[] = [

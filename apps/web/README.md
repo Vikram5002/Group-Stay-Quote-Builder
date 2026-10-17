@@ -60,6 +60,14 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - The API has no policy history yet, so the screen lists only the changes saved during the current visit and says so.
 - The mock API now runs the real rules engine from `@c32/core` (decisions, reasons, counter-offers and the validity window) instead of a stand-in, so screens are tested against real engine output. Only storage, holds and the terms hash are mocked.
 
+## Work package T2-07: Imports and exports
+
+- `/imports` lets an Owner import inventory or rates from a CSV or JSON file: choose a file, see it as it will be read (an empty cell shows as `Unknown`, never zero), run a dry-run check, read the row-by-row problems (errors and warnings with row numbers), then confirm the import. A file with any error cannot be imported. Importing the same content again reports "Nothing changed".
+- A template download shows the expected columns. Sales and Viewers see the export section only.
+- Exports: a short-lived download link for quotes (CSV or JSON) and for the evidence bundle. Unknown values are empty cells in the CSV.
+- The upload goes straight to the presigned URL the API returns. In mock mode the mock server stands in for that URL, parses the file, applies a commit to its in-memory data, and serves downloads. The evidence download is an empty archive until the real bundle exists.
+- `src/lib/csv.ts` is a small CSV reader and writer; `src/lib/imports.ts` holds the column lists and file reading used by both the preview and the mock.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -70,4 +78,4 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Not in this work package
 
-Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-07 and T2-08).
+Cognito sign-in (needs the Track 3 user pool), the evidence page and experiment log (T2-08).

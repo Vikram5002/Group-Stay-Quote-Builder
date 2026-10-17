@@ -17,7 +17,6 @@ import {
 import type {
   Actor,
   ErrorCode,
-  ImportReport,
   ProblemOptions,
   Quote,
   QuoteEventType,
@@ -28,8 +27,13 @@ import { http, HttpResponse } from 'msw';
 import type { z } from 'zod';
 import { parseMockToken } from './auth';
 import { evaluate } from './evaluate';
+import { checkImport, commitImport } from './importLogic';
 import { mockHash } from './store';
+import { quotesCsv } from './exportCsv';
 import type { MockStore } from './store';
+
+export const UPLOAD_ORIGIN = 'https://uploads.c32.example';
+export const DOWNLOAD_ORIGIN = 'https://downloads.c32.example';
 
 const PROBLEM_HEADERS = { 'Content-Type': 'application/problem+json' };
 
@@ -490,12 +494,27 @@ export function createHandlers(store: MockStore) {
         if (!kind.success) return problemResponse('NOT_FOUND');
         const body = await readBody(request.clone(), ImportUploadRequest);
         if (body.error) return body.error;
+        const importId = store.nextId();
+        store.uploads.set(importId, {
+          kind: kind.data,
+          format: body.value.format,
+          fileName: body.value.file_name,
+          text: null,
+        });
         return HttpResponse.json({
-          import_id: store.nextId(),
-          upload_url: 'https://uploads.c32.example/presigned',
+          import_id: importId,
+          upload_url: `${UPLOAD_ORIGIN}/imports/${importId}`,
           expires_at: new Date(store.now().getTime() + 15 * 60_000).toISOString(),
         });
       });
+    }),
+
+    // Stands in for the presigned S3 URL: the browser PUTs the file straight to it.
+    http.put(`${UPLOAD_ORIGIN}/imports/:importId`, async ({ request, params }) => {
+      const upload = store.uploads.get(String(params.importId));
+      if (!upload) return new HttpResponse(null, { status: 403 });
+      upload.text = await request.text();
+      return new HttpResponse(null, { status: 200 });
     }),
 
     ...(['validate', 'commit'] as const).map((step) =>
@@ -505,25 +524,20 @@ export function createHandlers(store: MockStore) {
         return idempotent(request, actor, () => {
           const kind = ImportKind.safeParse(params.kind);
           if (!kind.success) return problemResponse('NOT_FOUND');
-          const report: ImportReport = {
-            import_id: String(params.importId),
-            kind: kind.data,
-            content_sha256: mockHash(String(params.importId)),
-            status: step === 'validate' ? 'VALIDATED' : 'COMMITTED',
-            rows_total: 3,
-            rows_accepted: 2,
-            rows_rejected: 1,
-            issues: [
-              {
-                row: 3,
-                field: 'rooms',
-                code: 'INVALID_TYPE',
-                message: 'rooms must be a whole number',
-                severity: 'error',
-              },
-            ],
-          };
-          return HttpResponse.json(report);
+          const importId = String(params.importId);
+          const upload = store.uploads.get(importId);
+          if (!upload || upload.kind !== kind.data) return problemResponse('NOT_FOUND');
+          if (upload.text === null) {
+            return problemResponse('INVALID_STATE', { detail: 'No file has been uploaded yet.' });
+          }
+          const checked = checkImport(importId, upload);
+          if (step === 'validate') return HttpResponse.json(checked.report);
+          if (checked.report.status !== 'VALIDATED') {
+            return problemResponse('INVALID_STATE', {
+              detail: 'Only a file that passed the check can be committed.',
+            });
+          }
+          return HttpResponse.json(commitImport(store, kind.data, checked));
         });
       }),
     ),
@@ -538,7 +552,7 @@ export function createHandlers(store: MockStore) {
         });
       }
       return HttpResponse.json({
-        download_url: `https://downloads.c32.example/exports/quotes.${format}`,
+        download_url: `${DOWNLOAD_ORIGIN}/exports/quotes.${format}`,
         format,
         expires_at: new Date(store.now().getTime() + 15 * 60_000).toISOString(),
       });
@@ -548,10 +562,24 @@ export function createHandlers(store: MockStore) {
       const actor = authorise(request, ALL);
       if (actor instanceof Response) return actor;
       return HttpResponse.json({
-        download_url: 'https://downloads.c32.example/exports/evidence.zip',
+        download_url: `${DOWNLOAD_ORIGIN}/exports/evidence.zip`,
         format: 'zip',
         expires_at: new Date(store.now().getTime() + 15 * 60_000).toISOString(),
       });
+    }),
+
+    http.get(`${DOWNLOAD_ORIGIN}/exports/quotes.:format`, ({ params }) => {
+      const quotes = [...store.quotes.values()].map(refresh);
+      if (params.format === 'json') return HttpResponse.json(quotes);
+      return new HttpResponse(quotesCsv(quotes), {
+        headers: { 'Content-Type': 'text/csv; charset=utf-8' },
+      });
+    }),
+
+    // An empty but valid zip archive; the real bundle comes from the API (T1-12).
+    http.get(`${DOWNLOAD_ORIGIN}/exports/evidence.zip`, () => {
+      const emptyZip = new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array(18).fill(0)]);
+      return new HttpResponse(emptyZip, { headers: { 'Content-Type': 'application/zip' } });
     }),
 
     http.get('*/v1/policy', ({ request }) => {

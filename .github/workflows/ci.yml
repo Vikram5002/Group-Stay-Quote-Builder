@@ -49,3 +49,6 @@ jobs:
       - run: npm run verify
       # Package both Lambda handlers and boot the API bundle (Track 3 deploys these).
       - run: npm run bundle -w @c32/api
+      # Synthesise every CDK stack from the bundles (no AWS credentials needed).
+      - run: npx cdk synth --quiet -c stage=dev
+        working-directory: infra

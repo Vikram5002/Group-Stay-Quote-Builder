@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Every colour pair used for text is checked against WCAG 2.1 AA
+ * in src/lib/contrast.test.ts, so change a token and the test tells you if it broke.
+ */
+@theme {
+  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef0f4;
+  --color-border: #c9ced8;
+  --color-border-strong: #6b7385;
+
+  --color-ink: #161a23;
+  --color-ink-muted: #4a5163;
+
+  --color-brand: #2b4fd8;
+  --color-brand-hover: #2140b5;
+  --color-brand-soft: #e6ecff;
+  --color-on-brand: #ffffff;
+
+  --color-success: #17693a;
+  --color-success-soft: #e3f5ea;
+  --color-warning: #8a4b00;
+  --color-warning-soft: #fff1d6;
+  --color-danger: #b3261e;
+  --color-danger-soft: #fde8e6;
+  --color-info: #1b5a9c;
+  --color-info-soft: #e1effc;
+  --color-unknown: #4a5163;
+  --color-unknown-soft: #eef0f4;
+
+  --color-focus: #1d3fc0;
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --shadow-card: 0 1px 2px rgb(22 26 35 / 0.08), 0 1px 3px rgb(22 26 35 / 0.06);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-canvas);
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

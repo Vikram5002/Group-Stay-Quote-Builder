@@ -22,3 +22,4 @@ export * from './domain/timezone.js';
 export * from './domain/validity.js';
 export * from './domain/request.js';
 export * from './domain/unknowns.js';
+export * from './domain/availability.js';

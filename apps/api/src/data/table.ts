@@ -11,6 +11,7 @@ import type { CreateTableCommandInput } from '@aws-sdk/client-dynamodb';
  * | Inventory night | PROP#<property>  | INV#<room_type>#<date>      |
  * | Quote           | PROP#<property>  | QUOTE#<quote_id>            |
  * | Hold line       | QUOTE#<quote_id> | HOLD#<room_type>#<date>     |
+ * | Hold set marker | QUOTE#<quote_id> | HOLDSET                     |
  * | Audit event     | QUOTE#<quote_id> | EVT#<event_id>              |
  *
  * GSI1 lists quotes by status: GSI1PK = PROP#<property>#STATUS#<status>,
@@ -62,6 +63,8 @@ export const keys = {
   quote: (quoteId: string) => `QUOTE#${quoteId}`,
   hold: (roomType: string, date: string) => `HOLD#${roomType}#${date}`,
   holdPrefix: () => 'HOLD#',
+  /** One per quote while it holds rooms: stops a second hold on different nights (BR-13). */
+  holdSet: () => 'HOLDSET',
   event: (eventId: string) => `EVT#${eventId}`,
   statusIndex: (propertyId: string, status: string) => `PROP#${propertyId}#STATUS#${status}`,
 } as const;

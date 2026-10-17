@@ -133,6 +133,28 @@ describe.skipIf(!hasDb)('transactional holds (DynamoDB Local)', () => {
       ]);
     });
 
+    it('refuses a second hold for the same quote on different nights (found by the model test)', async () => {
+      await acquireHolds(ctx, req('Q1', 1, ['2026-11-02']));
+      await expect(acquireHolds(ctx, req('Q1', 1, ['2026-11-01']))).rejects.toMatchObject({
+        reason: 'ALREADY_HELD',
+      });
+      expect(await counters()).toEqual([
+        [10, 0, 0],
+        [9, 1, 0],
+      ]);
+    });
+
+    it('a released quote may hold again', async () => {
+      await acquireHolds(ctx, req('Q1', 2));
+      await releaseHolds(ctx, 'Q1');
+      await acquireHolds(ctx, req('Q1', 3));
+      expect(await counters()).toEqual([
+        [7, 3, 0],
+        [7, 3, 0],
+      ]);
+      await consistent();
+    });
+
     it('writes extra items in the same transaction, and rolls back when their condition fails', async () => {
       const quoteKey = { PK: keys.property('p1'), SK: keys.quote('Q1') };
       await acquireHolds(ctx, req('Q1', 2), [

@@ -23,7 +23,8 @@ import { keys } from './table.js';
  *
  * Each quote's hold lines live in its own partition (QUOTE#id, SK HOLD#room_type#date). A line
  * is `held` until confirmed; release deletes it with an existence condition, which is what
- * makes release exactly once when the scheduler and the sweeper race.
+ * makes release exactly once when the scheduler and the sweeper race. A HOLDSET marker per
+ * quote stops a second acquire on different nights; release removes it.
  */
 
 export type TxItem = NonNullable<TransactWriteCommandInput['TransactItems']>[number];
@@ -99,6 +100,10 @@ function inventoryKey(ctx: DataContext, roomType: string, date: string) {
   return { PK: keys.property(ctx.propertyId), SK: keys.inventory(roomType, date) };
 }
 
+function holdSetKey(quoteId: string) {
+  return { PK: keys.quote(quoteId), SK: keys.holdSet() };
+}
+
 function holdKey(quoteId: string, roomType: string, date: string) {
   return { PK: keys.quote(quoteId), SK: keys.hold(roomType, date) };
 }
@@ -114,7 +119,7 @@ export async function acquireHolds(
 ): Promise<HoldLine[]> {
   if (!Number.isSafeInteger(req.units) || req.units < 1) throw new RangeError('units must be >= 1');
   if (req.dates.length === 0) throw new RangeError('A hold needs at least one night');
-  checkSize(req.dates.length, extra.length);
+  checkSize(req.dates.length, extra.length + 1);
 
   const lines: HoldLine[] = req.dates.map((date) => ({
     quote_id: req.quoteId,
@@ -146,11 +151,26 @@ export async function acquireHolds(
       },
     });
   }
+  // One marker per quote: a quote holds rooms once, for all its nights, or not at all.
+  items.push({
+    Put: {
+      TableName: ctx.tableName,
+      Item: {
+        ...holdSetKey(req.quoteId),
+        entity: 'HOLDSET',
+        quote_id: req.quoteId,
+        units: req.units,
+      },
+      ConditionExpression: 'attribute_not_exists(PK)',
+    },
+  });
   items.push(...extra);
 
+  const marker = lines.length * 2;
   await transact(ctx, items, (reasons) => {
     const i = reasons.findIndex((r) => r.Code === 'ConditionalCheckFailed');
-    if (i >= lines.length * 2) throw new TransactionConditionError(i - lines.length * 2);
+    if (i > marker) throw new TransactionConditionError(i - marker - 1);
+    if (i === marker) throw new HoldConflictError(lines[0]?.date ?? 'unknown', 'ALREADY_HELD');
     const date = dateAt(lines, i);
     if (i % 2 === 1) throw new HoldConflictError(date, 'ALREADY_HELD');
     const old = reasons[i]?.Item;
@@ -199,7 +219,7 @@ export async function releaseHolds(
 ): Promise<ReleaseResult> {
   const lines = (await getHoldLines(ctx, quoteId)).filter((l) => l.state === 'held');
   if (lines.length === 0) return { released: false, lines: [] };
-  checkSize(lines.length, extra.length);
+  checkSize(lines.length, extra.length + 1);
 
   const items: TxItem[] = [];
   for (const line of lines) {
@@ -223,13 +243,15 @@ export async function releaseHolds(
       },
     });
   }
+  items.push({ Delete: { TableName: ctx.tableName, Key: holdSetKey(quoteId) } });
   items.push(...extra);
 
+  const marker = lines.length * 2;
   let alreadyReleased = false;
   try {
     await transact(ctx, items, (reasons) => {
       const i = reasons.findIndex((r) => r.Code === 'ConditionalCheckFailed');
-      if (i >= lines.length * 2) throw new TransactionConditionError(i - lines.length * 2);
+      if (i > marker) throw new TransactionConditionError(i - marker - 1);
       if (i % 2 === 0) {
         alreadyReleased = true; // another caller released or confirmed first
         throw new NotHeldError(quoteId);

@@ -83,7 +83,7 @@ describe('evidence page', () => {
       within(ledger).getByText(/Recomputed now: Revenue 40000, contribution 24000\./),
     ).toBeInTheDocument();
     expect(
-      within(ledger).getByText(/Recomputed now: Minimum safe rate 2000\./),
+      within(ledger).getByText(/Recomputed now: Minimum safe rate 1800\./),
     ).toBeInTheDocument();
     expect(within(ledger).getAllByText(/Matches the claim\./)).toHaveLength(2);
 

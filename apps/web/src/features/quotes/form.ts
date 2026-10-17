@@ -23,7 +23,9 @@ export interface QuoteForm {
   nights: string;
   roomType: string;
   rooms: string;
-  /** Blank means "use the rate plan". */
+  /** Discount off the full price (the floor rate), whole percent. Blank means none. */
+  discount: string;
+  /** A fixed rate instead of a discount; blank means "use the discount". */
   rate: string;
   /** Blank means "use the policy default". */
   guests: string;
@@ -42,6 +44,7 @@ export const initialForm: QuoteForm = {
   nights: '2',
   roomType: 'standard',
   rooms: '10',
+  discount: '0',
   rate: '',
   guests: '',
   inclusions: [],
@@ -58,7 +61,7 @@ export const STEPS = [
 const STEP_PATHS: ReadonlyArray<readonly string[]> = [
   ['organiser', 'stay'],
   ['room_type', 'rooms'],
-  ['rate_per_room_night_inr', 'guests_per_room_units', 'inclusions'],
+  ['discount_pct', 'rate_per_room_night_inr', 'guests_per_room_units', 'inclusions'],
   [],
 ];
 
@@ -103,7 +106,9 @@ export function toRequest(form: QuoteForm): unknown {
     room_type: form.roomType,
     rooms: num(form.rooms),
   };
+  // A fixed rate wins; otherwise Sales prices by a discount off the full price (D-057).
   if (form.rate.trim() !== '') request.rate_per_room_night_inr = num(form.rate);
+  else if (form.discount.trim() !== '') request.discount_pct = num(form.discount);
   if (form.guests.trim() !== '') request.guests_per_room_units = num(form.guests);
   if (form.inclusions.length > 0) request.inclusions = form.inclusions.map(inclusionRequest);
   return request;
@@ -122,6 +127,7 @@ const RANGES: Record<string, [number, number]> = {
   'stay.nights': [LIMITS.MIN_NIGHTS, LIMITS.MAX_NIGHTS],
   rooms: [LIMITS.MIN_ROOMS, LIMITS.MAX_ROOMS],
   rate_per_room_night_inr: [0, LIMITS.MAX_UNIT_INR],
+  discount_pct: [0, 100],
   guests_per_room_units: [1, LIMITS.MAX_GUESTS_PER_ROOM],
 };
 

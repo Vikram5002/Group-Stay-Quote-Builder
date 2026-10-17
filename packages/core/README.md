@@ -69,3 +69,31 @@ unknownPricingReasons(nights, extras); // ['UNKNOWN_COST'] / ['UNKNOWN_RATE']; n
 | `isExpired`                 | Expired from `valid_until` onward                                        |
 | `Clock`                     | `systemClock` in services; `fixedClock` / `ManualClock` in tests         |
 | `formatInZone` / `toUtcIso` | IST for display, UTC for storage (G13)                                   |
+
+## Decision engine (T1.04)
+
+```ts
+import { evaluate, systemClock, validateQuoteRequest } from '@c32/core';
+
+const v = validateQuoteRequest(body);
+if (!v.ok) return v.problem;
+const { evaluation, validity } = evaluate(v.value, {
+  inventory, // InventoryNight[] for the property
+  ratePlan, // RatePlanNight[]
+  policy,
+  nowMs: systemClock.now(),
+});
+// evaluation.decision: OFFER | PARTIAL_OFFER | REVIEW | DECLINE, with reasons and a trail
+```
+
+| Order | Condition                                         | Decision      | Reason                 |
+| ----- | ------------------------------------------------- | ------------- | ---------------------- |
+| 1     | Cutoff leaves less than `min_validity_hours`      | DECLINE       | `TOO_LATE_TO_QUOTE`    |
+| 2     | A night has no inventory row                      | DECLINE       | `NO_INVENTORY_DATA`    |
+| 3     | Sellable is 0, or short and below minimum partial | DECLINE       | `NO_CAPACITY`          |
+| 4     | Availability unknown on a night                   | REVIEW        | `UNKNOWN_AVAILABILITY` |
+| 5     | Floor breach or unknown rate or cost              | REVIEW        | `FLOOR_BREACH` etc.    |
+| 6     | Short of rooms, otherwise clean                   | PARTIAL_OFFER | `PARTIAL_AVAILABILITY` |
+| 7     | Everything fine                                   | OFFER         | none (auto-confirm)    |
+
+Sellable rooms are the minimum over the stay's nights. Offered rooms never exceed it (BR-05).

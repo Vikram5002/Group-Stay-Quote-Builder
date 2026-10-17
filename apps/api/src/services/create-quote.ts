@@ -1,6 +1,5 @@
 import { TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import {
-  DEFAULT_POLICY,
   INITIAL_STATUS,
   evaluate,
   type Actor,
@@ -9,11 +8,11 @@ import {
   type QuoteEvent,
   type ResolvedQuoteRequest,
 } from '@c32/core';
-import { getInventory, getRatePlan, type DataContext } from '../data/catalog.js';
+import type { DataContext } from '../data/catalog.js';
 import { ContentionError, HoldConflictError } from '../data/errors.js';
 import { acquireHolds } from '../data/holds.js';
-import { getPolicy } from '../data/policy.js';
 import { putEventTx, putNewQuoteTx } from '../data/quotes.js';
+import { loadPolicy, loadStay } from './inputs.js';
 import { termsHash } from './terms-hash.js';
 
 /**
@@ -45,15 +44,10 @@ export async function createQuote(
 ): Promise<Quote> {
   const { data } = deps;
   const quoteId = deps.newId();
-  const policy = (await getPolicy(data)) ?? { ...DEFAULT_POLICY, property_id: data.propertyId };
-  const first = request.stay.night_dates[0] as string;
-  const last = request.stay.night_dates.at(-1) as string;
+  const policy = await loadPolicy(data);
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const [inventory, ratePlan] = await Promise.all([
-      getInventory(data, request.room_type, first, last),
-      getRatePlan(data, request.room_type, first, last),
-    ]);
+    const { inventory, ratePlan } = await loadStay(data, request);
     const nowMs = deps.clock.now();
     const { evaluation, validity } = evaluate(request, { inventory, ratePlan, policy, nowMs });
     const declined = evaluation.decision === 'DECLINE';

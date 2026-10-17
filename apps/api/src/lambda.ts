@@ -1,6 +1,17 @@
-// The package is CommonJS; its named `configure` export resolves correctly under NodeNext.
-import { configure } from '@codegenie/serverless-express';
+// The package is CommonJS; its named exports resolve correctly under NodeNext.
+import { configure, getCurrentInvoke } from '@codegenie/serverless-express';
 import { createApp } from './app.js';
+import { jwtAuthenticate } from './auth.js';
+import { corsOriginsFromEnv, depsFromEnv } from './runtime.js';
 
-/** Lambda entry point behind API Gateway HTTP API. The app is created once per cold start. */
-export const handler = configure({ app: createApp() });
+/**
+ * Lambda entry point behind API Gateway HTTP API with a Cognito JWT authorizer. The app and its
+ * DynamoDB client are created once per cold start; the actor comes from the verified JWT claims.
+ */
+export const handler = configure({
+  app: createApp({
+    deps: depsFromEnv(),
+    authenticate: jwtAuthenticate(() => getCurrentInvoke().event),
+    corsOrigins: corsOriginsFromEnv(),
+  }),
+});

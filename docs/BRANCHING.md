@@ -2,11 +2,12 @@
 
 ## Model
 
-- `main` is the integration branch. It only receives merges from phase branches, through a pull request reviewed by someone from another track. Nobody commits to `main` directly.
+- `main` is the integration branch. It only receives merges from finished phase branches. Nobody commits feature work to `main` directly.
 - Each track works in **phase branches** named `track-<n>/phase-<m>-<short-name>`, cut from the latest `main`.
-- A phase branch is merged (squash or merge commit) when its exit criteria pass in CI. The next phase branch is then cut from the updated `main`.
-- Commit messages follow Conventional Commits and reference the work-package ID, for example `feat(core): add quote request schema [T1-01]`.
-- Changes to `packages/core` always need a reviewer from a different track.
+- Every meaningful change is committed and pushed to the phase branch straight away.
+- No pull requests. When a phase's exit criteria pass (`npm run verify`), the owner merges the phase branch into `main` with `git merge --no-ff` and pushes. The next phase branch is then cut from the updated `main`.
+- Commit messages are short and lowercase, for example `core: add quote request schema`.
+- Changes to `packages/core` should be walked through with someone from a different track before the phase merge.
 
 ## Track 1: Core Engine and API (owner: Track 1)
 

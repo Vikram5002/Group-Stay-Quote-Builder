@@ -10,7 +10,7 @@ import {
   Money,
   Unknown,
 } from '../../components';
-import { formatIst } from '../../lib/format';
+import { formatInr, formatIst } from '../../lib/format';
 import { meterStatus } from './meterStatus';
 import type { ReviewBanner } from './reviewState';
 import type { LiveMeterState } from './usePreview';
@@ -224,7 +224,21 @@ export function TotalsTable({ totals }: { totals: QuoteTotals }) {
         <Row label="Room-nights">
           <Count value={totals.room_nights} />
         </Row>
-        <Row label="Room revenue">
+        <Row
+          label={`Full price (${totals.room_nights} room-nights x ${formatInr(totals.floor_rate_per_room_night_inr)})`}
+        >
+          <Money value={totals.list_revenue_inr} />
+        </Row>
+        <Row label={`Discount${totals.discount_pct === null ? '' : ` (${totals.discount_pct}%)`}`}>
+          {totals.room_revenue_inr === null ? (
+            <Money value={null} />
+          ) : (
+            <>
+              - <Money value={totals.list_revenue_inr - totals.room_revenue_inr} />
+            </>
+          )}
+        </Row>
+        <Row label="Room revenue after discount">
           <Money value={totals.room_revenue_inr} />
         </Row>
         <Row label="Inclusions revenue">

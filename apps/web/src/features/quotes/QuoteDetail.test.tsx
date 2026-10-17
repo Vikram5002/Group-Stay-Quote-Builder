@@ -79,7 +79,14 @@ describe('quote detail', () => {
     const totals = screen
       .getByRole('heading', { name: 'Totals' })
       .closest('section') as HTMLElement;
-    expect(within(totals).getByText(/40,000/)).toBeInTheDocument();
+    // Full price, the discount taken off, then what the organiser pays.
+    expect(
+      within(totals).getByText(/Full price \(20 room-nights x ₹2,000\)/).nextSibling,
+    ).toHaveTextContent('40,000');
+    expect(within(totals).getByText('Discount (0%)')).toBeInTheDocument();
+    expect(within(totals).getByText('Room revenue after discount').nextSibling).toHaveTextContent(
+      '40,000',
+    );
     expect(within(totals).getAllByText(/24,000/).length).toBeGreaterThan(0);
     expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 

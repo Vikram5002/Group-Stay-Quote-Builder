@@ -55,7 +55,25 @@ function Summary({ quote }: { quote: Quote }) {
           {evaluation.offered_rooms} offered of {evaluation.requested_rooms} requested
         </dd>
         <dt className="text-ink-muted">Rate per room-night</dt>
-        <dd>{rate === undefined ? 'From the rate plan' : <Money value={rate} />}</dd>
+        <dd>
+          {rate !== undefined ? (
+            <Money value={rate} />
+          ) : request.discount_pct !== undefined ? (
+            // Full price less the discount, so the organiser sees what they were given.
+            <>
+              <Money value={evaluation.totals.floor_rate_per_room_night_inr} /> full price, less{' '}
+              {request.discount_pct}% ={' '}
+              <Money
+                value={Math.ceil(
+                  (evaluation.totals.floor_rate_per_room_night_inr * (100 - request.discount_pct)) /
+                    100,
+                )}
+              />
+            </>
+          ) : (
+            'From the rate plan'
+          )}
+        </dd>
         {request.inclusions && request.inclusions.length > 0 && (
           <>
             <dt className="text-ink-muted">Inclusions</dt>

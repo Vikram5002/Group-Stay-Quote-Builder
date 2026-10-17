@@ -11,6 +11,8 @@ import {
 } from '../src/index.js';
 import {
   CHECK_IN,
+  anyExtras,
+  anyNights,
   cost,
   floorPolicy,
   knownExtras,
@@ -201,6 +203,77 @@ describe('P4 the floor passes at the minimum safe rate and fails one rupee below
         const t = price({ rooms: 0, nights: flatNights(CHECK_IN, n, 1000, c), floor }).totals;
         expect(t.min_rate_per_room_night_inr).toBeNull();
       }),
+    );
+  });
+});
+
+describe('P6 a null input never turns into a number', () => {
+  it('pricing: any unknown rate, cost or extra makes contribution null', () => {
+    fc.assert(
+      fc.property(
+        positiveRooms,
+        nightCount.chain((n) => anyNights(n)),
+        floorPolicy,
+        anyExtras,
+        (r, nights, floor, extras) => {
+          const t = price({ rooms: r, nights, floor, extras }).totals;
+          const anyUnknown =
+            nights.some((x) => x.rate_inr === null || x.variable_cost_inr === null) ||
+            extras.revenue_inr === null ||
+            extras.cost_inr === null;
+          if (anyUnknown) {
+            expect(t.contribution_inr).toBeNull();
+            expect(t.contribution_margin_pct).toBeNull();
+            expect(t.floor_headroom_inr).toBeNull();
+            expect(t.shortfall_inr).toBeNull();
+          } else {
+            expect(t.contribution_inr).not.toBeNull();
+          }
+          if (nights.some((x) => x.rate_inr === null)) expect(t.room_revenue_inr).toBeNull();
+          if (nights.some((x) => x.variable_cost_inr === null)) {
+            expect(t.variable_cost_inr).toBeNull();
+            expect(t.min_rate_per_room_night_inr).toBeNull();
+          }
+        },
+      ),
+      RUNS,
+    );
+  });
+
+  it('decisions: an unknown cost, rate or availability is never an OFFER or auto-confirmed', () => {
+    fc.assert(
+      fc.property(
+        positiveRooms,
+        fc
+          .integer({ min: 1, max: 5 })
+          .chain((n) => fc.tuple(fc.constant(n), stock(n), anyNights(n))),
+        policy,
+        (requested, [n, { inventory }, nights], pol) => {
+          const ratePlan = nights.map((x) => ({
+            date: x.date,
+            room_type: 'standard',
+            rate_per_room_night_inr: x.rate_inr,
+            variable_cost_per_room_night_inr: x.variable_cost_inr,
+            rack_rate_inr: null,
+          }));
+          const e = runEvaluate(
+            { rooms: requested, nights: n },
+            { inventory, ratePlan, policy: pol },
+          );
+          const priceUnknown = nights.some(
+            (x) => x.rate_inr === null || x.variable_cost_inr === null,
+          );
+          const availUnknown = inventory.some((x) => x.available_units === null);
+          if (e.decision === 'DECLINE') return; // nothing offered, nothing to price
+          if (priceUnknown || availUnknown) {
+            expect(e.decision).toBe('REVIEW');
+            expect(e.auto_confirm_allowed).toBe(false);
+            expect(e.counter_offers).toEqual([]);
+          }
+          if (priceUnknown) expect(e.totals.contribution_inr).toBeNull();
+        },
+      ),
+      { numRuns: 300 },
     );
   });
 });

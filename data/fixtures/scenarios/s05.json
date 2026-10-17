@@ -1,0 +1,37 @@
+{
+  "id": "S05",
+  "title": "Discount to 1500: review, counter-offer the minimum safe rate",
+  "source": "rubric 5 pts, T05",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 10,
+    "rate_per_room_night_inr": 1500
+  },
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "REVIEW",
+    "reasons": [
+      "FLOOR_BREACH"
+    ],
+    "auto_confirm_allowed": false,
+    "totals": {
+      "contribution_inr": 14000,
+      "shortfall_inr": 6000
+    },
+    "counter_offers": [
+      {
+        "type": "RAISE_RATE",
+        "rate_per_room_night_inr": 1800
+      }
+    ]
+  }
+}

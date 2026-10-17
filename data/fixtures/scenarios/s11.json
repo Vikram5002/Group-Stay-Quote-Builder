@@ -1,0 +1,36 @@
+{
+  "id": "S11",
+  "title": "Breakfast charged separately at 200: offer",
+  "source": "T19 (assumption)",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 10,
+    "inclusions": [
+      {
+        "name": "Breakfast",
+        "basis": "per_guest_night",
+        "unit_cost_inr": 150,
+        "included_in_rate": false,
+        "price_inr": 200
+      }
+    ]
+  },
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "OFFER",
+    "totals": {
+      "inclusions_revenue_inr": 8000,
+      "inclusions_cost_inr": 6000,
+      "contribution_inr": 26000
+    }
+  }
+}

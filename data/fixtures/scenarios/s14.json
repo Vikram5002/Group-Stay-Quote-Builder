@@ -1,0 +1,91 @@
+{
+  "id": "S14",
+  "title": "Wedding party: 6 rooms x 3 nights at 2500, breakfast for 2 bundled, per-room-night floor",
+  "source": "business scenario (illustrative numbers)",
+  "synthetic": true,
+  "policy": {
+    "floor_mode": "per_room_night"
+  },
+  "request": {
+    "organiser": {
+      "name": "Fictional Wedding Planners"
+    },
+    "stay": {
+      "check_in": "2026-12-10",
+      "nights": 3
+    },
+    "room_type": "standard",
+    "rooms": 6,
+    "inclusions": [
+      {
+        "name": "Breakfast",
+        "basis": "per_guest_night",
+        "unit_cost_inr": 150,
+        "included_in_rate": true
+      }
+    ]
+  },
+  "inventory": [
+    {
+      "date": "2026-12-10",
+      "room_type": "standard",
+      "total_units": 8,
+      "available_units": 8,
+      "held_units": 0,
+      "confirmed_units": 0
+    },
+    {
+      "date": "2026-12-11",
+      "room_type": "standard",
+      "total_units": 8,
+      "available_units": 8,
+      "held_units": 0,
+      "confirmed_units": 0
+    },
+    {
+      "date": "2026-12-12",
+      "room_type": "standard",
+      "total_units": 8,
+      "available_units": 8,
+      "held_units": 0,
+      "confirmed_units": 0
+    }
+  ],
+  "rate_plan": [
+    {
+      "date": "2026-12-10",
+      "room_type": "standard",
+      "rate_per_room_night_inr": 2500,
+      "variable_cost_per_room_night_inr": 900,
+      "rack_rate_inr": null
+    },
+    {
+      "date": "2026-12-11",
+      "room_type": "standard",
+      "rate_per_room_night_inr": 2500,
+      "variable_cost_per_room_night_inr": 900,
+      "rack_rate_inr": null
+    },
+    {
+      "date": "2026-12-12",
+      "room_type": "standard",
+      "rate_per_room_night_inr": 2500,
+      "variable_cost_per_room_night_inr": 900,
+      "rack_rate_inr": null
+    }
+  ],
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "OFFER",
+    "offered_rooms": 6,
+    "totals": {
+      "room_nights": 18,
+      "room_revenue_inr": 45000,
+      "variable_cost_inr": 16200,
+      "inclusions_cost_inr": 5400,
+      "contribution_inr": 23400,
+      "contribution_floor_inr": 18000,
+      "floor_headroom_inr": 5400
+    }
+  }
+}

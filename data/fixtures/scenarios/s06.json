@@ -1,0 +1,44 @@
+{
+  "id": "S06",
+  "title": "Unknown variable cost: review, contribution unknown (never 0)",
+  "source": "T06, null policy",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 10
+  },
+  "rate_plan": [
+    {
+      "date": "2026-11-01",
+      "room_type": "standard",
+      "rate_per_room_night_inr": 2000,
+      "variable_cost_per_room_night_inr": null,
+      "rack_rate_inr": null
+    },
+    {
+      "date": "2026-11-02",
+      "room_type": "standard",
+      "rate_per_room_night_inr": 2000,
+      "variable_cost_per_room_night_inr": null,
+      "rack_rate_inr": null
+    }
+  ],
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "REVIEW",
+    "reasons": [
+      "UNKNOWN_COST"
+    ],
+    "totals": {
+      "contribution_inr": null
+    }
+  }
+}

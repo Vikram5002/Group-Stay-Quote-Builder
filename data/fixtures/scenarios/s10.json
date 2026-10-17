@@ -1,0 +1,38 @@
+{
+  "id": "S10",
+  "title": "Breakfast bundled at 150 per guest-night: review, minimum rate 2100",
+  "source": "T14 (assumption A6)",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 10,
+    "inclusions": [
+      {
+        "name": "Breakfast",
+        "basis": "per_guest_night",
+        "unit_cost_inr": 150,
+        "included_in_rate": true
+      }
+    ]
+  },
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "REVIEW",
+    "reasons": [
+      "FLOOR_BREACH"
+    ],
+    "totals": {
+      "inclusions_cost_inr": 6000,
+      "contribution_inr": 18000,
+      "min_rate_per_room_night_inr": 2100
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "S04",
+  "title": "One rupee below the minimum breaches the floor",
+  "source": "T04",
+  "synthetic": true,
+  "policy": {},
+  "request": {
+    "organiser": {
+      "name": "Fictional Events Pvt Ltd"
+    },
+    "stay": {
+      "check_in": "2026-11-01",
+      "nights": 2
+    },
+    "room_type": "standard",
+    "rooms": 10,
+    "rate_per_room_night_inr": 1799
+  },
+  "now": "2026-10-17T10:00:00+05:30",
+  "expect": {
+    "decision": "REVIEW",
+    "reasons": [
+      "FLOOR_BREACH"
+    ],
+    "totals": {
+      "contribution_inr": 19980,
+      "shortfall_inr": 20
+    }
+  }
+}

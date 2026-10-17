@@ -8,6 +8,7 @@
 .local-files/
 .vscode/
 cdk.out/
+cdk-outputs.json
 coverage/
 dist-lambda/
 dist/

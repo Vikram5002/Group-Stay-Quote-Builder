@@ -7,4 +7,4 @@
 | [API contract](api/README.md)                             | Track 1 | Contract v0.1: schemas, codes, routes, changelog             |
 | [OpenAPI 3.1](api/openapi.json)                           | Track 1 | Generated from the Zod schemas; never edit by hand           |
 | [Decision log](architecture/decisions.md)                 | All     | Every scope or design decision with date and reason          |
-| [Contributing](../CONTRIBUTING.md)                        | All     | Branch per work package, commit style, merge rule            |
+| [Contributing](../.github/CONTRIBUTING.md)                | All     | Branch per work package, commit style, merge rule            |

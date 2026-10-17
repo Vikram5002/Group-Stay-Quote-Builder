@@ -28,7 +28,7 @@ A sales manager at a small hotel enters a group request (rooms, dates, room type
 
 ## Getting started
 
-Requires Node.js 22.12 or later (24 recommended, see `.nvmrc`).
+Requires Node.js 22.12 or later (24 recommended).
 
 ```bash
 npm install
@@ -56,7 +56,7 @@ npm run dev -w @c32/api   # API on http://localhost:3000 (GET /health)
 
 ## Further reading
 
-- [Contributing: branches and commits](CONTRIBUTING.md)
+- [Contributing: branches and commits](.github/CONTRIBUTING.md)
 - [Documentation index](docs/README.md)
 - [API contract v0.1](docs/api/README.md)
 - [Decision log](docs/architecture/decisions.md)

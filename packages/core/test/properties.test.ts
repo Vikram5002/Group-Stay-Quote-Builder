@@ -11,6 +11,7 @@ import {
 } from '../src/index.js';
 import {
   CHECK_IN,
+  cost,
   floorPolicy,
   knownExtras,
   knownNights,
@@ -167,6 +168,39 @@ describe('P3 offered rooms never exceed the smaller of requested and sellable', 
         },
       ),
       { numRuns: 300 },
+    );
+  });
+});
+
+describe('P4 the floor passes at the minimum safe rate and fails one rupee below', () => {
+  it('holds whenever there are room-nights and the minimum rate is positive', () => {
+    fc.assert(
+      fc.property(
+        positiveRooms,
+        nightCount,
+        cost,
+        floorPolicy,
+        knownExtras,
+        (r, n, c, floor, extras) => {
+          const at = (x: number) =>
+            price({ rooms: r, nights: flatNights(CHECK_IN, n, x, c), floor, extras });
+          const min = at(0).totals.min_rate_per_room_night_inr;
+          expect(min).not.toBeNull();
+          expect(at(min!).floor_ok).toBe(true);
+          if (min! > 0) expect(at(min! - 1).floor_ok).toBe(false);
+          else expect(at(0).floor_ok).toBe(true); // costs alone already clear the floor
+        },
+      ),
+      RUNS,
+    );
+  });
+
+  it('is unknown, not invented, when there are no room-nights', () => {
+    fc.assert(
+      fc.property(nightCount, cost, floorPolicy, (n, c, floor) => {
+        const t = price({ rooms: 0, nights: flatNights(CHECK_IN, n, 1000, c), floor }).totals;
+        expect(t.min_rate_per_room_night_inr).toBeNull();
+      }),
     );
   });
 });

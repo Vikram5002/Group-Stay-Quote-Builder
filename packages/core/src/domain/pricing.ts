@@ -2,7 +2,7 @@ import type { RatePlanNight } from '../contract/inventory.js';
 import type { QuoteTotals } from '../contract/quote.js';
 import { LIMITS } from '../contract/primitives.js';
 import { stayNights } from './calendar.js';
-import { floorFor, type FloorPolicy } from './floor.js';
+import { floorFor, floorPasses, type FloorPolicy } from './floor.js';
 import { assertInt, ceilDiv, percentOneDecimal, sumKnown } from './money.js';
 
 /**
@@ -151,5 +151,89 @@ export function priceTotals(input: PricingInput): QuoteTotals {
     floor_headroom_inr: contribution === null ? null : contribution - floor,
     shortfall_inr: contribution === null ? null : Math.max(0, floor - contribution),
     min_rate_per_room_night_inr: minRate,
+  };
+}
+
+function unknownDates(
+  nights: readonly NightPrice[],
+  key: 'rate_inr' | 'variable_cost_inr',
+): string[] {
+  return nights.filter((n) => n[key] === null).map((n) => n.date);
+}
+
+/** "20 x 2000 = 40000" for a flat value, "10 x (2000 + 2200) = 42000" when it varies by night. */
+function lineFor(
+  label: string,
+  input: PricingInput,
+  key: 'rate_inr' | 'variable_cost_inr',
+  total: number | null,
+  roomNights: number,
+): string {
+  const missing = unknownDates(input.nights, key);
+  if (total === null) return `${label} unknown on ${missing.join(', ')}`;
+  const values = input.nights.map((n) => n[key] as number);
+  const flat = values.every((v) => v === values[0]);
+  if (flat && values.length > 0) return `${roomNights} x ${values[0]} = ${total} ${label}`;
+  return `${input.rooms} x (${values.join(' + ')}) = ${total} ${label}`;
+}
+
+/** Human-readable arithmetic trail so every number traces back to its inputs. */
+export function explainPricing(input: PricingInput, t: QuoteTotals): string[] {
+  const extras = input.extras ?? NO_EXTRAS;
+  const trail = [
+    `${input.rooms} rooms x ${input.nights.length} nights = ${t.room_nights} room-nights`,
+  ];
+  trail.push(lineFor('room revenue', input, 'rate_inr', t.room_revenue_inr, t.room_nights));
+  trail.push(
+    lineFor('variable cost', input, 'variable_cost_inr', t.variable_cost_inr, t.room_nights),
+  );
+
+  const hasExtras = extras.revenue_inr !== 0 || extras.cost_inr !== 0;
+  if (hasExtras) {
+    trail.push(
+      `inclusions revenue ${extras.revenue_inr ?? 'unknown'}, inclusions cost ${extras.cost_inr ?? 'unknown'}`,
+    );
+  }
+
+  if (input.floor.floor_mode === 'per_room_night') {
+    trail.push(
+      `floor ${input.floor.floor_per_room_night_inr} x ${t.room_nights} = ${t.contribution_floor_inr}`,
+    );
+  }
+
+  if (t.contribution_inr === null) {
+    trail.push(`contribution unknown, so the floor cannot be checked`);
+  } else {
+    const parts = hasExtras
+      ? `${t.room_revenue_inr} + ${t.inclusions_revenue_inr} - ${t.variable_cost_inr} - ${t.inclusions_cost_inr}`
+      : `${t.room_revenue_inr} - ${t.variable_cost_inr}`;
+    const verdict =
+      t.contribution_inr >= t.contribution_floor_inr
+        ? `>= ${t.contribution_floor_inr} floor, headroom ${t.floor_headroom_inr}`
+        : `< ${t.contribution_floor_inr} floor, shortfall ${t.shortfall_inr}`;
+    trail.push(`${parts} = ${t.contribution_inr} contribution ${verdict}`);
+  }
+
+  if (t.min_rate_per_room_night_inr !== null) {
+    const need = hasExtras
+      ? `${t.contribution_floor_inr} + ${t.variable_cost_inr} + ${t.inclusions_cost_inr} - ${t.inclusions_revenue_inr}`
+      : `${t.contribution_floor_inr} + ${t.variable_cost_inr}`;
+    trail.push(
+      `minimum safe rate ceil((${need}) / ${t.room_nights}) = ${t.min_rate_per_room_night_inr}`,
+    );
+  }
+  return trail;
+}
+
+/** Price a package: totals, floor result and the arithmetic trail. */
+export function price(input: PricingInput): PricingResult {
+  const totals = priceTotals(input);
+  return {
+    totals,
+    floor_ok:
+      totals.contribution_inr === null
+        ? null
+        : floorPasses(totals.contribution_inr, totals.contribution_floor_inr),
+    trail: explainPricing(input, totals),
   };
 }

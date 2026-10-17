@@ -11,6 +11,7 @@ import {
   Unknown,
 } from '../../components';
 import { formatIst } from '../../lib/format';
+import type { ReviewBanner } from './reviewState';
 import type { LiveMeterState } from './usePreview';
 
 const METER_NOTE: Record<LiveMeterState['kind'], string> = {
@@ -85,19 +86,26 @@ const DECISION_VIEW: Record<
 
 export function DecisionSummary({
   evaluation,
+  review,
   onUseRate,
   onUseRooms,
 }: {
   evaluation: Evaluation;
+  /**
+   * A saved quote's current review state (see reviewState.ts). It replaces the evaluation's own
+   * title, which only says what the engine found when the quote was issued.
+   */
+  review?: ReviewBanner | null;
   /** Offered on the builder only. A saved quote cannot be edited, so these are omitted there. */
   onUseRate?: (rate: number) => void;
   onUseRooms?: (rooms: number) => void;
 }) {
-  const view = DECISION_VIEW[evaluation.decision];
+  const decision = DECISION_VIEW[evaluation.decision];
+  const view = review ?? { tone: decision.tone, title: decision.title(evaluation) };
   const partial = evaluation.offered_rooms > 0 && evaluation.shortfall_rooms > 0;
   return (
     <div className="flex flex-col gap-4">
-      <Alert tone={view.tone} title={view.title(evaluation)}>
+      <Alert tone={view.tone} title={view.title}>
         {evaluation.reasons.length > 0 ? (
           <ul className="list-disc pl-5">
             {evaluation.reasons.map((reason) => (
@@ -107,6 +115,7 @@ export function DecisionSummary({
         ) : evaluation.auto_confirm_allowed ? (
           'It meets the contribution floor and can be confirmed without approval.'
         ) : undefined}
+        {review?.note && <p className="mt-2 font-semibold">{review.note}</p>}
       </Alert>
 
       {partial && (

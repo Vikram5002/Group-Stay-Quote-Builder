@@ -232,6 +232,70 @@ describe('quote detail', () => {
     expect(screen.getAllByText('Pending review').length).toBeGreaterThan(0);
   });
 
+  describe('review state follows the quote, not the original evaluation', () => {
+    const ownerClient = createApiClient({
+      baseUrl: BASE,
+      getToken: () => makeMockToken({ user_id: 'meera', role: 'Owner' }),
+    });
+    const approve = (id: string) =>
+      ownerClient.approveQuote(
+        id,
+        { reason: 'Repeat client, strategic account' },
+        { idempotencyKey: newIdempotencyKey() },
+      );
+    const header = async () =>
+      (await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' }))
+        .parentElement as HTMLElement;
+
+    it('a pending below-floor quote needs review', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      renderDetail(quote.quote_id);
+      expect(within(await header()).getByText('Needs review')).toBeInTheDocument();
+      expect(screen.getByText('Owner review required')).toBeInTheDocument();
+    });
+
+    it('an approved quote shows who approved it, when and why', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      await approve(quote.quote_id);
+      renderDetail(quote.quote_id);
+
+      expect(within(await header()).getByText('Approved')).toBeInTheDocument();
+      expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
+      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.getByText('Approved below the floor')).toBeInTheDocument();
+      expect(
+        screen.getByText(/^Approved by meera on 20 Oct 2026.*: Repeat client, strategic account$/),
+      ).toBeInTheDocument();
+    });
+
+    it('stays approved, not "needs review", once confirmed', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      await approve(quote.quote_id);
+      const u = userEvent.setup();
+      renderDetail(quote.quote_id);
+      await u.click(await screen.findByRole('button', { name: 'Confirm quote' }));
+
+      await waitFor(() => expect(store.quotes.get(quote.quote_id)?.status).toBe('CONFIRMED'));
+      expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
+      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.getByText(/^Approved by meera on/)).toBeInTheDocument();
+    });
+
+    it('a quote cancelled before any decision no longer asks for review', async () => {
+      const quote = await seed({ rate_per_room_night_inr: 1700 });
+      const client = createApiClient({
+        baseUrl: BASE,
+        getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+      });
+      await client.cancelQuote(quote.quote_id, {}, { idempotencyKey: newIdempotencyKey() });
+      renderDetail(quote.quote_id);
+
+      expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
+      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.getByText('Closed before an Owner decided')).toBeInTheDocument();
+    });
+  });
+
   it('says so when the quote does not exist', async () => {
     renderDetail('01ARZ3NDEKTSV4RRFFQ69G5FAV');
     expect(

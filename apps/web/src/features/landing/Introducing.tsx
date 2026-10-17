@@ -2,7 +2,7 @@ import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react';
 import { IconArrowRight } from './icons';
 import { GlideMoney, Reveal, useCountUp } from './motion';
-import { SAMPLE, SAMPLE_MIN_CONTRIBUTION, SAMPLE_RATE, contributionAt, rupees } from './sample';
+import { contributionAt } from './sample';
 import { Section } from './Section';
 
 const NIGHTS = ['1 Nov', '2 Nov', '3 Nov', '4 Nov', '5 Nov'];
@@ -32,11 +32,11 @@ function AvailabilityVisual() {
 }
 
 function PriceVisual() {
-  const total = useCountUp(SAMPLE.totals.room_revenue_inr ?? 0, true, 1200);
+  const total = useCountUp(40000, true, 1200);
   const rows = [
     ['Rooms', '10'],
     ['Nights', '2'],
-    ['Rate per room per night', rupees(SAMPLE_RATE)],
+    ['Rate per room per night', '₹2,000'],
   ];
   return (
     <div className="space-y-2">
@@ -57,7 +57,7 @@ function PriceVisual() {
         <span className="text-sm">Total room revenue</span>
         <span className="lp-big text-3xl">
           <span aria-hidden="true">₹{total.toLocaleString('en-IN')}</span>
-          <span className="sr-only">{rupees(SAMPLE.totals.room_revenue_inr)}</span>
+          <span className="sr-only">₹40,000</span>
         </span>
       </div>
     </div>
@@ -65,14 +65,14 @@ function PriceVisual() {
 }
 
 function NegotiateVisual() {
-  const [rate, setRate] = useState(2250);
+  const [rate, setRate] = useState(1900);
   const options: Array<[string, number]> = [
-    ['10% off', 2250],
-    ['20% off', 2000],
-    ['25% off', 1875],
+    ['5% off', 1900],
+    ['10% off', 1800],
+    ['15% off', 1700],
   ];
   const c = contributionAt(rate);
-  const ok = c !== null && c >= SAMPLE_MIN_CONTRIBUTION;
+  const ok = c !== null && c >= 20000;
   return (
     <div>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Discount to try">
@@ -103,9 +103,7 @@ function NegotiateVisual() {
           className={`mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${ok ? 'bg-success-soft text-success' : 'bg-danger-soft text-danger'}`}
         >
           <span aria-hidden="true">{ok ? '✓' : '✕'}</span>
-          {ok
-            ? `Meets the ${rupees(SAMPLE_MIN_CONTRIBUTION)} minimum`
-            : `Below the ${rupees(SAMPLE_MIN_CONTRIBUTION)} minimum: needs approval`}
+          {ok ? 'Meets the ₹20,000 minimum' : 'Below the ₹20,000 minimum: needs approval'}
         </p>
       </div>
     </div>
@@ -125,11 +123,9 @@ function QuoteVisual() {
         <dt className="lp-muted">Rooms</dt>
         <dd className="text-right font-medium">10 standard</dd>
         <dt className="lp-muted">Rate</dt>
-        <dd className="text-right font-medium">{rupees(SAMPLE_RATE)} per room per night</dd>
+        <dd className="text-right font-medium">₹2,000 per room per night</dd>
         <dt className="lp-muted">Total</dt>
-        <dd className="text-right text-lg font-semibold">
-          {rupees(SAMPLE.totals.room_revenue_inr)}
-        </dd>
+        <dd className="text-right text-lg font-semibold">₹40,000</dd>
       </dl>
     </div>
   );

@@ -4,7 +4,13 @@ import { ContributionMeter, Unknown } from '../../components';
 import { formatInr } from '../../lib/format';
 import { IconAlert, IconCheck, IconQuestion, IconScale } from './icons';
 import { Burst, GlideMoney, Reveal } from './motion';
-import { SAMPLE_CHECK_IN, SAMPLE_COST, SAMPLE_FLOOR, SAMPLE_RATE, SAMPLE_ROOMS } from './sample';
+import {
+  SAMPLE_CHECK_IN,
+  SAMPLE_COST,
+  SAMPLE_FLOOR,
+  SAMPLE_MAX_DISCOUNT,
+  SAMPLE_ROOMS,
+} from './sample';
 import { Section } from './Section';
 
 interface Inputs {
@@ -20,23 +26,23 @@ type Decision = 'OFFER' | 'PARTIAL_OFFER' | 'REVIEW';
 const PRESETS: Array<{ label: string; inputs: Inputs }> = [
   {
     label: 'The sample booking',
-    inputs: { rooms: 10, nights: 2, rate: SAMPLE_RATE, breakfastCostUnknown: false },
+    inputs: { rooms: 10, nights: 2, rate: 2000, breakfastCostUnknown: false },
   },
   {
     label: '10% discount',
-    inputs: { rooms: 10, nights: 2, rate: 2250, breakfastCostUnknown: false },
+    inputs: { rooms: 10, nights: 2, rate: 1800, breakfastCostUnknown: false },
   },
   {
-    label: '25% discount',
-    inputs: { rooms: 10, nights: 2, rate: 1875, breakfastCostUnknown: false },
+    label: '15% discount',
+    inputs: { rooms: 10, nights: 2, rate: 1700, breakfastCostUnknown: false },
   },
   {
     label: 'Too many rooms',
-    inputs: { rooms: 12, nights: 2, rate: SAMPLE_RATE, breakfastCostUnknown: false },
+    inputs: { rooms: 12, nights: 2, rate: 2000, breakfastCostUnknown: false },
   },
   {
     label: 'Breakfast cost unknown',
-    inputs: { rooms: 10, nights: 2, rate: SAMPLE_RATE, breakfastCostUnknown: true },
+    inputs: { rooms: 10, nights: 2, rate: 2000, breakfastCostUnknown: true },
   },
 ];
 
@@ -46,7 +52,11 @@ function evaluate(inputs: Inputs) {
   const result = price({
     rooms: offered,
     nights: flatNights(SAMPLE_CHECK_IN, inputs.nights, inputs.rate, SAMPLE_COST),
-    floor: { contribution_floor_inr: SAMPLE_FLOOR, total_rooms_units: SAMPLE_ROOMS },
+    floor: {
+      contribution_floor_inr: SAMPLE_FLOOR,
+      total_rooms_units: SAMPLE_ROOMS,
+      max_sales_discount_pct: SAMPLE_MAX_DISCOUNT,
+    },
     extras: { revenue_inr: 0, cost_inr: inputs.breakfastCostUnknown ? null : 0 },
   });
   const reasons: string[] = [];
@@ -160,7 +170,7 @@ export function Calculator() {
       id="try"
       eyebrow="A simple example"
       title="Know what the numbers say before you negotiate."
-      lead="Suppose a customer requests 10 rooms for two nights at ₹2,500 a room per night. Now suppose they ask for a discount. Move the numbers and see what it does to your booking."
+      lead="Suppose a customer requests 10 rooms for two nights at ₹2,000 a room per night. Now suppose they ask for a discount. Move the numbers and see what it does to your booking."
       dot="var(--lp-blue)"
     >
       <div className="flex flex-wrap gap-2" role="group" aria-label="Example requests">
@@ -260,8 +270,8 @@ export function Calculator() {
           <div className="lp-card">
             <ContributionMeter
               contribution={t.contribution_inr}
-              floor={t.contribution_floor_inr ?? 0}
-              max={Math.max(t.room_revenue_inr ?? 0, (t.contribution_floor_inr ?? 0) * 2)}
+              floor={SAMPLE_FLOOR}
+              max={Math.max(t.room_revenue_inr ?? 0, SAMPLE_FLOOR * 2)}
             />
             <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
               {[
@@ -329,7 +339,7 @@ export function Calculator() {
         <p className="lp-muted mt-4 text-sm">
           Illustrative example. Actual contribution depends on your property&apos;s costs, charges
           and booking terms. Here the sample uses a variable cost of ₹800 per room per night and a
-          minimum rate of ₹2,000 per room per night (₹20,000 across your 10 rooms).
+          minimum contribution of ₹20,000 for the booking.
         </p>
       </Reveal>
     </Section>

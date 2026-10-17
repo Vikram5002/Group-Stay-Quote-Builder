@@ -73,7 +73,7 @@ describe('quote builder: the three rubric flows', () => {
     expect(within(totals).getByText(/40,000/)).toBeInTheDocument();
     expect(within(totals).getByText(/24,000/)).toBeInTheDocument();
     expect(screen.getAllByText('Meets floor').length).toBeGreaterThan(0);
-    expect(screen.getByText(/20 room-nights, total 40000/)).toBeInTheDocument();
+    expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
     await u.click(screen.getByRole('button', { name: 'Issue quote' }));
     expect(

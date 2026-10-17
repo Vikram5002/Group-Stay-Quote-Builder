@@ -1,4 +1,4 @@
-import type { Decision, QuoteEventType, QuoteStatus } from '@c32/core';
+import type { Decision, QuoteEventType, QuoteStatus, ReasonCode } from '@c32/core';
 import type { Tone } from '../../components';
 
 export const STATUS_LABEL: Record<QuoteStatus, string> = {
@@ -44,3 +44,15 @@ export const EVENT_LABEL: Record<QuoteEventType, string> = {
 
 /** A quote still holds rooms and has a countdown while it is in one of these statuses. */
 export const OPEN_STATUSES: readonly QuoteStatus[] = ['OFFERED', 'PENDING_REVIEW'];
+
+/** Short names for reason codes, for lists and chips. The long text is REASON_DESCRIPTIONS. */
+export const REASON_LABEL: Record<ReasonCode, string> = {
+  FLOOR_BREACH: 'Below floor',
+  UNKNOWN_COST: 'Cost unknown',
+  UNKNOWN_RATE: 'Rate unknown',
+  UNKNOWN_AVAILABILITY: 'Availability unknown',
+  NO_INVENTORY_DATA: 'Not on sale',
+  NO_CAPACITY: 'No capacity',
+  PARTIAL_AVAILABILITY: 'Partial availability',
+  TOO_LATE_TO_QUOTE: 'Too late to quote',
+};

@@ -92,6 +92,13 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
         <Alert tone="warning" title="Waiting for Owner approval">
           This quote is below the contribution floor or has an unknown value. An Owner who did not
           create it must approve it before it can be confirmed.
+          {role === 'Owner' && (
+            <span className="mt-2 block">
+              <Link to={`/review?quote=${id}`} className="font-semibold text-brand underline">
+                Review this quote
+              </Link>
+            </span>
+          )}
         </Alert>
       )}
 

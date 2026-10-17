@@ -66,7 +66,6 @@ export class WebStack extends Stack {
         ttl: Duration.seconds(0),
       })),
       priceClass: cloudfront.PriceClass.PRICE_CLASS_200,
-      minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
     });
 
     this.siteUrl = `https://${this.distribution.distributionDomainName}`;

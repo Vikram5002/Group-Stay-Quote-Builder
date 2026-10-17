@@ -1,8 +1,11 @@
 {
   "app": "npx tsx bin/app.ts",
-  "watch": { "include": ["bin/**", "lib/**"] },
+  "watch": {
+    "include": ["bin/**", "lib/**"]
+  },
   "context": {
     "@aws-cdk/aws-iam:minimizePolicies": true,
-    "@aws-cdk/core:checkSecretUsage": true
+    "@aws-cdk/core:checkSecretUsage": true,
+    "@aws-cdk/core:defaultCrossStackReferences": "strong"
   }
 }

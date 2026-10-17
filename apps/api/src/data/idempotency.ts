@@ -1,7 +1,7 @@
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { DeleteCommand, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { canonicalJson } from '@c32/core';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { DataContext } from './catalog.js';
 
 /**
@@ -62,6 +62,8 @@ export async function withIdempotency(
 ): Promise<StoredResponse & { replayed: boolean }> {
   if (!IDEMPOTENCY_KEY_PATTERN.test(input.key)) throw new RangeError('Invalid Idempotency-Key');
   const Key = keyOf(input.scope, input.key);
+  // Fencing token: only the attempt that holds the lock may finish or clear the record.
+  const token = randomUUID();
 
   try {
     await ctx.doc.send(
@@ -73,6 +75,7 @@ export async function withIdempotency(
           state: 'in_progress',
           request_hash: input.requestHash,
           locked_until: input.nowMs + LEASE_MS,
+          lock_token: token,
           ttl: Math.floor(input.nowMs / 1000) + RETAIN_SECONDS,
         },
         // New key, or an abandoned lease for the same request.
@@ -99,30 +102,52 @@ export async function withIdempotency(
     return { status: item['status_code'] as number, body: item['body'], replayed: true };
   }
 
+  /** Clear our own lock so the client may retry; a newer attempt's record is left alone. */
+  const abandon = () =>
+    ctx.doc
+      .send(
+        new DeleteCommand({
+          TableName: ctx.tableName,
+          Key,
+          ConditionExpression: 'lock_token = :token',
+          ExpressionAttributeValues: { ':token': token },
+        }),
+      )
+      .catch((err: unknown) => {
+        if (!(err instanceof ConditionalCheckFailedException)) throw err;
+      });
+
   let response: StoredResponse;
   try {
     response = await work();
   } catch (err) {
-    await ctx.doc.send(new DeleteCommand({ TableName: ctx.tableName, Key }));
+    await abandon();
     throw err;
   }
   if (response.status >= 500) {
-    await ctx.doc.send(new DeleteCommand({ TableName: ctx.tableName, Key }));
+    await abandon();
     return { ...response, replayed: false };
   }
-  await ctx.doc.send(
-    new UpdateCommand({
-      TableName: ctx.tableName,
-      Key,
-      UpdateExpression:
-        'SET #state = :done, status_code = :status, body = :body REMOVE locked_until',
-      ExpressionAttributeNames: { '#state': 'state' },
-      ExpressionAttributeValues: {
-        ':done': 'completed',
-        ':status': response.status,
-        ':body': response.body,
-      },
-    }),
-  );
+  try {
+    await ctx.doc.send(
+      new UpdateCommand({
+        TableName: ctx.tableName,
+        Key,
+        UpdateExpression:
+          'SET #state = :done, status_code = :status, body = :body REMOVE locked_until, lock_token',
+        ConditionExpression: 'lock_token = :token',
+        ExpressionAttributeNames: { '#state': 'state' },
+        ExpressionAttributeValues: {
+          ':done': 'completed',
+          ':status': response.status,
+          ':body': response.body,
+          ':token': token,
+        },
+      }),
+    );
+  } catch (err) {
+    // Our lease expired and a retry took over; its response is the one that is kept.
+    if (!(err instanceof ConditionalCheckFailedException)) throw err;
+  }
   return { ...response, replayed: false };
 }

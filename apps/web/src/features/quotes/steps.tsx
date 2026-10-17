@@ -1,8 +1,16 @@
 import { INCLUSION_BASES } from '@c32/core';
 import type { Policy } from '@c32/core';
-import { Alert, Button, Card, CheckboxField, SelectField, TextField } from '../../components';
+import {
+  Alert,
+  Button,
+  Card,
+  CheckboxField,
+  SegmentedControl,
+  SelectField,
+  TextField,
+} from '../../components';
 import { newInclusion, ROOM_TYPES } from './form';
-import type { InclusionBasisValue, InclusionForm, QuoteForm } from './form';
+import type { DiscountKind, InclusionBasisValue, InclusionForm, QuoteForm } from './form';
 import { counted } from '../../lib/plural';
 
 interface StepProps {
@@ -51,6 +59,33 @@ export function GroupStep({
           value={form.reference}
           onChange={(e) => patch({ reference: e.target.value })}
           {...err(errors, 'organiser.reference')}
+        />
+        <TextField
+          label="Contact person (optional)"
+          name="organiser.contact_name"
+          autoComplete="name"
+          value={form.contactName}
+          onChange={(e) => patch({ contactName: e.target.value })}
+          hint="Who the quotation is addressed to."
+          {...err(errors, 'organiser.contact_name')}
+        />
+        <TextField
+          label="Email (optional)"
+          name="organiser.email"
+          type="email"
+          autoComplete="email"
+          value={form.email}
+          onChange={(e) => patch({ email: e.target.value })}
+          {...err(errors, 'organiser.email')}
+        />
+        <TextField
+          label="Phone (optional)"
+          name="organiser.phone"
+          type="tel"
+          autoComplete="tel"
+          value={form.phone}
+          onChange={(e) => patch({ phone: e.target.value })}
+          {...err(errors, 'organiser.phone')}
         />
         <TextField
           label="Check-in date"
@@ -217,6 +252,11 @@ function InclusionRow({
   );
 }
 
+const DISCOUNT_KINDS = [
+  { value: 'pct', label: '%' },
+  { value: 'inr', label: '₹ per room-night' },
+] as const;
+
 export function PricingStep({ form, patch, errors }: StepProps) {
   const update = (id: string, changes: Partial<InclusionForm>) =>
     patch({ inclusions: form.inclusions.map((i) => (i.id === id ? { ...i, ...changes } : i)) });
@@ -224,18 +264,31 @@ export function PricingStep({ form, patch, errors }: StepProps) {
     <div className="flex flex-col gap-6">
       <Card title="Pricing">
         <div className="grid gap-4 md:grid-cols-2">
-          <TextField
-            label="Discount off full price (%)"
-            name="discount_pct"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={100}
-            value={form.discount}
-            onChange={(e) => patch({ discount: e.target.value, rate: '' })}
-            hint="Up to the owner's limit Sales can confirm alone; more goes to the owner."
-            {...err(errors, 'discount_pct')}
-          />
+          <div className="flex flex-col gap-3">
+            <SegmentedControl<DiscountKind>
+              legend="Discount in"
+              value={form.discountKind}
+              options={DISCOUNT_KINDS}
+              // A new unit starts from no discount, so 10% never silently becomes ₹10.
+              onChange={(discountKind) => patch({ discountKind, discount: '0', rate: '' })}
+            />
+            <TextField
+              label={
+                form.discountKind === 'pct'
+                  ? 'Discount off full price (%)'
+                  : 'Discount off full price (₹ per room-night)'
+              }
+              name={form.discountKind === 'pct' ? 'discount_pct' : 'discount_inr'}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              {...(form.discountKind === 'pct' ? { max: 100 } : {})}
+              value={form.discount}
+              onChange={(e) => patch({ discount: e.target.value, rate: '' })}
+              hint="Up to the owner's limit Sales can confirm alone; more goes to the owner."
+              {...err(errors, form.discountKind === 'pct' ? 'discount_pct' : 'discount_inr')}
+            />
+          </div>
           <TextField
             label="Or a fixed rate per room-night (INR)"
             name="rate_per_room_night_inr"

@@ -8,6 +8,7 @@ export { EmptyState } from './EmptyState';
 export { CheckboxField, SelectField, TextAreaField, TextField } from './Field';
 export { ContributionMeter } from './Meter';
 export { ProblemAlert } from './ProblemAlert';
+export { SegmentedControl } from './SegmentedControl';
 export { Stepper } from './Stepper';
 export { DataTable } from './Table';
 export type { Column } from './Table';

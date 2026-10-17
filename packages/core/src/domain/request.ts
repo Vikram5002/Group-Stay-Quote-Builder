@@ -46,19 +46,21 @@ export function validateQuoteRequest(input: unknown, instance?: string): QuoteRe
       }),
     };
   }
-  if (
-    parsed.value.discount_pct !== undefined &&
-    parsed.value.rate_per_room_night_inr !== undefined
-  ) {
+  // One way to set the price: a % discount, a ₹ discount or a fixed rate (D-057).
+  const { discount_pct, discount_inr, rate_per_room_night_inr } = parsed.value;
+  const prices = [discount_pct, discount_inr, rate_per_room_night_inr].filter(
+    (v) => v !== undefined,
+  );
+  if (prices.length > 1) {
     return {
       ok: false,
       problem: problem('VALIDATION_FAILED', {
         detail: '1 field failed validation',
         errors: [
           {
-            path: 'discount_pct',
+            path: discount_pct === undefined ? 'discount_inr' : 'discount_pct',
             code: 'INCONSISTENT',
-            message: 'Give a discount or a rate, not both',
+            message: 'Give one price: a % discount, a ₹ discount or a rate',
           },
         ],
         ...(instance === undefined ? {} : { instance }),

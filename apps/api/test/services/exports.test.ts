@@ -91,7 +91,7 @@ describe.skipIf(!hasDb)('exports and the evidence bundle (DynamoDB Local)', () =
     const manifest = JSON.parse(zip.get('manifest.json')!.toString());
     expect(manifest).toMatchObject({
       app_version: 'test-1',
-      contract_version: '0.2.0',
+      contract_version: '0.3.0',
       synthetic: true,
       ledger_consistent: true,
       counts: { quotes: 2, inventory_nights: 2 },

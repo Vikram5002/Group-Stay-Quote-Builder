@@ -97,6 +97,12 @@ export function ReviewPanel({
         </p>
       </div>
 
+      {quote.request.note_for_owner && (
+        <Card title={`Note from ${quote.created_by.user_id}`}>
+          <p className="whitespace-pre-line text-sm">{quote.request.note_for_owner}</p>
+        </Card>
+      )}
+
       <Alert tone="warning" title="Why this needs a decision">
         <ul className="list-disc pl-5">
           {evaluation.reasons.map((r) => (

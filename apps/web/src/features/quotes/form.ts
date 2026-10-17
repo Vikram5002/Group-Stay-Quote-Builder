@@ -19,18 +19,28 @@ export interface InclusionForm {
 export interface QuoteForm {
   organiser: string;
   reference: string;
+  /** Who the quotation is addressed to; all optional. */
+  contactName: string;
+  email: string;
+  phone: string;
   checkIn: string;
   nights: string;
   roomType: string;
   rooms: string;
-  /** Discount off the full price (the floor rate), whole percent. Blank means none. */
+  /** Discount off the full price (the floor rate). Blank means none. */
   discount: string;
+  /** Whether the discount is whole percent or whole rupees per room-night. */
+  discountKind: DiscountKind;
   /** A fixed rate instead of a discount; blank means "use the discount". */
   rate: string;
   /** Blank means "use the policy default". */
   guests: string;
   inclusions: InclusionForm[];
+  /** For the Owner when the quote needs review. Sent with the final request only. */
+  noteForOwner: string;
 }
+
+export type DiscountKind = 'pct' | 'inr';
 
 /** The room types on sale: the same list the import check accepts. */
 export const ROOM_TYPES = PROPERTY_ROOM_TYPES;
@@ -38,14 +48,19 @@ export const ROOM_TYPES = PROPERTY_ROOM_TYPES;
 export const initialForm: QuoteForm = {
   organiser: '',
   reference: '',
+  contactName: '',
+  email: '',
+  phone: '',
   checkIn: '',
   nights: '2',
   roomType: 'standard',
   rooms: '10',
   discount: '0',
+  discountKind: 'pct',
   rate: '',
   guests: '',
   inclusions: [],
+  noteForOwner: '',
 };
 
 export const STEPS = [
@@ -59,7 +74,13 @@ export const STEPS = [
 const STEP_PATHS: ReadonlyArray<readonly string[]> = [
   ['organiser', 'stay'],
   ['room_type', 'rooms'],
-  ['discount_pct', 'rate_per_room_night_inr', 'guests_per_room_units', 'inclusions'],
+  [
+    'discount_pct',
+    'discount_inr',
+    'rate_per_room_night_inr',
+    'guests_per_room_units',
+    'inclusions',
+  ],
   [],
 ];
 
@@ -96,6 +117,9 @@ export function toRequest(form: QuoteForm): unknown {
     organiser: {
       name: form.organiser,
       ...(form.reference.trim() ? { reference: form.reference } : {}),
+      ...(form.contactName.trim() ? { contact_name: form.contactName } : {}),
+      ...(form.email.trim() ? { email: form.email.trim() } : {}),
+      ...(form.phone.trim() ? { phone: form.phone } : {}),
     },
     stay: {
       check_in: form.checkIn,
@@ -104,9 +128,12 @@ export function toRequest(form: QuoteForm): unknown {
     room_type: form.roomType,
     rooms: num(form.rooms),
   };
-  // A fixed rate wins; otherwise Sales prices by a discount off the full price (D-057).
+  // A fixed rate wins; otherwise Sales prices by a discount off the full price (D-057), in %
+  // or in rupees per room-night.
   if (form.rate.trim() !== '') request.rate_per_room_night_inr = num(form.rate);
-  else if (form.discount.trim() !== '') request.discount_pct = num(form.discount);
+  else if (form.discount.trim() !== '') {
+    request[form.discountKind === 'inr' ? 'discount_inr' : 'discount_pct'] = num(form.discount);
+  }
   if (form.guests.trim() !== '') request.guests_per_room_units = num(form.guests);
   if (form.inclusions.length > 0) request.inclusions = form.inclusions.map(inclusionRequest);
   return request;

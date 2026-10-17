@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Version of the published API contract (Zod schemas, codes, OpenAPI). Bump on any change. */
-export const CONTRACT_VERSION = '0.2.0';
+export const CONTRACT_VERSION = '0.3.0';
 
 // ---------------------------------------------------------------------------
 // Decisions and quote lifecycle

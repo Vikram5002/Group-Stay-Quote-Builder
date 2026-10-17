@@ -1,6 +1,6 @@
 # API contract
 
-**Version 0.2.0** (audit fixes, 2026-10-18; 0.1.0 was handoff C1, end of week 1). Source of truth: [`packages/core/src/contract`](../../packages/core/src/contract). The [OpenAPI document](openapi.json) is generated from it with `npm run openapi`; a test fails if the two drift.
+**Version 0.3.0** (2026-10-18; 0.1.0 was handoff C1, end of week 1). Source of truth: [`packages/core/src/contract`](../../packages/core/src/contract). The [OpenAPI document](openapi.json) is generated from it with `npm run openapi`; a test fails if the two drift.
 
 ## Conventions
 
@@ -52,6 +52,15 @@
 | PUT    | `/v1/policy`                             | Owner        | live   |
 
 ## Changelog
+
+### 0.3.0 (2026-10-18)
+
+Additive: a 0.2.0 client is unaffected, and quotes saved before keep their terms hash.
+
+- `QuoteRequest.discount_inr`: a discount in whole rupees off the full price per room-night. The rate becomes full price - discount, never below 0, and the owner's limit (`max_sales_discount_pct`) still applies. A request gives one of `discount_pct`, `discount_inr` or `rate_per_room_night_inr`; more than one is `INCONSISTENT`.
+- `QuoteRequest.note_for_owner`: why Sales offers these terms, shown to the Owner who reviews them. Not part of the commercial terms.
+- `Organiser.contact_name`, `email` and `phone`: who the quotation is addressed to. Not part of the commercial terms.
+- Also in this contract since 0.2.0: the floor rate rule (D-056: `total_rooms_units`, floor rate = package floor / total rooms) and the Sales discount (D-057: `discount_pct`, `max_sales_discount_pct`, and the full-price totals).
 
 ### 0.2.0 (2026-10-18)
 

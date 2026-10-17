@@ -429,6 +429,70 @@ describe('quote builder: check-in dates', () => {
   });
 });
 
+describe('quote builder: a discount in rupees, the contact and a note for the Owner', () => {
+  async function toPricing(u: ReturnType<typeof user>) {
+    await u.type(screen.getByLabelText(/Organiser name/), 'Fictional Events Pvt Ltd');
+    await u.type(screen.getByLabelText(/Contact person/), 'Priya Rao');
+    await u.type(screen.getByLabelText(/Email/), 'priya@fictional.example');
+    await u.type(screen.getByLabelText(/Phone/), '+91 98765 43210');
+    await u.type(screen.getByLabelText(/Check-in date/), '2026-11-01');
+    await next(u);
+    await next(u);
+    await u.click(screen.getByRole('radio', { name: '₹ per room-night' }));
+  }
+  const discount = () => screen.getByLabelText('Discount off full price (₹ per room-night)');
+
+  it('₹200 off the ₹2,000 full price is the 10% limit: a clean offer with the contact kept', async () => {
+    const u = user();
+    renderBuilder();
+    await toPricing(u);
+    await u.clear(discount());
+    await u.type(discount(), '200');
+    await next(u);
+
+    expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Note for the Owner' })).not.toBeInTheDocument();
+    const issue = screen.getByRole('button', { name: 'Issue quote' });
+    await waitFor(() => expect(issue).toBeEnabled());
+    await u.click(issue);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    const saved = [...store.quotes.values()][0];
+    expect(saved?.request).toMatchObject({
+      discount_inr: 200,
+      organiser: {
+        contact_name: 'Priya Rao',
+        email: 'priya@fictional.example',
+        phone: '+91 98765 43210',
+      },
+    });
+    expect(screen.getByText('₹2,000 full price, ₹200 off = ₹1,800 per room-night')).toBeVisible();
+    expect(screen.getByText(/Priya Rao · priya@fictional.example/)).toBeVisible();
+  });
+
+  it('₹201 off needs the Owner, and the note for the Owner is sent with it', async () => {
+    const u = user();
+    renderBuilder();
+    await toPricing(u);
+    await u.clear(discount());
+    await u.type(discount(), '201');
+    await next(u);
+
+    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    await u.type(
+      screen.getByLabelText(/Why these terms/),
+      'Repeat client; they book every quarter.',
+    );
+    const send = screen.getByRole('button', { name: 'Send for Owner review' });
+    await waitFor(() => expect(send).toBeEnabled());
+    await u.click(send);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    expect([...store.quotes.values()][0]?.request.note_for_owner).toBe(
+      'Repeat client; they book every quarter.',
+    );
+    expect(screen.getByText('Repeat client; they book every quarter.')).toBeVisible();
+  });
+});
+
 describe('quote builder: the URL, drafts and leaving', () => {
   const stepHeading = (name: string) => screen.findByRole('heading', { name });
 

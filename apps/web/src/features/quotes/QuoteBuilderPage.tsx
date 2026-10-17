@@ -4,7 +4,15 @@ import { DEFAULT_POLICY, localDate } from '@c32/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApi } from '../../app/ApiProvider';
 import { LEAVE_ALLOWED, LeaveGuard } from '../../app/LeaveGuard';
-import { Alert, Button, Card, ProblemAlert, Spinner, Stepper } from '../../components';
+import {
+  Alert,
+  Button,
+  Card,
+  ProblemAlert,
+  Spinner,
+  Stepper,
+  TextAreaField,
+} from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
 import { usePolicy } from '../policy/queries';
 import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
@@ -90,11 +98,17 @@ export function QuoteBuilderPage() {
     return intent.current.key;
   };
 
+  // An Owner must approve this quote, so Sales can say why it is offered on these terms.
+  const needsOwner = current && preview?.evaluation.decision === 'REVIEW';
+
   const issue = useMutation({
     // Confirmation is never optimistic: nothing changes on screen until the server answers.
     mutationFn: () => {
       if (!request) throw new Error('The request is not valid yet');
-      return api.createQuote(request, { idempotencyKey: keyFor(JSON.stringify(request)) });
+      // The note travels with the final request only, so typing it never re-prices the quote.
+      const note = form.noteForOwner.trim();
+      const body = note && needsOwner ? { ...request, note_for_owner: note } : request;
+      return api.createQuote(body, { idempotencyKey: keyFor(JSON.stringify(body)) });
     },
     onSuccess: (quote) => {
       // The dashboard and the calendar must show the new quote and its held rooms at once.
@@ -287,6 +301,18 @@ export function QuoteBuilderPage() {
                   <Card title="Terms">
                     <ValidUntil instant={preview?.valid_until ?? null} />
                   </Card>
+                  {needsOwner && (
+                    <Card title="Note for the Owner">
+                      <TextAreaField
+                        label="Why these terms? (optional)"
+                        name="note_for_owner"
+                        maxLength={500}
+                        value={form.noteForOwner}
+                        onChange={(e) => patch({ noteForOwner: e.target.value })}
+                        hint="The Owner sees this with the quote in the review queue."
+                      />
+                    </Card>
+                  )}
                 </div>
               )}
               <ProblemAlert

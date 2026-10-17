@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import type { Quote } from '@c32/core';
-import { Alert, Badge, Button, Card, EmptyState, Money, Spinner } from '../../components';
+import { Alert, Badge, Button, Card, EmptyState, Spinner } from '../../components';
 import { ApiError } from '../../lib/api';
 import { formatCountdown, formatIst } from '../../lib/format';
 import { useAuth } from '../auth/auth';
@@ -12,6 +12,7 @@ import { ArithmeticTrail, DecisionSummary, TotalsTable } from './ResultPanels';
 import { reviewBadge, reviewBanner, reviewState } from './reviewState';
 import { StatusBadge } from './StatusBadge';
 import { counted } from '../../lib/plural';
+import { describePricing } from './pricingText';
 
 function Countdown({ quote }: { quote: Quote }) {
   const now = useNow();
@@ -35,7 +36,6 @@ function Countdown({ quote }: { quote: Quote }) {
 
 function Summary({ quote }: { quote: Quote }) {
   const { request, evaluation } = quote;
-  const rate = request.rate_per_room_night_inr;
   return (
     <Card title="Request">
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
@@ -44,6 +44,16 @@ function Summary({ quote }: { quote: Quote }) {
           {request.organiser.name}
           {request.organiser.reference ? ` (${request.organiser.reference})` : ''}
         </dd>
+        {(request.organiser.contact_name || request.organiser.email || request.organiser.phone) && (
+          <>
+            <dt className="text-ink-muted">Contact</dt>
+            <dd className="break-words">
+              {[request.organiser.contact_name, request.organiser.email, request.organiser.phone]
+                .filter(Boolean)
+                .join(' · ')}
+            </dd>
+          </>
+        )}
         <dt className="text-ink-muted">Stay</dt>
         <dd>
           {evaluation.check_in} to {evaluation.check_out} ({counted(evaluation.nights, 'night')})
@@ -55,29 +65,18 @@ function Summary({ quote }: { quote: Quote }) {
           {evaluation.offered_rooms} offered of {evaluation.requested_rooms} requested
         </dd>
         <dt className="text-ink-muted">Rate per room-night</dt>
-        <dd>
-          {rate !== undefined ? (
-            <Money value={rate} />
-          ) : request.discount_pct !== undefined ? (
-            // Full price less the discount, so the organiser sees what they were given.
-            <>
-              <Money value={evaluation.totals.floor_rate_per_room_night_inr} /> full price, less{' '}
-              {request.discount_pct}% ={' '}
-              <Money
-                value={Math.ceil(
-                  (evaluation.totals.floor_rate_per_room_night_inr * (100 - request.discount_pct)) /
-                    100,
-                )}
-              />
-            </>
-          ) : (
-            'From the rate plan'
-          )}
-        </dd>
+        {/* Full price less the discount, so the organiser sees what they were given. */}
+        <dd>{describePricing(request, evaluation.totals).text}</dd>
         {request.inclusions && request.inclusions.length > 0 && (
           <>
             <dt className="text-ink-muted">Inclusions</dt>
             <dd>{request.inclusions.map((i) => i.name).join(', ')}</dd>
+          </>
+        )}
+        {request.note_for_owner && (
+          <>
+            <dt className="text-ink-muted">Note for the Owner</dt>
+            <dd className="whitespace-pre-line">{request.note_for_owner}</dd>
           </>
         )}
         <dt className="text-ink-muted">Quote id</dt>

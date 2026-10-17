@@ -125,25 +125,49 @@ export function priceTotals(input: PricingInput): QuoteTotals {
     input.nights.map((n) => (n.variable_cost_inr === null ? null : rooms * n.variable_cost_inr)),
   );
 
-  const totalRevenue = sumKnown([roomRevenue, extras.revenue_inr]);
-  const totalCost = sumKnown([variableCost, extras.cost_inr]);
+  return completeTotals(
+    {
+      room_nights: roomNights,
+      room_revenue_inr: roomRevenue,
+      inclusions_revenue_inr: extras.revenue_inr,
+      variable_cost_inr: variableCost,
+      inclusions_cost_inr: extras.cost_inr,
+    },
+    input.floor,
+  );
+}
+
+/** The four money components every package total is built from. */
+export type TotalsBase = Pick<
+  QuoteTotals,
+  | 'room_nights'
+  | 'room_revenue_inr'
+  | 'inclusions_revenue_inr'
+  | 'variable_cost_inr'
+  | 'inclusions_cost_inr'
+>;
+
+/**
+ * Contribution, floor, margin, headroom, shortfall and minimum safe rate from the components.
+ * Shared by pricing and by amendments, so the floor rules exist in one place.
+ */
+export function completeTotals(base: TotalsBase, floorPolicy: FloorPolicy): QuoteTotals {
+  const roomNights = base.room_nights;
+  const totalRevenue = sumKnown([base.room_revenue_inr, base.inclusions_revenue_inr]);
+  const totalCost = sumKnown([base.variable_cost_inr, base.inclusions_cost_inr]);
   const contribution =
     totalRevenue === null || totalCost === null ? null : totalRevenue - totalCost;
-  const floor = floorFor(input.floor, roomNights);
+  const floor = floorFor(floorPolicy, roomNights);
 
   // Minimum flat room rate that meets the floor (BR-20: rounded up, never down). It needs every
   // cost and the extras revenue known, and at least one room-night to spread over.
   const minRate =
-    totalCost === null || extras.revenue_inr === null || roomNights === 0
+    totalCost === null || base.inclusions_revenue_inr === null || roomNights === 0
       ? null
-      : Math.max(0, ceilDiv(floor + totalCost - extras.revenue_inr, roomNights));
+      : Math.max(0, ceilDiv(floor + totalCost - base.inclusions_revenue_inr, roomNights));
 
   return {
-    room_nights: roomNights,
-    room_revenue_inr: roomRevenue,
-    inclusions_revenue_inr: extras.revenue_inr,
-    variable_cost_inr: variableCost,
-    inclusions_cost_inr: extras.cost_inr,
+    ...base,
     contribution_inr: contribution,
     contribution_margin_pct:
       contribution === null || totalRevenue === null

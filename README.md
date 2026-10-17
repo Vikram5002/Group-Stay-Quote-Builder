@@ -30,8 +30,8 @@ docs/              blueprint, roadmap, decisions, OpenAPI, branching
 
 ## Public checks (from the fixture)
 
-| # | Input | Expected |
-|---|---|---|
-| 1 | 10 standard rooms, 2 nights from 2026-11-01, rate 2000 | Revenue 40000, contribution 24000, auto-confirm allowed |
-| 2 | Same with 12 rooms, 10 available | Partial offer for 10 rooms, or decline; never an over-hold |
-| 3 | Rate below the contribution floor | Review required; cannot auto-confirm |
+| #   | Input                                                  | Expected                                                   |
+| --- | ------------------------------------------------------ | ---------------------------------------------------------- |
+| 1   | 10 standard rooms, 2 nights from 2026-11-01, rate 2000 | Revenue 40000, contribution 24000, auto-confirm allowed    |
+| 2   | Same with 12 rooms, 10 available                       | Partial offer for 10 rooms, or decline; never an over-hold |
+| 3   | Rate below the contribution floor                      | Review required; cannot auto-confirm                       |

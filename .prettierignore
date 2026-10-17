@@ -5,3 +5,4 @@ cdk.out
 package-lock.json
 docs/openapi.json
 *.docx
+data/fixtures/fixture.json

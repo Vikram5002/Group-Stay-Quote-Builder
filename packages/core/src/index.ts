@@ -17,3 +17,4 @@ export * from './fixtures/c32.js';
 export * from './domain/money.js';
 export * from './domain/floor.js';
 export * from './domain/pricing.js';
+export * from './domain/clock.js';

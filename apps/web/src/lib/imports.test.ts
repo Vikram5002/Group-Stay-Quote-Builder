@@ -32,6 +32,27 @@ describe('import files', () => {
     expect(parsed.ok ? '' : parsed.message).toMatch(/rate_per_room_night_inr/);
   });
 
+  it('refuses a header the server would refuse: repeated or unknown columns', () => {
+    expect(parseImportText('inventory', 'csv', 'date,room_type,rooms,rooms\n1,2,3,4')).toEqual({
+      ok: false,
+      code: 'INCONSISTENT',
+      message: 'A column appears twice in the header row: rooms.',
+    });
+    expect(parseImportText('inventory', 'csv', 'date,room_type,rooms,x\n1,2,3,4')).toMatchObject({
+      ok: false,
+      code: 'UNKNOWN_FIELD',
+    });
+  });
+
+  it('leaves a single odd JSON row to the server, which reports it by row number', () => {
+    const parsed = parseImportText(
+      'inventory',
+      'json',
+      '[{"date":"2026-11-01","room_type":"standard","rooms":1},{"date":"2026-11-02","room_type":"standard","rooms":2,"note":"x"}]',
+    );
+    expect(parsed).toMatchObject({ ok: true });
+  });
+
   it('rejects an empty file and bad JSON', () => {
     expect(parseImportText('inventory', 'csv', '')).toMatchObject({ ok: false });
     expect(parseImportText('inventory', 'json', '{nope')).toMatchObject({

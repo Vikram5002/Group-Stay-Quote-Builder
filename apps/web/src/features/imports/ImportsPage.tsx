@@ -126,6 +126,9 @@ export function ImportsPage() {
 
   const columns = IMPORT_COLUMNS[kind];
   const canCheck = picked?.parsed.ok === true && busy === null;
+  // Why the chosen file cannot be checked, shown under the file field itself.
+  const fileProblem =
+    fileError ?? (picked && !picked.parsed.ok ? picked.parsed.message : undefined);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -156,7 +159,7 @@ export function ImportsPage() {
                 accept=".csv,.json,text/csv,application/json"
                 onChange={(e) => void onFile(e)}
                 hint="Leave a cell empty if the value is unknown. It is imported as unknown, never as zero."
-                {...(fileError ? { error: fileError } : {})}
+                {...(fileProblem ? { error: fileProblem } : {})}
               />
             </div>
             <p className="mt-3 text-sm">
@@ -169,13 +172,6 @@ export function ImportsPage() {
               </a>
             </p>
 
-            {picked && !picked.parsed.ok && (
-              <div className="mt-4">
-                <Alert tone="danger" title="This file cannot be read">
-                  {picked.parsed.message}
-                </Alert>
-              </div>
-            )}
             {picked?.parsed.ok && (
               <div className="mt-4">
                 <FilePreview columns={picked.parsed.columns} rows={picked.parsed.rows} />

@@ -184,9 +184,72 @@ describe('importing a file', () => {
     const u = userEvent.setup();
     renderPage();
     await pick(u, csv('date,room_type\n2026-11-01,standard'));
-    expect(await screen.findByText('This file cannot be read')).toBeInTheDocument();
-    expect(screen.getByText(/header row is missing: rooms/)).toBeInTheDocument();
+    expect(await screen.findByText(/header row is missing: rooms/)).toBeInTheDocument();
+    expect(fileInput()).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByRole('button', { name: 'Check file' })).toBeDisabled();
+    expect(store.uploads.size).toBe(0);
+  });
+
+  describe('a file that cannot be read says why, under the file field', () => {
+    const json = (text: string) => new File([text], 'inventory.json', { type: 'application/json' });
+    it.each([
+      [
+        'not JSON',
+        json('date,room_type,rooms'),
+        'The file is not valid JSON. Check for a missing comma, quote or bracket.',
+      ],
+      [
+        'JSON that is not a list of rows',
+        json('{"items": []}'),
+        'The JSON file must be a list of rows, or { "rows": [...] }.',
+      ],
+      [
+        'JSON rows with the wrong columns',
+        json('[{"day": "2026-11-01", "type": "standard", "rooms": 5}]'),
+        'The rows are missing date, room_type and have unknown columns day, type. Expected: date, room_type, rooms.',
+      ],
+      ['an empty JSON list', json('[]'), 'The file has no data rows.'],
+      [
+        'a CSV header with a missing column',
+        csv('date,room_type\n2026-11-01,standard'),
+        'The header row is missing: rooms. Expected: date, room_type, rooms.',
+      ],
+      [
+        'a CSV header with an unknown column',
+        csv('date,room_type,rooms,price\n2026-11-01,standard,4,100'),
+        'The header row has unknown columns: price. Expected: date, room_type, rooms.',
+      ],
+      ['an empty CSV', csv(''), 'The file is empty.'],
+      ['a CSV with only a header', csv('date,room_type,rooms\n'), 'The file has no data rows.'],
+    ])('%s', async (_label, file, message) => {
+      const u = userEvent.setup();
+      renderPage();
+      await pick(u, file);
+      await waitFor(() => expect(fileInput()).toHaveAttribute('aria-invalid', 'true'));
+      expect(fileInput()).toHaveAccessibleDescription(expect.stringContaining(message));
+      expect(screen.getByRole('button', { name: 'Check file' })).toBeDisabled();
+    });
+
+    it('a file over 2 MB', async () => {
+      const u = userEvent.setup();
+      renderPage();
+      await pick(u, csv(`date,room_type,rooms\n${'x'.repeat(2 * 1024 * 1024)}`));
+      await waitFor(() =>
+        expect(fileInput()).toHaveAccessibleDescription(expect.stringContaining('over 2 MB')),
+      );
+    });
+
+    it('accepts { "rows": [...] }, like the server', async () => {
+      const u = userEvent.setup();
+      renderPage();
+      await pick(
+        u,
+        json('{"rows": [{"date": "2026-11-01", "room_type": "standard", "rooms": 4}]}'),
+      );
+      expect(await screen.findByText('1 row read from the file')).toBeInTheDocument();
+      expect(fileInput()).not.toHaveAttribute('aria-invalid');
+      expect(screen.getByRole('button', { name: 'Check file' })).toBeEnabled();
+    });
   });
 
   it('only accepts CSV or JSON files', async () => {

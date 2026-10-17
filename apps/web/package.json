@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "e2e:install": "playwright install chromium"
+    "e2e:install": "playwright install chromium",
+    "screenshots": "playwright test e2e/screenshots.e2e.ts --project=desktop"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.3",

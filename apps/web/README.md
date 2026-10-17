@@ -123,6 +123,13 @@ Status: the header handling is unit tested, and the smoke test's steps pass agai
 - Every text and background colour pair is checked against WCAG 2.1 AA in `src/lib/contrast.test.ts`.
 - Focus is visible, the first tab stop is a skip link, and focus moves to the main content after navigation.
 
+## Evidence, handoff and CI
+
+- `npm run screenshots` takes the 17 UI screenshots Track 4 uses as evidence and saves them to `docs/ui/screenshots/`. Retake them after any UI change.
+- `docs/architecture/track2-handoff.md` covers what Track 3 needs to deploy the app, what Track 4 can use as evidence, and the viva questions.
+- Track 2's design decisions are D-056 to D-066 in `docs/architecture/decisions.md`.
+- `.github/workflows/web.yml` runs the type check, unit tests, build and end-to-end tests on every push that touches `apps/web` or `packages/core`. It is separate from `ci.yml`, so it does not need the DynamoDB container.
+
 ## Still open
 
 All Track 2 work packages are built. What is left depends on other tracks: Cognito sign-in once Track 3 provides the user pool, and server storage for the evidence and experiment data if Track 1 adds routes for them.

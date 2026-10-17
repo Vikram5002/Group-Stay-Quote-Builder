@@ -10,7 +10,7 @@ import { ImportsPage } from '../features/imports/ImportsPage';
 import { PolicyPage } from '../features/policy/PolicyPage';
 import { ReviewQueuePage } from '../features/review/ReviewQueuePage';
 import { QuoteDetailPage } from '../features/quotes/QuoteDetailPage';
-import { QuoteBuilderPage } from '../features/quotes/QuoteBuilderPage';
+import { QuoteBuilderRoute } from '../features/quotes/QuoteBuilderRoute';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { SignInPage } from '../features/auth/SignInPage';
 import { AppShell } from './AppShell';
@@ -22,7 +22,7 @@ import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 /** Screens that are built. Everything else shows a placeholder until its work package lands. */
 const SCREENS: Record<string, ReactNode> = {
   '/': <DashboardPage />,
-  '/quotes/new': <QuoteBuilderPage />,
+  '/quotes/new': <QuoteBuilderRoute />,
   '/review': <ReviewQueuePage />,
   '/availability': <AvailabilityPage />,
   '/policy': <PolicyPage />,

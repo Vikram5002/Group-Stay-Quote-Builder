@@ -3,6 +3,7 @@ import type { InventoryNight, RatePlanNight } from '../contract/inventory.js';
 import type { Policy } from '../contract/policy.js';
 import type { Evaluation } from '../contract/quote.js';
 import { sellableRooms, type Availability } from './availability.js';
+import { counterOffers } from './counter-offers.js';
 import { decide, planRooms, type DecisionOutcome, type RoomPlan } from './decision.js';
 import { inclusionExtras } from './inclusions.js';
 import { NO_EXTRAS, nightsFromRatePlan, price, type PricingExtras } from './pricing.js';
@@ -13,7 +14,8 @@ import { computeValidity, type Validity } from './validity.js';
 
 /**
  * The evaluation pipeline (blueprint 6.2), steps 2 to 7, for one validated request:
- * validity -> availability -> room plan -> nightly prices -> pricing -> decision -> trail.
+ * validity -> availability -> room plan -> nightly prices -> pricing -> decision -> trail
+ * -> counter-offers.
  * Pure: everything it needs is passed in, including "now". The terms hash and the hold commit
  * belong to the service layer.
  */
@@ -76,7 +78,13 @@ function decisionLine(outcome: DecisionOutcome): string {
   return `decision ${outcome.decision}${why}${auto}`;
 }
 
-export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
+interface Assessment extends EvaluationResult {
+  /** Rooms sellable on every night, or null when availability is not known. */
+  sellable: number | null;
+}
+
+/** Steps 2 to 6 without counter-offers; also what the counter-offer generator re-runs. */
+function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Assessment {
   const { policy } = ctx;
   const { stay } = request;
 
@@ -121,6 +129,7 @@ export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext):
 
   return {
     validity,
+    sellable: availability.kind === 'known' ? availability.sellable : null,
     evaluation: {
       decision: outcome.decision,
       reasons: outcome.reasons,
@@ -134,6 +143,19 @@ export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext):
       totals: pricing.totals,
       counter_offers: [],
       trail,
+    },
+  };
+}
+
+/** Evaluate a validated request: decision, totals, trail and floor-safe counter-offers. */
+export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext): EvaluationResult {
+  const { evaluation, validity, sellable } = assess(request, ctx);
+  const reassess = (r: ResolvedQuoteRequest) => assess(r, ctx).evaluation;
+  return {
+    validity,
+    evaluation: {
+      ...evaluation,
+      counter_offers: counterOffers(request, evaluation, reassess, sellable),
     },
   };
 }

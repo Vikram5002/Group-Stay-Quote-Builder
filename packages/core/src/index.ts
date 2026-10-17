@@ -26,3 +26,4 @@ export * from './domain/availability.js';
 export * from './domain/decision.js';
 export * from './domain/evaluate.js';
 export * from './domain/inclusions.js';
+export * from './domain/counter-offers.js';

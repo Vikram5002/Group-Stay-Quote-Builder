@@ -57,7 +57,8 @@ export class AuthStack extends Stack {
     this.client = this.userPool.addClient('Web', {
       userPoolClientName: `${config.prefix}-web`,
       generateSecret: false,
-      authFlows: { userSrp: true },
+      // adminUserPassword needs IAM credentials (admin tooling and smoke tests), never a browser.
+      authFlows: { userSrp: true, adminUserPassword: true },
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.EMAIL, cognito.OAuthScope.PROFILE],

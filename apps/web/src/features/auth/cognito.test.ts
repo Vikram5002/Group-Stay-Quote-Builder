@@ -104,6 +104,21 @@ describe('completing sign-in on the callback', () => {
     expect(sessionStorage.getItem('c32.pkce')).toBeNull(); // one use only
   });
 
+  it('records when the access token expires, so no tab uses it after that', async () => {
+    const exp = 1_800_000_000; // seconds
+    fetchImpl.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          access_token: jwt({ sub: 'sub-123', 'cognito:groups': ['Sales'], exp }),
+        }),
+        { status: 200 },
+      ),
+    );
+    const url = new URL(`https://site.example/?code=abc&state=${state()}`);
+    const result = await completeSignIn(config, url, fetchImpl);
+    expect(result?.session.expiresAt).toBe(exp * 1000);
+  });
+
   it('is not a callback without ?code', async () => {
     expect(await completeSignIn(config, new URL('https://site.example/'), fetchImpl)).toBeNull();
   });

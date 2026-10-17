@@ -148,3 +148,32 @@ describe('T10 night 1 has 10 available, night 2 has 8; request 12', () => {
     expect(e.totals.shortfall_inr).toBe(800);
   });
 });
+
+describe('T11 no rooms sellable', () => {
+  it('declines with NO_CAPACITY and offers nothing', () => {
+    const { evaluation: e } = run(
+      {},
+      ctx({ inventory: [night('2026-11-01', 10), night('2026-11-02', 0)] }),
+    );
+    expect(e).toMatchObject({
+      decision: 'DECLINE',
+      reasons: ['NO_CAPACITY'],
+      offered_rooms: 0,
+      shortfall_rooms: 10,
+      auto_confirm_allowed: false,
+    });
+    expect(e.trail).toEqual([
+      '0 rooms sellable on every night (2026-11-01, 2026-11-02): nothing to offer',
+      'decision DECLINE: NO_CAPACITY, no auto-confirm',
+    ]);
+  });
+
+  it('also declines when fewer rooms than the minimum partial offer are sellable', () => {
+    const policy = { ...fx.policy, min_partial_rooms_units: 5 };
+    const { evaluation: e } = run(
+      {},
+      ctx({ policy, inventory: [night('2026-11-01', 3), night('2026-11-02', 3)] }),
+    );
+    expect(e).toMatchObject({ decision: 'DECLINE', reasons: ['NO_CAPACITY'], offered_rooms: 0 });
+  });
+});

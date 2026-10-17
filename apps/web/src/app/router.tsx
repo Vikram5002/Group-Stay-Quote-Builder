@@ -3,6 +3,7 @@ import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 import { DesignSystemPage } from '../features/design-system/DesignSystemPage';
 import { DashboardPage } from '../features/dashboard/DashboardPage';
+import { ReviewQueuePage } from '../features/review/ReviewQueuePage';
 import { QuoteDetailPage } from '../features/quotes/QuoteDetailPage';
 import { QuoteBuilderPage } from '../features/quotes/QuoteBuilderPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
@@ -17,6 +18,7 @@ import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 const SCREENS: Record<string, ReactNode> = {
   '/': <DashboardPage />,
   '/quotes/new': <QuoteBuilderPage />,
+  '/review': <ReviewQueuePage />,
 };
 
 export const routes: RouteObject[] = [

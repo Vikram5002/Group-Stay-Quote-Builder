@@ -45,6 +45,14 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - `/` shows the pipeline by status, contribution at risk on open quotes (unknown contributions are counted separately and never added as zero), holds expiring in 24 hours, and recent quotes, with an empty state that guides a new user.
 - Approve and reject are part of the review queue (T2-05); a pending-review quote tells Sales that an Owner must approve it.
 
+## Work package T2-05: Review queue and approval
+
+- `/review` (Owner only) lists quotes in `PENDING_REVIEW` with their reason chips, contribution and hold countdown, most urgent first. Choosing one opens its terms next to each floor-safe alternative, the totals and the arithmetic trail.
+- Approve and Reject each open a dialog with a required reason (at least 5 characters, recorded in the audit trail). Approval is tied to the exact terms; its reference is shown.
+- Self-approval is blocked in the screen with an explanation (four-eyes rule). Rejecting your own quote is still allowed. The server enforces the same rule.
+- An unknown contribution is called out and never treated as zero. A server refusal is explained inside the dialog and what was typed is kept.
+- A pending quote shows an Owner a link straight to its place in the queue.
+
 ## Rules the components enforce
 
 - Status is shown with text and an icon as well as colour.
@@ -55,4 +63,4 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Not in this work package
 
-Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-05 to T2-08).
+Cognito sign-in (needs the Track 3 user pool), the remaining screens (T2-06 to T2-08).

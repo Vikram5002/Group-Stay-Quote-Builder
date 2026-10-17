@@ -171,3 +171,28 @@ describe('per-night rates and the rate plan (BR-01, BR-08)', () => {
     expect(viaPlan).toEqual(flat);
   });
 });
+
+describe('extras (inclusions arrive in T1.05; blueprint 5.6 numbers)', () => {
+  it('bundled breakfast cost 6000 pushes contribution to 18000 and the minimum rate to 2100', () => {
+    const r = price({ ...pkg(10), extras: { revenue_inr: 0, cost_inr: 6000 } });
+    expect(r.totals).toMatchObject({
+      contribution_inr: 18000,
+      shortfall_inr: 2000,
+      min_rate_per_room_night_inr: 2100, // (20000 + 16000 + 6000) / 20
+    });
+    expect(r.floor_ok).toBe(false);
+  });
+
+  it('breakfast charged separately at 8000 restores contribution to 26000', () => {
+    const r = price({ ...pkg(10), extras: { revenue_inr: 8000, cost_inr: 6000 } });
+    expect(r.totals).toMatchObject({
+      room_revenue_inr: 40000,
+      inclusions_revenue_inr: 8000,
+      inclusions_cost_inr: 6000,
+      contribution_inr: 26000,
+      contribution_margin_pct: 54.2, // 26000 / 48000 total revenue
+      min_rate_per_room_night_inr: 1700, // (20000 + 22000 - 8000) / 20
+    });
+    expect(r.floor_ok).toBe(true);
+  });
+});

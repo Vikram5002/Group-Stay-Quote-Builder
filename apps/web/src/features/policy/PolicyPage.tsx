@@ -175,6 +175,40 @@ export function PolicyPage() {
       )}
 
       <form onSubmit={submit} noValidate className="mt-6 flex flex-col gap-6">
+        <Card title="Hotel details">
+          <p className="mb-4 text-sm text-ink-muted">
+            Printed on every quote and invoice PDF sent to organisers.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField
+              label="Hotel name"
+              required
+              value={form.hotelName}
+              onChange={(e) => set({ hotelName: e.target.value })}
+              {...err('hotel_name')}
+            />
+            <TextField
+              label="Phone (optional)"
+              value={form.hotelPhone}
+              onChange={(e) => set({ hotelPhone: e.target.value })}
+              {...err('hotel_phone')}
+            />
+            <TextField
+              label="Address (optional)"
+              value={form.hotelAddress}
+              onChange={(e) => set({ hotelAddress: e.target.value })}
+              {...err('hotel_address')}
+            />
+            <TextField
+              label="GSTIN (optional)"
+              value={form.hotelGstin}
+              onChange={(e) => set({ hotelGstin: e.target.value })}
+              hint="15 characters, for example 36ABCDE1234F1Z5. Shown on invoices."
+              {...err('hotel_gstin')}
+            />
+          </div>
+        </Card>
+
         <Card title="Floor and rooms">
           <div className="grid gap-4 md:grid-cols-2">
             <TextField

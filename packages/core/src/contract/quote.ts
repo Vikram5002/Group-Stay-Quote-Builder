@@ -57,6 +57,7 @@ export const Organiser = z.strictObject({
   reference: NonEmptyText(64).optional(),
   /** Who to address the quotation to. Contact details are not part of the commercial terms. */
   contact_name: NonEmptyText(120).optional(),
+  /** Where the quote and invoice PDFs are emailed (D-059). */
   email: z.email().max(254).optional(),
   phone: z
     .string()
@@ -118,6 +119,13 @@ export const Stay = z
   });
 export type Stay = z.infer<typeof Stay>;
 
+/** Another block of rooms in the same quote: its own stay and room count (D-058). */
+export const StayLine = z.strictObject({
+  stay: Stay,
+  rooms: z.int().min(LIMITS.MIN_ROOMS).max(LIMITS.MAX_ROOMS),
+});
+export type StayLine = z.infer<typeof StayLine>;
+
 /** POST /v1/quotes and POST /v1/quotes/preview body. Unknown fields are rejected (BR-18). */
 export const QuoteRequest = z.strictObject({
   organiser: Organiser,
@@ -142,6 +150,11 @@ export const QuoteRequest = z.strictObject({
   /** Overrides the policy default for per-guest inclusions. */
   guests_per_room_units: z.int().min(1).max(LIMITS.MAX_GUESTS_PER_ROOM).optional(),
   inclusions: z.array(InclusionInput).max(LIMITS.MAX_INCLUSIONS).optional(),
+  /**
+   * More blocks of rooms in the same quote, for example 5 rooms for 3 nights plus 3 rooms for 4
+   * nights (D-058). Same room type, pricing and inclusions; held all together or not at all.
+   */
+  additional_lines: z.array(StayLine).max(LIMITS.MAX_EXTRA_LINES).optional(),
 });
 export type QuoteRequest = z.infer<typeof QuoteRequest>;
 
@@ -192,6 +205,15 @@ export const CounterOffer = z.strictObject({
 });
 export type CounterOffer = z.infer<typeof CounterOffer>;
 
+/** One block of rooms as the engine saw it. */
+export const EvaluationLine = z.strictObject({
+  check_in: IsoDate,
+  check_out: IsoDate,
+  nights: z.int().min(LIMITS.MIN_NIGHTS).max(LIMITS.MAX_NIGHTS),
+  rooms: z.int().min(1),
+});
+export type EvaluationLine = z.infer<typeof EvaluationLine>;
+
 /** Engine output. Every decision carries reason codes and an arithmetic trail. */
 export const Evaluation = z.strictObject({
   decision: Decision,
@@ -208,6 +230,11 @@ export const Evaluation = z.strictObject({
   counter_offers: z.array(CounterOffer),
   /** Human-readable arithmetic, for example "20 x 2000 = 40000". */
   trail: z.array(z.string()),
+  /**
+   * The blocks of rooms (D-058). For a multi-line quote check_in / check_out span all lines and
+   * requested_rooms / offered_rooms are the sum over lines. Absent on quotes saved before it.
+   */
+  lines: z.array(EvaluationLine).optional(),
 });
 export type Evaluation = z.infer<typeof Evaluation>;
 
@@ -234,6 +261,23 @@ export const Approval = z.strictObject({
 });
 export type Approval = z.infer<typeof Approval>;
 
+export const Payment = z.strictObject({
+  received_at: Instant,
+  recorded_by: Actor,
+  reference: z.string().trim().max(64).nullable(),
+});
+export type Payment = z.infer<typeof Payment>;
+
+export const SentEmail = z.strictObject({
+  kind: z.enum(['quote', 'invoice']),
+  to: z.email(),
+  sent_at: Instant,
+  sent_by: Actor,
+  /** The provider's message id, for tracing a delivery problem. */
+  message_id: z.string().max(200),
+});
+export type SentEmail = z.infer<typeof SentEmail>;
+
 /** A saved quote resource. */
 export const Quote = z.strictObject({
   quote_id: Ulid,
@@ -251,6 +295,10 @@ export const Quote = z.strictObject({
   approval: Approval.nullable(),
   /** Set when an amendment leaves a confirmed booking below the floor (BR-16). */
   review_required: z.boolean(),
+  /** Recorded by Sales or the Owner once the organiser has paid; unlocks the invoice (D-059). */
+  payment: Payment.nullable().optional(),
+  /** Every quote or invoice PDF emailed to the organiser. */
+  emails: z.array(SentEmail).optional(),
 });
 export type Quote = z.infer<typeof Quote>;
 
@@ -285,6 +333,16 @@ export const AmendmentRequest = z.strictObject({
 export type AmendmentRequest = z.infer<typeof AmendmentRequest>;
 
 export const CancelRequest = z.strictObject({ reason: Reason.optional() });
+
+/** Email a PDF; `to` overrides the organiser's email for this one send. */
+export const EmailRequest = z.strictObject({ to: z.email().max(254).optional() });
+export type EmailRequest = z.infer<typeof EmailRequest>;
+
+export const RecordPaymentRequest = z.strictObject({
+  /** Bank or UPI reference, for example. */
+  reference: z.string().trim().max(64).optional(),
+});
+export type RecordPaymentRequest = z.infer<typeof RecordPaymentRequest>;
 export type CancelRequest = z.infer<typeof CancelRequest>;
 
 export const ListQuotesQuery = z.strictObject({

@@ -171,13 +171,28 @@ export function QuoteActions({
   const cancel = useQuoteAction<{ reason?: string }>(id, (input, o) =>
     api.cancelQuote(id, input, o),
   );
+  const emailQuote = useQuoteAction<{ to?: string }>(id, (input, o) =>
+    api.emailQuote(id, input, o),
+  );
+  const payment = useQuoteAction<{ reference?: string }>(id, (input, o) =>
+    api.recordPayment(id, input, o),
+  );
+  const emailInvoice = useQuoteAction<{ to?: string }>(id, (input, o) =>
+    api.emailInvoice(id, input, o),
+  );
+  const [emailTo, setEmailTo] = useState(quote.request.organiser.email ?? '');
+  const [paymentRef, setPaymentRef] = useState('');
+  const canEmailQuote = quote.status === 'OFFERED' || quote.status === 'CONFIRMED';
 
   const policy = usePolicy();
   const maxHours = maxExtensionHours(quote, policy.data);
   const cannotExtend = maxHours !== null && maxHours < 1;
   const hoursLimit = maxHours ?? LIMITS.MAX_POLICY_HOURS;
 
-  const [dialog, setDialog] = useState<'confirm' | 'extend' | 'amend' | 'cancel' | null>(null);
+  const [dialog, setDialog] = useState<
+    'confirm' | 'extend' | 'amend' | 'cancel' | 'email-quote' | 'email-invoice' | 'payment' | null
+  >(null);
+  const sendEmail = dialog === 'email-invoice' ? emailInvoice : emailQuote;
   // Never start above what the policy allows, so the first try does not fail.
   const [hours, setHours] = useState(() => String(Math.max(1, Math.min(24, hoursLimit))));
   const [hoursError, setHoursError] = useState<string | undefined>();
@@ -193,6 +208,9 @@ export function QuoteActions({
     extend.reset();
     amend.reset();
     cancel.reset();
+    emailQuote.reset();
+    emailInvoice.reset();
+    payment.reset();
   }
   const done = (message: string) => {
     close();
@@ -338,6 +356,49 @@ export function QuoteActions({
           </Button>
         )}
       </div>
+
+      {canWrite && (canEmailQuote || quote.payment) && (
+        <section aria-labelledby="documents" className="flex flex-col gap-3">
+          <h2 id="documents" className="text-lg font-semibold">
+            Quote and invoice
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            {canEmailQuote && (
+              <Button variant="secondary" onClick={() => setDialog('email-quote')}>
+                Email quote
+              </Button>
+            )}
+            {quote.status === 'CONFIRMED' && !quote.payment && (
+              <Button variant="secondary" onClick={() => setDialog('payment')}>
+                Record payment
+              </Button>
+            )}
+            {quote.payment && (
+              <Button onClick={() => setDialog('email-invoice')}>Email invoice</Button>
+            )}
+          </div>
+          {quote.payment ? (
+            <p className="text-sm">
+              Payment recorded {quote.payment.received_at.slice(0, 10)}
+              {quote.payment.reference ? ` (${quote.payment.reference})` : ''}.
+            </p>
+          ) : quote.status === 'CONFIRMED' ? (
+            <p className="text-sm text-ink-muted">
+              The invoice can be emailed once the payment is recorded.
+            </p>
+          ) : null}
+          {(quote.emails?.length ?? 0) > 0 && (
+            <ul className="flex flex-col gap-1 text-sm">
+              {quote.emails?.map((e) => (
+                <li key={`${e.kind}-${e.sent_at}`}>
+                  {e.kind === 'quote' ? 'Quote' : 'Invoice'} emailed to {e.to} on{' '}
+                  {e.sent_at.slice(0, 10)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <Dialog
         open={dialog === 'confirm'}
@@ -491,6 +552,89 @@ export function QuoteActions({
           label="Reason (optional)"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
+        />
+      </Dialog>
+
+      <Dialog
+        open={dialog === 'email-quote' || dialog === 'email-invoice'}
+        title={dialog === 'email-invoice' ? 'Email the invoice' : 'Email the quote'}
+        onClose={close}
+        footer={
+          <>
+            <Button variant="secondary" onClick={close}>
+              Not now
+            </Button>
+            <Button
+              loading={sendEmail.isPending}
+              disabled={emailTo.trim() === ''}
+              onClick={() =>
+                sendEmail.mutate(
+                  { to: emailTo.trim() },
+                  {
+                    onSuccess: () =>
+                      done(
+                        `The ${dialog === 'email-invoice' ? 'invoice' : 'quote'} PDF is on its way to ${emailTo.trim()}.`,
+                      ),
+                  },
+                )
+              }
+            >
+              Send PDF
+            </Button>
+          </>
+        }
+      >
+        {sendEmail.error && (
+          <div className="mb-3">
+            <ProblemAlert error={sendEmail.error} title="The email was not sent" />
+          </div>
+        )}
+        <p className="mb-3 text-sm">
+          The {dialog === 'email-invoice' ? 'invoice' : 'quote'} is sent as a PDF with the hotel's
+          details.
+        </p>
+        <TextField
+          label="Send to"
+          type="email"
+          value={emailTo}
+          onChange={(e) => setEmailTo(e.target.value)}
+          hint="The organiser's email from the quote. You can change it for this one send."
+        />
+      </Dialog>
+
+      <Dialog
+        open={dialog === 'payment'}
+        title="Record the payment"
+        onClose={close}
+        footer={
+          <>
+            <Button variant="secondary" onClick={close}>
+              Not now
+            </Button>
+            <Button
+              loading={payment.isPending}
+              onClick={() =>
+                payment.mutate(paymentRef.trim() ? { reference: paymentRef.trim() } : {}, {
+                  onSuccess: () => done('Payment recorded. The invoice can now be emailed.'),
+                })
+              }
+            >
+              Record payment
+            </Button>
+          </>
+        }
+      >
+        {payment.error && (
+          <div className="mb-3">
+            <ProblemAlert error={payment.error} title="Could not record the payment" />
+          </div>
+        )}
+        <p className="mb-3 text-sm">Confirm that the organiser has paid for this booking.</p>
+        <TextField
+          label="Payment reference (optional)"
+          value={paymentRef}
+          onChange={(e) => setPaymentRef(e.target.value)}
+          hint="For example a bank or UPI transaction id."
         />
       </Dialog>
     </div>

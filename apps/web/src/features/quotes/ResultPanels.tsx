@@ -51,6 +51,23 @@ export function LiveMeter({ state }: { state: LiveMeterState }) {
   const { totals } = state;
   const checking = state.kind === 'checking';
   const status = state.evaluation ? meterStatus(state.evaluation, totals) : null;
+  if (state.evaluation?.decision === 'DECLINE') {
+    // Nothing is offered, so there is no price to show: say exactly why (which nights, how many).
+    const why = state.evaluation.trail.filter((line) => !line.startsWith('decision '));
+    return (
+      <Card title="Live price check" aria-busy={checking || undefined}>
+        <div className={checking ? 'opacity-60' : undefined}>
+          {status ? <Badge tone="danger">{status.label}</Badge> : null}
+          <ul className="mt-3 flex list-disc flex-col gap-1 pl-5 text-sm">
+            {why.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+        {note}
+      </Card>
+    );
+  }
   // What the package would earn at full price: the discount taken back off the contribution.
   const beforeDiscount =
     totals.contribution_inr === null || totals.room_revenue_inr === null

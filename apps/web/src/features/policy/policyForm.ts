@@ -6,6 +6,11 @@ export interface PolicyForm {
   contributionFloor: string;
   totalRooms: string;
   maxDiscount: string;
+  hotelName: string;
+  /** Blank means none for the three below. */
+  hotelAddress: string;
+  hotelPhone: string;
+  hotelGstin: string;
   validityHours: string;
   stayCutoffHours: string;
   minValidityHours: string;
@@ -22,6 +27,10 @@ export function formFromPolicy(policy: Policy): PolicyForm {
     contributionFloor: text(policy.contribution_floor_inr),
     totalRooms: text(policy.total_rooms_units),
     maxDiscount: text(policy.max_sales_discount_pct),
+    hotelName: policy.hotel_name,
+    hotelAddress: policy.hotel_address ?? '',
+    hotelPhone: policy.hotel_phone ?? '',
+    hotelGstin: policy.hotel_gstin ?? '',
     validityHours: text(policy.validity_hours),
     stayCutoffHours: text(policy.stay_cutoff_hours),
     minValidityHours: text(policy.min_validity_hours),
@@ -40,6 +49,10 @@ export function toUpdate(form: PolicyForm, version: number) {
     contribution_floor_inr: num(form.contributionFloor),
     total_rooms_units: num(form.totalRooms),
     max_sales_discount_pct: num(form.maxDiscount),
+    hotel_name: form.hotelName.trim(),
+    hotel_address: form.hotelAddress.trim() || null,
+    hotel_phone: form.hotelPhone.trim() || null,
+    hotel_gstin: form.hotelGstin.trim().toUpperCase() || null,
     validity_hours: num(form.validityHours),
     stay_cutoff_hours: num(form.stayCutoffHours),
     min_validity_hours: num(form.minValidityHours),
@@ -53,6 +66,10 @@ export const FIELD_LABEL: Record<string, string> = {
   contribution_floor_inr: 'Package floor',
   total_rooms_units: 'Total rooms',
   max_sales_discount_pct: 'Max Sales discount',
+  hotel_name: 'Hotel name',
+  hotel_address: 'Hotel address',
+  hotel_phone: 'Hotel phone',
+  hotel_gstin: 'GSTIN',
   validity_hours: 'Validity',
   stay_cutoff_hours: 'Stay cutoff',
   min_validity_hours: 'Minimum validity',

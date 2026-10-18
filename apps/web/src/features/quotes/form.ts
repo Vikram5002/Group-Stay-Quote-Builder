@@ -15,18 +15,29 @@ export interface InclusionForm {
   price: string;
 }
 
+/** Another block of rooms in the same quote (D-058), as text while editing. */
+export interface LineForm {
+  id: string;
+  checkIn: string;
+  nights: string;
+  rooms: string;
+}
+
 /** Everything the wizard edits, kept as text so half-typed numbers stay visible. */
 export interface QuoteForm {
   organiser: string;
   reference: string;
   /** Who the quotation is addressed to; all optional. */
   contactName: string;
+  /** Where the quote and invoice PDFs go. */
   email: string;
   phone: string;
   checkIn: string;
   nights: string;
   roomType: string;
   rooms: string;
+  /** More blocks of rooms, for example 3 more rooms for one extra night. */
+  extraLines: LineForm[];
   /** Discount off the full price (the floor rate). Blank means none. */
   discount: string;
   /** Whether the discount is whole percent or whole rupees per room-night. */
@@ -55,6 +66,7 @@ export const initialForm: QuoteForm = {
   nights: '2',
   roomType: 'standard',
   rooms: '10',
+  extraLines: [],
   discount: '0',
   discountKind: 'pct',
   rate: '',
@@ -73,7 +85,7 @@ export const STEPS = [
 /** Which request fields each step owns, so a step only blocks on its own errors. */
 const STEP_PATHS: ReadonlyArray<readonly string[]> = [
   ['organiser', 'stay'],
-  ['room_type', 'rooms'],
+  ['room_type', 'rooms', 'additional_lines'],
   [
     'discount_pct',
     'discount_inr',
@@ -85,6 +97,11 @@ const STEP_PATHS: ReadonlyArray<readonly string[]> = [
 ];
 
 let counter = 0;
+export function newLine(checkIn = ''): LineForm {
+  counter += 1;
+  return { id: `line-${counter}`, checkIn, nights: '1', rooms: '1' };
+}
+
 export function newInclusion(): InclusionForm {
   counter += 1;
   return {
@@ -122,6 +139,11 @@ export function formFromQuote(quote: Quote, changes: Partial<QuoteForm> = {}): Q
     nights: String(quote.evaluation.nights),
     roomType: r.room_type,
     rooms: String(r.rooms),
+    extraLines: (r.additional_lines ?? []).map((l) => ({
+      ...newLine(l.stay.check_in),
+      nights: text(l.stay.nights),
+      rooms: String(l.rooms),
+    })),
     ...pricing,
     guests: text(r.guests_per_room_units),
     inclusions: (r.inclusions ?? []).map((inc) => ({
@@ -175,6 +197,12 @@ export function toRequest(form: QuoteForm): unknown {
   }
   if (form.guests.trim() !== '') request.guests_per_room_units = num(form.guests);
   if (form.inclusions.length > 0) request.inclusions = form.inclusions.map(inclusionRequest);
+  if (form.extraLines.length > 0) {
+    request.additional_lines = form.extraLines.map((l) => ({
+      stay: { check_in: l.checkIn, nights: l.nights.trim() === '' ? undefined : num(l.nights) },
+      rooms: num(l.rooms),
+    }));
+  }
   return request;
 }
 

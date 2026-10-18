@@ -45,6 +45,8 @@ export interface HoldRequest {
   roomType: string;
   dates: readonly string[];
   units: number;
+  /** Rooms per night when they differ (a multi-line quote, D-058); otherwise `units`. */
+  unitsByDate?: Readonly<Record<string, number>>;
   expiresAt: string;
 }
 
@@ -118,7 +120,11 @@ export async function acquireHolds(
   req: HoldRequest,
   extra: TxItem[] = [],
 ): Promise<HoldLine[]> {
-  if (!Number.isSafeInteger(req.units) || req.units < 1) throw new RangeError('units must be >= 1');
+  const unitsOn = (date: string) => req.unitsByDate?.[date] ?? req.units;
+  for (const date of req.dates) {
+    const n = unitsOn(date);
+    if (!Number.isSafeInteger(n) || n < 1) throw new RangeError('units must be >= 1');
+  }
   if (req.dates.length === 0) throw new RangeError('A hold needs at least one night');
   checkSize(req.dates.length, extra.length + 1);
 
@@ -126,7 +132,7 @@ export async function acquireHolds(
     quote_id: req.quoteId,
     room_type: req.roomType,
     date,
-    units: req.units,
+    units: unitsOn(date),
     state: 'held',
     expires_at: req.expiresAt,
   }));

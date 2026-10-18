@@ -96,6 +96,13 @@ export async function amendQuote(
       `Only a CONFIRMED booking can be amended, not ${quote.status}`,
     );
   }
+  if ((quote.request.additional_lines?.length ?? 0) > 0) {
+    // Which line would lose rooms is a question for the owner; not supported yet (D-058).
+    throw new ServiceError(
+      'INVALID_STATE',
+      'A multi-line booking cannot be amended yet; cancel it and quote again',
+    );
+  }
   const current = quote.evaluation.offered_rooms;
   if (rooms >= current) {
     throw new ServiceError('INVALID_STATE', `An amendment must reduce rooms below ${current}`);

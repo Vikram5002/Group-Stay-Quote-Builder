@@ -1,4 +1,4 @@
-import { checkLedger, nightKey, type LedgerDrift } from '@c32/core';
+import { checkLedger, nightKey, type LedgerDrift, bookingUnits } from '@c32/core';
 import { readLedgerState } from '../data/ledger.js';
 import { listDueQuoteIds } from '../data/quotes.js';
 import type { FileStore } from '../files/store.js';
@@ -66,7 +66,7 @@ export async function reconcile(
     for (const date of b.dates) {
       const key = nightKey(b.room_type, date);
       const target = b.state === 'held' ? held : confirmed;
-      target.set(key, (target.get(key) ?? 0) + b.units);
+      target.set(key, (target.get(key) ?? 0) + bookingUnits(b, date));
     }
   }
   const drifting = [...new Set(drift.map((d) => d.key))].sort();

@@ -13,8 +13,8 @@ import {
 } from '../../components';
 import { formatDate, formatDateShort, formatInr, formatStay } from '../../lib/format';
 import { counted } from '../../lib/plural';
-import { newInclusion, ROOM_TYPES, STEPS } from './form';
-import type { DiscountKind, InclusionBasisValue, InclusionForm, QuoteForm } from './form';
+import { newInclusion, newLine, ROOM_TYPES, STEPS } from './form';
+import type { DiscountKind, InclusionBasisValue, InclusionForm, LineForm, QuoteForm } from './form';
 import { AVAILABILITY_KEY } from './queries';
 import { describePricing } from './pricingText';
 
@@ -93,6 +93,7 @@ export function GroupStep({
           autoComplete="email"
           value={form.email}
           onChange={(e) => patch({ email: e.target.value })}
+          hint="The quote and invoice PDFs are emailed here."
           {...err(errors, 'organiser.email')}
         />
         <TextField
@@ -212,41 +213,113 @@ function AvailabilityHint({ form }: { form: QuoteForm }) {
 }
 
 export function RoomsStep({ form, patch, errors }: StepProps) {
+  const update = (id: string, changes: Partial<LineForm>) =>
+    patch({ extraLines: form.extraLines.map((l) => (l.id === id ? { ...l, ...changes } : l)) });
   return (
-    <Card title="Rooms and type">
-      <div className="grid gap-4 md:grid-cols-2">
-        <SelectField
-          label="Room type"
-          name="room_type"
-          required
-          value={form.roomType}
-          onChange={(e) => patch({ roomType: e.target.value })}
-          {...err(errors, 'room_type')}
-        >
-          {ROOM_TYPES.map((t) => (
-            <option key={t.code} value={t.code}>
-              {t.label}
-            </option>
+    <div className="flex flex-col gap-6">
+      <Card title="Rooms and type">
+        <div className="grid gap-4 md:grid-cols-2">
+          <SelectField
+            label="Room type"
+            name="room_type"
+            required
+            value={form.roomType}
+            onChange={(e) => patch({ roomType: e.target.value })}
+            {...err(errors, 'room_type')}
+          >
+            {ROOM_TYPES.map((t) => (
+              <option key={t.code} value={t.code}>
+                {t.label}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            label="Rooms"
+            name="rooms"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={500}
+            required
+            value={form.rooms}
+            onChange={(e) => patch({ rooms: e.target.value })}
+            hint="For the dates in step 1. With one block, fewer free rooms give a partial offer."
+            {...err(errors, 'rooms')}
+          />
+        </div>
+        <div className="mt-4">
+          <AvailabilityHint form={form} />
+        </div>
+      </Card>
+      <Card title="More rooms on other dates">
+        <p className="text-sm text-ink-muted">
+          Add a block when some rooms stay a different number of nights, for example 3 rooms for one
+          extra night. All blocks are held together, or the quote is declined.
+        </p>
+        <ul className="mt-4 flex flex-col gap-4">
+          {form.extraLines.map((line, i) => (
+            <li
+              key={line.id}
+              className="grid gap-4 rounded-card border border-border p-4 md:grid-cols-3"
+            >
+              <TextField
+                label={`Block ${i + 2} check-in date`}
+                name={`additional_lines.${i}.stay.check_in`}
+                type="date"
+                required
+                value={line.checkIn}
+                onChange={(e) => update(line.id, { checkIn: e.target.value })}
+                {...err(errors, `additional_lines.${i}.stay.check_in`)}
+              />
+              <TextField
+                label={`Block ${i + 2} nights`}
+                name={`additional_lines.${i}.stay.nights`}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={28}
+                required
+                value={line.nights}
+                onChange={(e) => update(line.id, { nights: e.target.value })}
+                {...err(errors, `additional_lines.${i}.stay.nights`)}
+              />
+              <TextField
+                label={`Block ${i + 2} rooms`}
+                name={`additional_lines.${i}.rooms`}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={500}
+                required
+                value={line.rooms}
+                onChange={(e) => update(line.id, { rooms: e.target.value })}
+                {...err(errors, `additional_lines.${i}.rooms`)}
+              />
+              <div className="md:col-span-3">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() =>
+                    patch({ extraLines: form.extraLines.filter((l) => l.id !== line.id) })
+                  }
+                >
+                  Remove block {i + 2}
+                </Button>
+              </div>
+            </li>
           ))}
-        </SelectField>
-        <TextField
-          label="Rooms"
-          name="rooms"
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={500}
-          required
-          value={form.rooms}
-          onChange={(e) => patch({ rooms: e.target.value })}
-          hint="If fewer are available, you will see a partial offer."
-          {...err(errors, 'rooms')}
-        />
-      </div>
-      <div className="mt-4">
-        <AvailabilityHint form={form} />
-      </div>
-    </Card>
+        </ul>
+        <div className="mt-4">
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={() => patch({ extraLines: [...form.extraLines, newLine(form.checkIn)] })}
+          >
+            Add another block of rooms
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
 

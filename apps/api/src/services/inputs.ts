@@ -5,6 +5,7 @@ import {
   type Policy,
   type RatePlanNight,
   type ResolvedQuoteRequest,
+  spanDates,
 } from '@c32/core';
 import { getInventory, getRatePlan, type DataContext } from '../data/catalog.js';
 import { getPolicy } from '../data/policy.js';
@@ -29,8 +30,10 @@ export async function loadStay(
   data: DataContext,
   request: ResolvedQuoteRequest,
 ): Promise<{ inventory: InventoryNight[]; ratePlan: RatePlanNight[] }> {
-  const first = request.stay.night_dates[0] as string;
-  const last = request.stay.night_dates.at(-1) as string;
+  // Every night any line needs (D-058); for one line that is just its stay.
+  const dates = spanDates(request.lines);
+  const first = dates[0] as string;
+  const last = dates.at(-1) as string;
   const [inventory, ratePlan] = await Promise.all([
     getInventory(data, request.room_type, first, last),
     getRatePlan(data, request.room_type, first, last),

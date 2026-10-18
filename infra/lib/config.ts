@@ -12,6 +12,8 @@ export interface StageConfig {
   prefix: string;
   /** Receives budget and alarm emails; no email subscription when unset. */
   alertEmail: string | undefined;
+  /** Sender of quote and invoice emails (SES identity, D-059). */
+  senderEmail: string;
   monthlyBudgetUsd: number;
   /** Cognito hosted UI prefix; must be globally unique. */
   cognitoDomainPrefix: string;
@@ -37,6 +39,7 @@ export function stageConfig(ctx: Context, account: string, region: string): Stag
     region,
     prefix: `c32-${stage}`,
     alertEmail: str('alertEmail'),
+    senderEmail: str('senderEmail') ?? 'forawws@gmail.com',
     monthlyBudgetUsd: Number(str('budgetUsd') ?? 5),
     cognitoDomainPrefix: str('cognitoDomain') ?? `c32-quote-${stage}-${account}`,
     githubRepo: str('githubRepo') ?? 'Vikram5002/Group-Stay-Quote-Builder',

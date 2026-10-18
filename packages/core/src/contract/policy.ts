@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LIMITS, PropertyId, Units } from './primitives.js';
+import { LIMITS, NonEmptyText, PropertyId, Units } from './primitives.js';
 
 const hours = (min: number) => z.int().min(min).max(LIMITS.MAX_POLICY_HOURS);
 
@@ -30,6 +30,16 @@ const PolicyFields = z.strictObject({
   total_rooms_units: z.int().min(1).max(LIMITS.MAX_ROOMS),
   /** Largest discount off the floor rate Sales may give without owner review (D-057). */
   max_sales_discount_pct: z.int().min(0).max(100),
+  /** Printed on every quote and invoice PDF (D-059). */
+  hotel_name: NonEmptyText(120),
+  hotel_address: z.string().trim().max(300).nullable(),
+  hotel_phone: z.string().trim().max(30).nullable(),
+  /** Indian GSTIN, 15 characters; shown on invoices. Tax itself is out of scope. */
+  hotel_gstin: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{2}[A-Z0-9]{13}$/, 'A GSTIN is 15 letters and digits, starting with 2 digits')
+    .nullable(),
   validity_hours: hours(1),
   stay_cutoff_hours: hours(0),
   /** If the computed validity window is shorter than this, the quote is TOO_LATE_TO_QUOTE. */
@@ -76,6 +86,10 @@ export const DEFAULT_POLICY: Readonly<Policy> = Object.freeze({
   contribution_floor_inr: 20000, // fixture; / 10 rooms = 2000 per room-night (D-056)
   total_rooms_units: 10, // fixture inventory
   max_sales_discount_pct: 10, // owner setting: 2000 - 10% = 1800 minimum
+  hotel_name: 'Group Stay Hotel', // the owner sets the real name
+  hotel_address: null,
+  hotel_phone: null,
+  hotel_gstin: null,
   validity_hours: 72, // A2 (HYPOTHESIS)
   stay_cutoff_hours: 24, // A3 (HYPOTHESIS)
   min_validity_hours: 2, // A13 (HYPOTHESIS)

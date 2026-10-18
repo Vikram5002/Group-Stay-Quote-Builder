@@ -150,6 +150,60 @@ describe('quote builder: the three rubric flows', () => {
   });
 });
 
+describe('quote builder: several blocks of rooms (D-058)', () => {
+  it('5 rooms for 3 nights plus 3 rooms for 4 nights is one quote', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u, 'Wedding party');
+    await u.clear(screen.getByLabelText(/^Nights/));
+    await u.type(screen.getByLabelText(/^Nights/), '3');
+    await next(u);
+    await u.clear(screen.getByLabelText(/^Rooms/));
+    await u.type(screen.getByLabelText(/^Rooms/), '5');
+    await u.click(screen.getByRole('button', { name: 'Add another block of rooms' }));
+    expect(screen.getByLabelText(/Block 2 check-in date/)).toHaveValue('2026-11-01');
+    await u.clear(screen.getByLabelText(/Block 2 nights/));
+    await u.type(screen.getByLabelText(/Block 2 nights/), '4');
+    await u.clear(screen.getByLabelText(/Block 2 rooms/));
+    await u.type(screen.getByLabelText(/Block 2 rooms/), '3');
+    await next(u);
+    await next(u);
+
+    expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
+    const totals = screen
+      .getByRole('heading', { name: 'Totals' })
+      .closest('section') as HTMLElement;
+    expect(within(totals).getByText('Room-nights').nextSibling).toHaveTextContent('27');
+    expect(screen.getByText(/line 2: 3 rooms x 4 nights from 2026-11-01/)).toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: 'Issue quote' }));
+    expect(
+      await screen.findByText(/3 rooms, Sun 01 Nov 2026 to Thu 05 Nov 2026 \(4 nights\)/),
+    ).toBeInTheDocument();
+    const nov4 = store.inventory.find((r) => r.date === '2026-11-04' && r.room_type === 'standard');
+    const nov1 = store.inventory.find((r) => r.date === '2026-11-01' && r.room_type === 'standard');
+    expect(nov1?.held_units).toBe(8);
+    expect(nov4?.held_units).toBe(3);
+  });
+});
+
+describe('quote builder: blocks that overfill a night', () => {
+  it('10 rooms plus 3 more on the same nights says which nights are short, not ₹0', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u, 'Big wedding');
+    await next(u);
+    await u.click(screen.getByRole('button', { name: 'Add another block of rooms' }));
+    await u.clear(screen.getByLabelText(/Block 2 rooms/));
+    await u.type(screen.getByLabelText(/Block 2 rooms/), '3');
+    const card = screen.getByRole('complementary', { name: 'Live price check' });
+    expect(
+      await within(card).findByText('2026-11-01: 13 rooms needed, 10 free'),
+    ).toBeInTheDocument();
+    expect(within(card).queryByText('Total revenue at full price')).not.toBeInTheDocument();
+  });
+});
+
 describe('quote builder: forms and live meter', () => {
   it('blocks Next with plain-language errors from the shared schema', async () => {
     const u = user();

@@ -30,6 +30,7 @@ export function commercialTerms(request: ResolvedQuoteRequest, evaluation: Evalu
     discount_pct: request.discount_pct ?? null,
     // Absent (not null) when not given, so terms without one keep their earlier hash.
     discount_inr: request.discount_inr,
+    additional_lines: request.additional_lines ?? [],
     guests_per_room_units: request.guests_per_room_units ?? null,
     inclusions: request.inclusions ?? [],
     room_revenue_inr: t.room_revenue_inr,

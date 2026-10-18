@@ -7,12 +7,14 @@ import {
   type Quote,
   type QuoteEvent,
   type ResolvedQuoteRequest,
+  roomsByNight,
 } from '@c32/core';
 import type { DataContext } from '../data/catalog.js';
 import { ContentionError, HoldConflictError } from '../data/errors.js';
 import { acquireHolds } from '../data/holds.js';
 import { putEventTx, putNewQuoteTx } from '../data/quotes.js';
 import { loadPolicy, loadStay, refusePastCheckIn } from './inputs.js';
+import type { EmailSender } from '../email/sender.js';
 import { scheduleQuietly, type ExpiryScheduler } from './scheduler.js';
 import { termsHash } from './terms-hash.js';
 
@@ -30,6 +32,8 @@ export interface ServiceDeps {
   newId: () => string;
   /** Per-quote expiry schedules (EventBridge Scheduler in AWS); none locally. */
   scheduler?: ExpiryScheduler;
+  /** Sends quote and invoice PDFs (SES in AWS, an outbox folder locally, D-059). */
+  email?: EmailSender;
 }
 
 const MAX_ATTEMPTS = 4;
@@ -37,7 +41,9 @@ const RETRYABLE = new Set(['INSUFFICIENT', 'NO_INVENTORY_DATA', 'UNKNOWN_AVAILAB
 
 /** The stored request keeps one canonical stay form: check-in and nights. */
 function storedRequest(r: ResolvedQuoteRequest): Quote['request'] {
-  return { ...r, stay: { check_in: r.stay.check_in, nights: r.stay.nights } };
+  // `lines` is the engine's working view of stay + additional_lines; it is not stored.
+  const { lines: _lines, ...rest } = r;
+  return { ...rest, stay: { check_in: r.stay.check_in, nights: r.stay.nights } };
 }
 
 export async function createQuote(
@@ -106,8 +112,7 @@ export async function createQuote(
         {
           quoteId,
           roomType: request.room_type,
-          dates: request.stay.night_dates,
-          units: evaluation.offered_rooms,
+          ...holdShape(request, evaluation.offered_rooms),
           expiresAt: validity.valid_until,
         },
         writes,
@@ -120,4 +125,20 @@ export async function createQuote(
     }
   }
   throw new ContentionError(MAX_ATTEMPTS);
+}
+
+/**
+ * Nights and rooms to hold. One line: the offered rooms on every night of the stay (a partial
+ * offer holds fewer). Several lines (D-058): each night holds the sum of the lines covering it.
+ */
+function holdShape(request: ResolvedQuoteRequest, offeredRooms: number) {
+  if (request.lines.length === 1) {
+    return { dates: request.stay.night_dates, units: offeredRooms };
+  }
+  const demand = roomsByNight(request.lines);
+  return {
+    dates: [...demand.keys()].sort(),
+    units: Math.max(...demand.values()),
+    unitsByDate: Object.fromEntries(demand),
+  };
 }

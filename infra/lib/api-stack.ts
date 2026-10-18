@@ -7,6 +7,7 @@ import type * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as ses from 'aws-cdk-lib/aws-ses';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import type * as s3 from 'aws-cdk-lib/aws-s3';
@@ -129,6 +130,7 @@ export class ApiStack extends Stack {
         EXPIRY_TARGET_ARN: this.workerFn.functionArn,
         EXPIRY_ROLE_ARN: schedulerRole.roleArn,
         EXPIRY_SCHEDULE_GROUP: scheduleGroup.name as string,
+        SENDER_EMAIL: config.senderEmail,
       },
       logGroup: new logs.LogGroup(this, 'ApiLogs', {
         logGroupName: `/aws/lambda/${config.prefix}-api`,
@@ -149,6 +151,21 @@ export class ApiStack extends Stack {
       }),
     );
     schedulerRole.grantPassRole(this.apiFn.grantPrincipal);
+
+    // Quote and invoice emails (D-059). Creating the identity sends a verification link to the
+    // sender address; nothing is delivered until it is clicked. The API may send only as it.
+    const sender = new ses.EmailIdentity(this, 'Sender', {
+      identity: ses.Identity.email(config.senderEmail),
+    });
+    // SES checks the recipient's identity too (in the sandbox every recipient is one), so the
+    // resource is any identity, but only ever with this sender as the From address.
+    this.apiFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+        resources: [`arn:aws:ses:${this.region}:${this.account}:identity/*`],
+        conditions: { StringEquals: { 'ses:FromAddress': sender.emailIdentityName } },
+      }),
+    );
 
     const accessLogs = new logs.LogGroup(this, 'AccessLogs', {
       retention: logs.RetentionDays.TWO_WEEKS,

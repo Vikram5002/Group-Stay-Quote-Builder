@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Icon, Logo } from '../components';
 import type { IconName } from '../components';
@@ -109,7 +109,6 @@ export function AppShell() {
   const action = items.find((i) => i.group === 'action');
   const pendingReviews = usePendingReviewCount(role);
   const expiringSoon = useExpiringSoonCount(Boolean(session));
-  const projectOpen = items.some((i) => i.group === 'project' && i.path === pathname);
 
   // Move focus to the new screen's heading after navigation, so keyboard and screen reader users
   // start there instead of in the menu. Skipped on first load so the skip link stays the first
@@ -249,34 +248,6 @@ export function AppShell() {
             )}
             {group('work')}
             {group('admin', 'Admin')}
-            <details
-              className="group/about mt-6 border-t border-border pt-4"
-              {...(projectOpen || pathname === DESIGN_SYSTEM_PATH ? { open: true } : {})}
-            >
-              <summary className="flex h-10 cursor-pointer list-none items-center gap-3 rounded-xl px-3 text-sm font-medium text-on-nav-muted hover:bg-black/[0.04] hover:text-on-nav [&::-webkit-details-marker]:hidden">
-                <Icon name="info" className="size-[1.1rem]" />
-                About this project
-                <span
-                  aria-hidden="true"
-                  className="ml-auto text-base leading-none transition-transform group-open/about:rotate-90"
-                >
-                  ›
-                </span>
-              </summary>
-              <ul className="mt-1 flex flex-col gap-0.5">
-                {items.filter((i) => i.group === 'project').map(entry)}
-                <li>
-                  <NavLink to={DESIGN_SYSTEM_PATH} className={({ isActive: a }) => linkClass(a)}>
-                    {({ isActive: a }) => (
-                      <>
-                        <NavIcon path={DESIGN_SYSTEM_PATH} active={a} />
-                        Design system
-                      </>
-                    )}
-                  </NavLink>
-                </li>
-              </ul>
-            </details>
           </nav>
           {session && (
             <div className="m-3 mt-auto rounded-2xl border border-border bg-surface p-3 text-sm shadow-card">

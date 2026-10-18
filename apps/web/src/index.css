@@ -14,50 +14,58 @@
     'Inter Variable', Inter, 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
-  /* Monochrome commerce palette (D-061): near-black ink on white and soft greys, one green accent. */
-  --color-canvas: #f8f8f9;
+  /*
+   * Commerce monochrome (D-068, after fynd.com): near-black ink on white, soft greys for sections,
+   * black pill buttons and a light navigation rail with a black pill for the current page. Colour is
+   * kept for status only, so a green or red badge always means something.
+   */
+  --color-canvas: #f7f7f7;
   --color-surface: #ffffff;
   --color-surface-muted: #f2f2f2;
-  --color-border: #e3e3e3;
-  --color-border-strong: #797a7c;
+  --color-border: #e6e6e6;
+  --color-border-strong: #767676;
 
-  --color-ink: #101319;
-  --color-ink-muted: #4a4b4c;
+  --color-ink: #0e0e0e;
+  --color-ink-muted: #545454;
 
-  --color-brand: #101319;
-  --color-brand-hover: #2b2e35;
-  --color-brand-soft: #f2f2f2;
+  --color-brand: #0e0e0e;
+  --color-brand-hover: #2e2e2e;
+  --color-brand-soft: #f0f0f0;
   --color-on-brand: #ffffff;
 
-  /* Green: text-safe on white and on its soft tint; the bright green is for lines and marks only. */
-  --color-accent: #13723c;
-  --color-accent-soft: #e6f4ec;
-  --color-accent-bright: #2fb86a;
+  /* Green: text-safe on white and on its soft tint; the bright one is for lines and marks only. */
+  --color-accent: #0f7a43;
+  --color-accent-soft: #e7f5ed;
+  --color-accent-bright: #22c55e;
 
-  --color-success: #13723c;
-  --color-success-soft: #e6f4ec;
+  /* Warm yellow, for lit windows and small highlights only (never text). */
+  --color-gold: #ffcf4d;
+
+  --color-success: #0f7a43;
+  --color-success-soft: #e7f5ed;
   --color-warning: #8a4b00;
-  --color-warning-soft: #fbefd8;
+  --color-warning-soft: #fdf1dc;
   --color-danger: #b4232f;
-  --color-danger-soft: #fbe8ea;
+  --color-danger-soft: #fbe9eb;
   --color-info: #1d5b94;
-  --color-info-soft: #e8f0f8;
-  --color-unknown: #4a4b4c;
+  --color-info-soft: #e9f1f9;
+  --color-unknown: #545454;
   --color-unknown-soft: #f2f2f2;
 
-  --color-focus: #101319;
+  --color-focus: #0e0e0e;
 
-  /* The navigation rail: light grey, with a black pill for the current page. */
-  --color-nav: #f2f2f2;
-  --color-nav-active: #101319;
-  --color-on-nav: #101319;
-  --color-on-nav-muted: #4a4b4c;
-  --color-nav-accent: #101319;
+  /* The navigation rail: white, a black pill for the current page and for the main action. */
+  --color-nav: #ffffff;
+  --color-nav-active: #0e0e0e;
+  --color-on-nav: #0e0e0e;
+  --color-on-nav-muted: #545454;
+  --color-nav-accent: #0e0e0e;
 
-  --radius-control: 0.75rem;
-  --radius-card: 1.25rem;
-  --shadow-card: 0 1px 2px rgb(16 19 25 / 0.04);
-  --shadow-raised: 0 1px 2px rgb(16 19 25 / 0.04), 0 12px 32px -16px rgb(16 19 25 / 0.18);
+  --radius-control: 0.875rem;
+  --radius-card: 1.5rem;
+  --shadow-card: 0 1px 2px rgb(14 14 14 / 0.04);
+  --shadow-raised: 0 1px 2px rgb(14 14 14 / 0.04), 0 18px 40px -20px rgb(14 14 14 / 0.25);
+  --shadow-brand: 0 10px 24px -12px rgb(14 14 14 / 0.55);
 
   --animate-enter: c32-enter 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade: c32-fade 0.25s ease-out both;
@@ -71,11 +79,18 @@
     background: var(--color-canvas);
     -webkit-font-smoothing: antialiased;
   }
-  /* Page titles: large, tight Inter, as on modern commerce sites. */
+  /* Page titles: large, tight Inter. Section headings are a touch tighter than body text. */
   main h1 {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.035em;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+  }
+  main h2,
+  main h3 {
+    letter-spacing: -0.012em;
+  }
+  ::selection {
+    background: rgb(14 14 14 / 0.12);
   }
   button,
   a,
@@ -92,6 +107,7 @@
   body {
     margin: 0;
     min-height: 100vh;
+    background: var(--color-canvas);
   }
   :focus-visible {
     outline: 3px solid var(--color-focus);

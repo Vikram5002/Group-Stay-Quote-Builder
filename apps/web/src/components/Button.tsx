@@ -5,8 +5,8 @@ type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'on-nav';
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-brand text-on-brand hover:bg-brand-hover border-transparent active:translate-y-px',
-  secondary: 'bg-surface text-ink border-border hover:border-ink',
+    'bg-brand text-on-brand border-transparent shadow-brand hover:bg-brand-hover hover:-translate-y-px active:translate-y-0',
+  secondary: 'bg-surface text-ink border-border shadow-card hover:border-ink',
   danger: 'bg-danger text-on-brand border-transparent hover:opacity-90',
   ghost: 'bg-transparent text-brand border-transparent hover:bg-brand-soft',
   /** On the navigation rail. */
@@ -34,7 +34,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 text-sm font-medium transition-colors',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 text-sm font-semibold',
         'disabled:cursor-not-allowed disabled:opacity-60',
         variants[variant],
         className,

@@ -1,5 +1,16 @@
 import { cn } from '../lib/cn';
 
+function StepDot({ children }: { children: string | number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid size-6 place-items-center rounded-full bg-current/12 text-xs tabular-nums"
+    >
+      {children}
+    </span>
+  );
+}
+
 /** Progress through a wizard. Current and finished steps are named in text, not only by colour. */
 export function Stepper({
   steps,
@@ -21,10 +32,10 @@ export function Stepper({
               key={step.id}
               {...(state === 'current' ? { 'aria-current': 'step' as const } : {})}
               className={cn(
-                'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold',
-                state === 'current' && 'border-brand bg-brand-soft text-brand',
-                state === 'done' && 'border-success bg-success-soft text-success',
-                state === 'todo' && 'border-border-strong bg-surface text-ink-muted',
+                'flex items-center gap-2 rounded-full border py-1.5 pr-3.5 pl-1.5 text-sm font-semibold',
+                state === 'current' && 'border-brand bg-brand text-on-brand shadow-brand',
+                state === 'done' && 'border-success/30 bg-success-soft text-success',
+                state === 'todo' && 'border-border bg-surface text-ink-muted',
               )}
             >
               {state === 'done' && onSelect ? (
@@ -33,13 +44,13 @@ export function Stepper({
                   className="flex items-center gap-2 underline-offset-2 hover:underline"
                   onClick={() => onSelect(index)}
                 >
-                  <span aria-hidden="true">✓</span>
+                  <StepDot>✓</StepDot>
                   <span>{step.label}</span>
                   <span className="sr-only"> (done, open again)</span>
                 </button>
               ) : (
                 <>
-                  <span aria-hidden="true">{state === 'done' ? '✓' : index + 1}</span>
+                  <StepDot>{state === 'done' ? '✓' : index + 1}</StepDot>
                   <span>{step.label}</span>
                   <span className="sr-only">
                     {state === 'done'

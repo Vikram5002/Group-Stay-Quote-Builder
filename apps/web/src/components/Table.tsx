@@ -23,16 +23,19 @@ export function DataTable<T>({
 }) {
   if (rows.length === 0 && empty) return <>{empty}</>;
   return (
-    <div className="overflow-x-auto rounded-card border border-border bg-surface">
+    <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
       <table className="w-full border-collapse text-left text-sm">
         <caption className="sr-only">{caption}</caption>
-        <thead className="bg-surface-muted">
+        <thead className="border-b border-border bg-surface-muted/70">
           <tr>
             {columns.map((c) => (
               <th
                 key={c.header}
                 scope="col"
-                className={cn('px-4 py-3 font-semibold', c.numeric && 'text-right')}
+                className={cn(
+                  'px-4 py-3 text-xs font-semibold tracking-wide whitespace-nowrap text-ink-muted uppercase',
+                  c.numeric && 'text-right',
+                )}
               >
                 {c.header}
               </th>
@@ -41,11 +44,14 @@ export function DataTable<T>({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={rowKey(row)} className="border-t border-border">
+            <tr
+              key={rowKey(row)}
+              className="border-t border-border first:border-t-0 hover:bg-brand-soft/40"
+            >
               {columns.map((c) => (
                 <td
                   key={c.header}
-                  className={cn('px-4 py-3', c.numeric && 'text-right tabular-nums')}
+                  className={cn('px-4 py-3.5', c.numeric && 'text-right tabular-nums')}
                 >
                   {c.render(row)}
                 </td>

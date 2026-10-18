@@ -25,7 +25,7 @@ export function SegmentedControl<T extends string>({
       <legend className={cn('text-sm font-semibold text-ink', hideLegend && 'sr-only')}>
         {legend}
       </legend>
-      <div className="inline-flex w-fit rounded-control border border-border-strong bg-surface p-0.5">
+      <div className="inline-flex w-fit rounded-control border border-border bg-surface-muted p-1">
         {options.map((option) => {
           const checked = option.value === value;
           return (
@@ -33,7 +33,9 @@ export function SegmentedControl<T extends string>({
               key={option.value}
               className={cn(
                 'relative inline-flex min-h-10 cursor-pointer items-center rounded-[calc(var(--radius-control)-2px)] px-3 text-sm font-semibold has-[:focus-visible]:outline has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-focus',
-                checked ? 'bg-brand text-on-brand' : 'text-ink hover:bg-surface-muted',
+                checked
+                  ? 'bg-surface text-brand shadow-card ring-1 ring-border'
+                  : 'text-ink-muted hover:text-ink',
               )}
             >
               <input

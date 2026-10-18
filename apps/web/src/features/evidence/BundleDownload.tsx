@@ -46,7 +46,11 @@ export function BundleDownload() {
       </Button>
       {link && (
         <p className="mt-3 text-sm">
-          <a href={link.download_url} download className="font-semibold text-brand underline">
+          <a
+            href={link.download_url}
+            download
+            className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+          >
             Download the evidence bundle ({link.format})
           </a>
           <span className="block text-ink-muted">

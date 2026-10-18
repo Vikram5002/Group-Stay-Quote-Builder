@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { PROPERTY_ROOM_TYPES } from '@c32/core';
 import type { Quote } from '@c32/core';
-import { Alert, Badge, Button, Card, EmptyState, Spinner, useToast } from '../../components';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  ProgressRing,
+  Spinner,
+  useToast,
+} from '../../components';
 import { ApiError } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { formatCountdown, formatInr, formatIst, formatStay } from '../../lib/format';
@@ -48,6 +58,8 @@ function Countdown({ quote }: { quote: Quote }) {
   const until = quote.valid_until;
   const ms = until === null ? 0 : Date.parse(until) - now.getTime();
   const level = urgency(ms);
+  // The ring shows the share of the hold still left, from when the quote was issued.
+  const total = until === null ? 0 : Date.parse(until) - Date.parse(quote.issued_at);
   const seen = useRef(level);
   const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
@@ -59,26 +71,43 @@ function Countdown({ quote }: { quote: Quote }) {
   if (!OPEN_STATUSES.includes(quote.status) || until === null) return null;
   return (
     <Card title="Hold countdown">
-      <p
-        className={cn(
-          'text-2xl font-bold',
-          level === 'urgent' || level === 'over'
-            ? 'text-danger'
-            : level === 'soon'
-              ? 'text-warning'
-              : undefined,
-        )}
-      >
-        {formatCountdown(until, now)}
-      </p>
-      {level !== 'calm' && <p className="mt-1 text-sm font-semibold">{URGENCY_TEXT[level]}</p>}
-      <p className="mt-1 text-sm text-ink-muted">
-        Rooms are held until{' '}
-        <time dateTime={until} title={`UTC: ${until}`}>
-          {formatIst(until)}
-        </time>
-        . After that they are released automatically.
-      </p>
+      <div className="flex items-center gap-5">
+        <span
+          className={cn(
+            'relative grid place-items-center',
+            level === 'urgent' || level === 'over'
+              ? 'text-danger'
+              : level === 'soon'
+                ? 'text-warning'
+                : 'text-ink',
+          )}
+        >
+          <ProgressRing fraction={total > 0 ? ms / total : 0} size={64} stroke={5} />
+          <Icon name="clock" className="absolute size-5" />
+        </span>
+        <div className="min-w-0">
+          <p
+            className={cn(
+              'text-2xl font-semibold tracking-tight',
+              level === 'urgent' || level === 'over'
+                ? 'text-danger'
+                : level === 'soon'
+                  ? 'text-warning'
+                  : undefined,
+            )}
+          >
+            {formatCountdown(until, now)}
+          </p>
+          {level !== 'calm' && <p className="mt-1 text-sm font-semibold">{URGENCY_TEXT[level]}</p>}
+          <p className="mt-1 text-sm text-ink-muted">
+            Rooms are held until{' '}
+            <time dateTime={until} title={`UTC: ${until}`}>
+              {formatIst(until)}
+            </time>
+            . After that they are released automatically.
+          </p>
+        </div>
+      </div>
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
@@ -129,13 +158,16 @@ function Summary({ quote, showVersion }: { quote: Quote; showVersion: boolean })
             <dd className="break-words">
               {o.contact_name && <span className="block">{o.contact_name}</span>}
               {o.email && (
-                <a className="block text-brand underline" href={`mailto:${o.email}`}>
+                <a
+                  className="block text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+                  href={`mailto:${o.email}`}
+                >
                   {o.email}
                 </a>
               )}
               {o.phone && (
                 <a
-                  className="block text-brand underline"
+                  className="block text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
                   href={`tel:${o.phone.replace(/[^+0-9]/g, '')}`}
                 >
                   {o.phone}
@@ -239,13 +271,18 @@ function Detail({ quote: q }: { quote: Quote }) {
   return (
     <div className="mx-auto max-w-5xl">
       <p className="text-sm">
-        <Link to={back.to} className="text-brand underline">
+        <Link
+          to={back.to}
+          className="text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+        >
           <span aria-hidden="true">← </span>
           {back.label}
         </Link>
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">{q.request.organiser.name}</h1>
+        <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+          {q.request.organiser.name}
+        </h1>
         <StatusBadge status={q.status} />
         {badge && <Badge tone={badge.tone}>{badge.label}</Badge>}
         {partial && <Badge tone="info">Partial offer</Badge>}
@@ -289,7 +326,7 @@ function Detail({ quote: q }: { quote: Quote }) {
               (q.awaiting_owner ? role === 'Owner' : role === 'ServiceManager') ? (
                 <Link
                   to={`/review?quote=${q.quote_id}`}
-                  className="font-semibold text-brand underline"
+                  className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
                 >
                   {q.awaiting_owner ? 'Set the discount' : 'Review this quote'}
                 </Link>
@@ -331,7 +368,7 @@ export function QuoteDetailPage() {
   if (quote.isPending) {
     return (
       <div className="mx-auto max-w-5xl">
-        <h1 className="text-2xl font-bold">Quote</h1>
+        <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">Quote</h1>
         <p className="mt-6 flex items-center gap-2" role="status">
           <Spinner /> Loading the quote…
         </p>
@@ -344,13 +381,18 @@ export function QuoteDetailPage() {
     const notFound = error?.code === 'NOT_FOUND';
     return (
       <div className="mx-auto max-w-5xl">
-        <h1 className="text-2xl font-bold">{notFound ? 'Quote not found' : 'Quote'}</h1>
+        <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+          {notFound ? 'Quote not found' : 'Quote'}
+        </h1>
         <div className="mt-6">
           {notFound ? (
             <EmptyState
               title="We could not find that quote"
               action={
-                <Link to="/quotes" className="font-semibold text-brand underline">
+                <Link
+                  to="/quotes"
+                  className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+                >
                   Back to all quotes
                 </Link>
               }

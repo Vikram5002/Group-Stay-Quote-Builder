@@ -26,14 +26,14 @@ export function DataTable<T>({
     <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
       <table className="w-full border-collapse text-left text-sm">
         <caption className="sr-only">{caption}</caption>
-        <thead className="border-b border-border bg-surface-muted/70">
+        <thead className="border-b border-border">
           <tr>
             {columns.map((c) => (
               <th
                 key={c.header}
                 scope="col"
                 className={cn(
-                  'px-4 py-3 text-xs font-semibold tracking-wide whitespace-nowrap text-ink-muted uppercase',
+                  'px-4 py-3 text-[0.72rem] font-medium tracking-wide whitespace-nowrap text-ink-muted uppercase',
                   c.numeric && 'text-right',
                 )}
               >
@@ -46,7 +46,7 @@ export function DataTable<T>({
           {rows.map((row) => (
             <tr
               key={rowKey(row)}
-              className="border-t border-border first:border-t-0 hover:bg-brand-soft/40"
+              className="border-t border-border/70 transition-colors first:border-t-0 hover:bg-surface-muted/60"
             >
               {columns.map((c) => (
                 <td

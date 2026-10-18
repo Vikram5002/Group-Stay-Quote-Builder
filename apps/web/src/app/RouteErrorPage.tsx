@@ -14,14 +14,19 @@ export function RouteErrorPage() {
       : String(error);
   return (
     <div className="mx-auto max-w-5xl p-4">
-      <h1 className="text-2xl font-bold">Something went wrong</h1>
+      <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+        Something went wrong
+      </h1>
       <div className="mt-6">
         <EmptyState
           title="This screen could not be shown"
           action={
             <span className="flex flex-wrap items-center justify-center gap-4">
               <Button onClick={() => window.location.reload()}>Reload the page</Button>
-              <Link to="/" className="font-semibold text-brand underline">
+              <Link
+                to="/"
+                className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+              >
                 Go to the dashboard
               </Link>
             </span>

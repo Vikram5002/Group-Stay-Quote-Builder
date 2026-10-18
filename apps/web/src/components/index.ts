@@ -17,4 +17,5 @@ export { Count, Money, Unknown } from './Unknown';
 export { HotelScene } from './HotelScene';
 export { Icon } from './Icon';
 export { Logo } from './Logo';
+export { CountUp, ProgressRing, prefersReducedMotion } from './Motion';
 export type { IconName } from './Icon';

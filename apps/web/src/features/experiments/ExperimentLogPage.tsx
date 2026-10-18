@@ -101,7 +101,9 @@ export function ExperimentLogPage({ store = browserStore }: { store?: Experiment
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold">Experiment log</h1>
+      <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+        Experiment log
+      </h1>
       <p className="mt-1 text-ink-muted">
         Growth experiment records: who was approached, by which channel, how they responded and how
         far it went.

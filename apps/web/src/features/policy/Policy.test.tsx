@@ -68,6 +68,30 @@ describe('policy screen', () => {
     expect(save()).toBeDisabled();
   });
 
+  it('says what a change does before it is saved', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    expect(await screen.findByText(/How long rooms stay held .* Now 3 days\./)).toBeInTheDocument();
+    await setValue(u, /Max Sales discount/, '15');
+    const before = screen
+      .getByRole('heading', { name: 'Before you save' })
+      .closest('section') as HTMLElement;
+    expect(within(before).getByText('Max Sales discount: 10 to 15')).toBeInTheDocument();
+    expect(
+      within(before).getByText('Lowest price Sales can give alone: ₹1,800 to ₹1,700'),
+    ).toBeInTheDocument();
+    await setValue(u, /Quote validity/, '30');
+    expect(screen.getByText(/How long rooms stay held .* Now 1 day 6 hours\./)).toBeInTheDocument();
+  });
+
+  it('shows the time in the chosen zone, to check it', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    expect(await screen.findByText(/It is now .* there\./)).toBeInTheDocument();
+    await setValue(u, /Time zone/, 'Mars/Olympus');
+    expect(screen.getByText('A time zone name such as Asia/Kolkata.')).toBeInTheDocument();
+  });
+
   it('saves a change, bumps the version and lists what changed', async () => {
     const u = userEvent.setup();
     renderPage();
@@ -210,7 +234,7 @@ describe('policy screen', () => {
 
   it('is honest that change history lasts only for the visit', async () => {
     renderPage();
-    expect(await screen.findByText(/does not keep a policy history yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/Changes you save are listed here/)).toBeInTheDocument();
   });
 
   it('has no accessibility violations', async () => {

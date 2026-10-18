@@ -240,6 +240,52 @@ describe('approving and rejecting', () => {
     expect(link).toHaveAttribute('href', `/review?quote=${quote.quote_id}`);
   });
 
+  it('says so when a linked quote is no longer waiting, and shows the queue', async () => {
+    const waiting = await seed({ organiser: { name: 'Still Waiting' } });
+    const gone = await seed({
+      organiser: { name: 'Gone Group' },
+      stay: { check_in: '2026-11-04', nights: 2 },
+    });
+    await clientFor('asha', 'Sales').cancelQuote(
+      gone.quote_id,
+      {},
+      {
+        idempotencyKey: newIdempotencyKey(),
+      },
+    );
+    renderQueue('Owner', 'Meera', `/review?quote=${gone.quote_id}`);
+    expect(
+      await screen.findByText('That quote is no longer waiting for review'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open it to see what happened' })).toHaveAttribute(
+      'href',
+      `/quotes/${gone.quote_id}`,
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Still Waiting' })).toBeInTheDocument();
+    expect(waiting.status).toBe('PENDING_REVIEW');
+  });
+
+  it('sorts by how far below the floor, and focuses the quote chosen', async () => {
+    await seed({ organiser: { name: 'Small Gap' } });
+    await seed({
+      organiser: { name: 'Big Gap' },
+      stay: { check_in: '2026-11-04', nights: 2 },
+      rate_per_room_night_inr: 1400,
+    });
+    const u = userEvent.setup();
+    renderQueue();
+    const queue = await screen.findByRole('navigation', { name: 'Quotes awaiting review' });
+    expect(screen.getByText('2 quotes are waiting')).toBeInTheDocument();
+    await u.selectOptions(screen.getByLabelText('Sort'), 'shortfall');
+    const buttons = within(queue).getAllByRole('button');
+    expect(buttons[0]).toHaveTextContent('Big Gap');
+    expect(buttons[0]).toHaveTextContent(/below the floor/);
+
+    await u.click(buttons[1] as HTMLElement);
+    expect(screen.getByRole('heading', { level: 2, name: 'Small Gap' })).toHaveFocus();
+    expect(screen.getByText(/₹1,700 per room-night, a fixed rate/)).toBeInTheDocument();
+  });
+
   it('has no accessibility violations', async () => {
     await seed();
     const { container } = renderQueue();

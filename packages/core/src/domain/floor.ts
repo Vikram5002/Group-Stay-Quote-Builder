@@ -28,6 +28,15 @@ export function discountedRate(policy: FloorPolicy, discountPct: number): number
 }
 
 /**
+ * Rate after a discount in whole rupees off the floor rate, never below 0. Example: 200 off 2000
+ * = 1800. The owner's limit is still a percentage, so 200 off 2000 is exactly the 10% limit.
+ */
+export function amountOffRate(policy: FloorPolicy, discountInr: number): number {
+  assertInt('discount_inr', discountInr, 0);
+  return Math.max(0, floorRate(policy) - discountInr);
+}
+
+/**
  * Lowest rate Sales may agree to without owner review: the floor rate less the owner's maximum
  * Sales discount. Example: 2000 less 10% = 1800.
  */

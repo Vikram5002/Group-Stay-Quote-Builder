@@ -11,17 +11,20 @@ import { PolicyPage } from '../features/policy/PolicyPage';
 import { ReviewQueuePage } from '../features/review/ReviewQueuePage';
 import { QuoteDetailPage } from '../features/quotes/QuoteDetailPage';
 import { QuoteBuilderRoute } from '../features/quotes/QuoteBuilderRoute';
+import { QuotesPage } from '../features/quotes/QuotesPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { AppShell } from './AppShell';
 import { RequireAuthOrLanding } from './RequireAuthOrLanding';
 import { RequireRole } from './RequireRole';
 import { NotFoundPage } from './NotFoundPage';
 import { PlaceholderPage } from './PlaceholderPage';
+import { RouteErrorPage } from './RouteErrorPage';
 import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 
 /** Screens that are built. Everything else shows a placeholder until its work package lands. */
 const SCREENS: Record<string, ReactNode> = {
   '/': <DashboardPage />,
+  '/quotes': <QuotesPage />,
   '/quotes/new': <QuoteBuilderRoute />,
   '/review': <ReviewQueuePage />,
   '/availability': <AvailabilityPage />,
@@ -32,24 +35,31 @@ const SCREENS: Record<string, ReactNode> = {
 };
 
 export const routes: RouteObject[] = [
-  { path: '/sign-in', element: <SignInPage /> },
+  { path: '/sign-in', element: <SignInPage />, errorElement: <RouteErrorPage /> },
   {
     element: <RequireAuthOrLanding />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         element: <AppShell />,
         children: [
-          ...NAV_ITEMS.map((item) => ({
-            path: item.path,
-            element: (
-              <RequireRole roles={item.roles}>
-                {SCREENS[item.path] ?? <PlaceholderPage item={item} />}
-              </RequireRole>
-            ),
-          })),
-          { path: '/quotes/:quoteId', element: <QuoteDetailPage /> },
-          { path: DESIGN_SYSTEM_PATH, element: <DesignSystemPage /> },
-          { path: '*', element: <NotFoundPage /> },
+          {
+            // A screen that fails shows the error inside the shell, so the menu still works.
+            errorElement: <RouteErrorPage />,
+            children: [
+              ...NAV_ITEMS.map((item) => ({
+                path: item.path,
+                element: (
+                  <RequireRole roles={item.roles}>
+                    {SCREENS[item.path] ?? <PlaceholderPage item={item} />}
+                  </RequireRole>
+                ),
+              })),
+              { path: '/quotes/:quoteId', element: <QuoteDetailPage /> },
+              { path: DESIGN_SYSTEM_PATH, element: <DesignSystemPage /> },
+              { path: '*', element: <NotFoundPage /> },
+            ],
+          },
         ],
       },
     ],

@@ -24,8 +24,9 @@ test.describe('rubric flows', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Hold countdown' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Confirm quote' }).click();
-    await expect(page.getByRole('button', { name: 'Confirm quote' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Confirm booking…' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirm booking' }).click();
+    await expect(page.getByRole('button', { name: 'Confirm booking…' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Audit timeline' })).toBeVisible();
 
     await goTo(page, 'Availability');
@@ -65,8 +66,8 @@ test.describe('rubric flows', () => {
     await expect(page.getByText(/Over the limit: owner review/).first()).toBeVisible();
     await issueQuote(page, 'Send for Owner review');
 
-    await expect(page.getByText('Waiting for Owner approval')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Confirm quote' })).toHaveCount(0);
+    await expect(page.getByText(/must approve it before it can be confirmed/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm booking…' })).toHaveCount(0);
     await signOut(page);
 
     // The creator cannot approve their own quote, even as an Owner.
@@ -98,8 +99,9 @@ test.describe('rubric flows', () => {
 
     await signIn(page, 'Ravi', 'Sales');
     await page.getByRole('link', { name: 'Discount Group' }).first().click();
-    await page.getByRole('button', { name: 'Confirm quote' }).click();
-    await expect(page.getByRole('button', { name: 'Confirm quote' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Confirm booking…' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirm booking' }).click();
+    await expect(page.getByRole('button', { name: 'Confirm booking…' })).toHaveCount(0);
     await expect(page.getByText('Approved by meera')).toBeVisible();
   });
 });

@@ -20,9 +20,13 @@ export function useQuoteAudit(id: string) {
 }
 
 /** One page of recent quotes, enough for the dashboard (the API caps a page at 100). */
-export function useQuoteList() {
+export function useQuoteList(enabled = true) {
   const api = useApi();
-  return useQuery({ queryKey: QUOTES_KEY, queryFn: () => api.listQuotes({ limit: '100' }) });
+  return useQuery({
+    queryKey: QUOTES_KEY,
+    queryFn: () => api.listQuotes({ limit: '100' }),
+    enabled,
+  });
 }
 
 /** Current time, refreshed on an interval so countdowns tick without a reload. */

@@ -54,7 +54,7 @@ export function reviewBadge(state: ReviewState): { tone: Tone; label: string } |
 export interface ReviewBanner {
   tone: 'success' | 'info' | 'warning' | 'danger';
   title: string;
-  /** The approval, in words, when there is one. */
+  /** A line under the reasons: the approval in words, or who must approve. */
   note?: string;
 }
 
@@ -62,7 +62,11 @@ export interface ReviewBanner {
 export function reviewBanner(quote: Quote, state = reviewState(quote)): ReviewBanner | null {
   switch (state.kind) {
     case 'pending':
-      return { tone: 'warning', title: 'Owner review required' };
+      return {
+        tone: 'warning',
+        title: 'Owner review required',
+        note: 'An Owner who did not create this quote must approve it before it can be confirmed.',
+      };
     case 'approved':
       return {
         tone: 'success',

@@ -1,4 +1,13 @@
-import { formatCount, formatCountdown, formatInr, formatIst, UNKNOWN_LABEL } from './format';
+import {
+  formatCount,
+  formatCountdown,
+  formatDate,
+  formatDateShort,
+  formatInr,
+  formatIst,
+  formatStay,
+  UNKNOWN_LABEL,
+} from './format';
 
 describe('formatters', () => {
   it('formats rupees with Indian grouping', () => {
@@ -30,5 +39,22 @@ describe('formatters', () => {
     expect(formatCountdown('2026-11-01T02:05:00Z', now)).toBe('2h 05m left');
     expect(formatCountdown('2026-11-03T05:00:00Z', now)).toBe('2d 5h left');
     expect(formatCountdown('2026-10-31T23:59:00Z', now)).toBe('Expired');
+  });
+});
+
+describe('calendar dates', () => {
+  it('show the weekday and never shift with the time zone', () => {
+    expect(formatDate('2026-11-01')).toBe('Sun 01 Nov 2026');
+    expect(formatDateShort('2026-11-03')).toBe('Tue 03 Nov');
+    expect(formatStay('2026-11-01', '2026-11-03')).toBe('Sun 01 Nov 2026 to Tue 03 Nov 2026');
+  });
+
+  it('keep text that is not a date, and an absent date is Unknown', () => {
+    expect(formatDate('soon')).toBe('soon');
+    expect(formatDate(null)).toBe(UNKNOWN_LABEL);
+  });
+
+  it('group large counts the Indian way', () => {
+    expect(formatCount(123456)).toBe('1,23,456');
   });
 });

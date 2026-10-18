@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import type { Role } from '@c32/core';
 import { EmptyState } from '../components';
 import { useAuth } from '../features/auth/auth';
@@ -17,7 +18,14 @@ export function RequireRole({
     <div className="mx-auto max-w-5xl">
       <h1 className="text-2xl font-bold">Not allowed</h1>
       <div className="mt-6">
-        <EmptyState title="Your role cannot open this screen">
+        <EmptyState
+          title="Your role cannot open this screen"
+          action={
+            <Link to="/" className="font-semibold text-brand underline">
+              Back to the dashboard
+            </Link>
+          }
+        >
           This screen is for {roles.join(' or ')}. You are signed in as{' '}
           {session?.user.role ?? 'nobody'}. Ask an Owner, or sign in with a different role.
         </EmptyState>

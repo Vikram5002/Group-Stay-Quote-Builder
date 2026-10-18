@@ -1,5 +1,5 @@
 import { LIMITS, parseWith, pastCheckInIssue, PROPERTY_ROOM_TYPES, QuoteRequest } from '@c32/core';
-import type { INCLUSION_BASES, InclusionInput, ValidationIssue } from '@c32/core';
+import type { INCLUSION_BASES, InclusionInput, Quote, ValidationIssue } from '@c32/core';
 
 export type InclusionBasisValue = (typeof INCLUSION_BASES)[number];
 
@@ -27,22 +27,31 @@ export interface LineForm {
 export interface QuoteForm {
   organiser: string;
   reference: string;
-  /** Where the quote and invoice PDFs go; optional. */
+  /** Who the quotation is addressed to; all optional. */
+  contactName: string;
+  /** Where the quote and invoice PDFs go. */
   email: string;
+  phone: string;
   checkIn: string;
   nights: string;
   roomType: string;
   rooms: string;
   /** More blocks of rooms, for example 3 more rooms for one extra night. */
   extraLines: LineForm[];
-  /** Discount off the full price (the floor rate), whole percent. Blank means none. */
+  /** Discount off the full price (the floor rate). Blank means none. */
   discount: string;
+  /** Whether the discount is whole percent or whole rupees per room-night. */
+  discountKind: DiscountKind;
   /** A fixed rate instead of a discount; blank means "use the discount". */
   rate: string;
   /** Blank means "use the policy default". */
   guests: string;
   inclusions: InclusionForm[];
+  /** For the Owner when the quote needs review. Sent with the final request only. */
+  noteForOwner: string;
 }
+
+export type DiscountKind = 'pct' | 'inr';
 
 /** The room types on sale: the same list the import check accepts. */
 export const ROOM_TYPES = PROPERTY_ROOM_TYPES;
@@ -50,16 +59,20 @@ export const ROOM_TYPES = PROPERTY_ROOM_TYPES;
 export const initialForm: QuoteForm = {
   organiser: '',
   reference: '',
+  contactName: '',
   email: '',
+  phone: '',
   checkIn: '',
   nights: '2',
   roomType: 'standard',
   rooms: '10',
   extraLines: [],
   discount: '0',
+  discountKind: 'pct',
   rate: '',
   guests: '',
   inclusions: [],
+  noteForOwner: '',
 };
 
 export const STEPS = [
@@ -73,7 +86,13 @@ export const STEPS = [
 const STEP_PATHS: ReadonlyArray<readonly string[]> = [
   ['organiser', 'stay'],
   ['room_type', 'rooms', 'additional_lines'],
-  ['discount_pct', 'rate_per_room_night_inr', 'guests_per_room_units', 'inclusions'],
+  [
+    'discount_pct',
+    'discount_inr',
+    'rate_per_room_night_inr',
+    'guests_per_room_units',
+    'inclusions',
+  ],
   [],
 ];
 
@@ -96,6 +115,50 @@ export function newInclusion(): InclusionForm {
   };
 }
 
+/**
+ * A form filled from a saved quote, to re-quote it: the same group, dates, rooms, price and
+ * inclusions, with any changes on top (for example a suggested rate).
+ */
+export function formFromQuote(quote: Quote, changes: Partial<QuoteForm> = {}): QuoteForm {
+  const r = quote.request;
+  const text = (n: number | undefined) => (n === undefined ? '' : String(n));
+  const pricing: Pick<QuoteForm, 'discount' | 'discountKind' | 'rate'> =
+    r.rate_per_room_night_inr !== undefined
+      ? { discount: '0', discountKind: 'pct', rate: String(r.rate_per_room_night_inr) }
+      : r.discount_inr !== undefined
+        ? { discount: String(r.discount_inr), discountKind: 'inr', rate: '' }
+        : { discount: text(r.discount_pct) || '0', discountKind: 'pct', rate: '' };
+  return {
+    ...initialForm,
+    organiser: r.organiser.name,
+    reference: r.organiser.reference ?? '',
+    contactName: r.organiser.contact_name ?? '',
+    email: r.organiser.email ?? '',
+    phone: r.organiser.phone ?? '',
+    checkIn: quote.evaluation.check_in,
+    nights: String(quote.evaluation.nights),
+    roomType: r.room_type,
+    rooms: String(r.rooms),
+    extraLines: (r.additional_lines ?? []).map((l) => ({
+      ...newLine(l.stay.check_in),
+      nights: text(l.stay.nights),
+      rooms: String(l.rooms),
+    })),
+    ...pricing,
+    guests: text(r.guests_per_room_units),
+    inclusions: (r.inclusions ?? []).map((inc) => ({
+      id: newInclusion().id,
+      name: inc.name,
+      basis: inc.basis,
+      unitCost: inc.unit_cost_inr === null ? '' : String(inc.unit_cost_inr),
+      costUnknown: inc.unit_cost_inr === null,
+      includedInRate: inc.included_in_rate,
+      price: text(inc.price_inr),
+    })),
+    ...changes,
+  };
+}
+
 const num = (text: string): number => (text.trim() === '' ? Number.NaN : Number(text));
 
 function inclusionRequest(inc: InclusionForm): InclusionInput {
@@ -115,7 +178,9 @@ export function toRequest(form: QuoteForm): unknown {
     organiser: {
       name: form.organiser,
       ...(form.reference.trim() ? { reference: form.reference } : {}),
+      ...(form.contactName.trim() ? { contact_name: form.contactName } : {}),
       ...(form.email.trim() ? { email: form.email.trim() } : {}),
+      ...(form.phone.trim() ? { phone: form.phone } : {}),
     },
     stay: {
       check_in: form.checkIn,
@@ -124,9 +189,12 @@ export function toRequest(form: QuoteForm): unknown {
     room_type: form.roomType,
     rooms: num(form.rooms),
   };
-  // A fixed rate wins; otherwise Sales prices by a discount off the full price (D-057).
+  // A fixed rate wins; otherwise Sales prices by a discount off the full price (D-057), in %
+  // or in rupees per room-night.
   if (form.rate.trim() !== '') request.rate_per_room_night_inr = num(form.rate);
-  else if (form.discount.trim() !== '') request.discount_pct = num(form.discount);
+  else if (form.discount.trim() !== '') {
+    request[form.discountKind === 'inr' ? 'discount_inr' : 'discount_pct'] = num(form.discount);
+  }
   if (form.guests.trim() !== '') request.guests_per_room_units = num(form.guests);
   if (form.inclusions.length > 0) request.inclusions = form.inclusions.map(inclusionRequest);
   if (form.extraLines.length > 0) {

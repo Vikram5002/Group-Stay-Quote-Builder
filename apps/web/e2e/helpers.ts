@@ -26,7 +26,14 @@ export async function signIn(page: Page, name: string, role: 'Sales' | 'Owner' |
  * Signing out from the dashboard lands on the front page, from anywhere else on the sign-in page.
  * Either way this ends on the sign-in page, ready for the next person.
  */
+/** On a phone the menu (with Sign out) is behind the Menu button; open it if it is closed. */
+async function openMenu(page: Page) {
+  const button = page.getByRole('button', { name: 'Menu', exact: true });
+  if (await button.isVisible()) await button.click();
+}
+
 export async function signOut(page: Page) {
+  await openMenu(page);
   await page.getByRole('button', { name: 'Sign out' }).click();
   const front = page.getByRole('heading', {
     level: 1,
@@ -43,10 +50,12 @@ export async function signOut(page: Page) {
 }
 
 export async function goTo(page: Page, menuName: string, heading = menuName) {
-  await page
-    .getByRole('navigation', { name: 'Primary' })
-    .getByRole('link', { name: menuName })
-    .click();
+  await openMenu(page);
+  const menu = page.getByRole('navigation', { name: 'Primary' });
+  // Project pages (Evidence, Experiment log, Design system) sit in a closed section.
+  const link = menu.getByRole('link', { name: menuName }).first();
+  if (!(await link.isVisible())) await menu.getByText('About this project').click();
+  await link.click();
   await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
 }
 

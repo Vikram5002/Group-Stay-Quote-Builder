@@ -6,7 +6,7 @@ import { sellableRooms, type Availability } from './availability.js';
 import { counterOffers } from './counter-offers.js';
 import { decide, planRooms, type DecisionOutcome, type RoomPlan } from './decision.js';
 import { inclusionExtras } from './inclusions.js';
-import { floorPasses } from './floor.js';
+import { amountOffRate, discountedRate, floorPasses, floorRate } from './floor.js';
 import { sumKnown } from './money.js';
 import {
   NO_EXTRAS,
@@ -20,7 +20,6 @@ import {
   type TotalsBase,
 } from './pricing.js';
 import { roomsByNight, spanDates, type ResolvedQuoteRequest } from './request.js';
-import { discountedRate } from './floor.js';
 import { formatInZone } from './timezone.js';
 import { unknownPricingReasons } from './unknowns.js';
 import { computeValidity, type Validity } from './validity.js';
@@ -117,7 +116,7 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Evaluati
     stay.nights,
     request.room_type,
     ctx.ratePlan,
-    // Sales gives a discount off the floor rate (D-057); otherwise an explicit rate or the plan.
+    // Sales gives a discount off the floor rate (D-057), in % or ₹; otherwise a rate or the plan.
     overrideRate(request, policy),
   );
   const extras = plan.final === null ? extrasFor(request, plan.offered_rooms, policy) : NO_EXTRAS;
@@ -140,7 +139,7 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Evaluati
   } else {
     trail.push(availabilityLine(request, availability, plan));
   }
-  if (plan.final === null) trail.push(...pricing.trail);
+  if (plan.final === null) trail.push(...amountOffLine(request, policy), ...pricing.trail);
   trail.push(decisionLine(outcome));
 
   return {
@@ -185,9 +184,18 @@ export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext):
 
 /** The rate every night is priced at: a Sales discount, an explicit rate, or the plan. */
 function overrideRate(request: ResolvedQuoteRequest, policy: Policy): number | undefined {
-  return request.discount_pct === undefined
-    ? request.rate_per_room_night_inr
-    : discountedRate(policy, request.discount_pct);
+  if (request.discount_pct !== undefined) return discountedRate(policy, request.discount_pct);
+  if (request.discount_inr !== undefined) return amountOffRate(policy, request.discount_inr);
+  return request.rate_per_room_night_inr;
+}
+
+/** The trail line for a discount given in rupees, so the rate it gives is shown. */
+function amountOffLine(request: ResolvedQuoteRequest, policy: Policy): string[] {
+  return request.discount_inr === undefined
+    ? []
+    : [
+        `discount ${request.discount_inr} off the full price ${floorRate(policy)} = rate ${amountOffRate(policy, request.discount_inr)}`,
+      ];
 }
 
 /**
@@ -245,6 +253,7 @@ function assessLines(request: ResolvedQuoteRequest, ctx: EvaluationContext): Eva
   const allNights: NightPrice[] = [];
   const parts: TotalsBase[] = [];
   if (plan.final === null) {
+    trail.push(...amountOffLine(request, policy));
     lines.forEach((line, i) => {
       const nights = nightsFromRatePlan(
         line.stay.check_in,

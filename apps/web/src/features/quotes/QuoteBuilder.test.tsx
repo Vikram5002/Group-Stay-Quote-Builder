@@ -178,7 +178,7 @@ describe('quote builder: several blocks of rooms (D-058)', () => {
 
     await u.click(screen.getByRole('button', { name: 'Issue quote' }));
     expect(
-      await screen.findByText(/3 rooms, 2026-11-01 to 2026-11-05 \(4 nights\)/),
+      await screen.findByText(/3 rooms, Sun 01 Nov 2026 to Thu 05 Nov 2026 \(4 nights\)/),
     ).toBeInTheDocument();
     const nov4 = store.inventory.find((r) => r.date === '2026-11-04' && r.room_type === 'standard');
     const nov1 = store.inventory.find((r) => r.date === '2026-11-01' && r.room_type === 'standard');
@@ -420,12 +420,19 @@ describe('quote builder: the live meter names the decision', () => {
     renderBuilder();
     await fillGroup(u);
     await next(u);
+    expect(
+      await screen.findByText(/No Standard rooms are free on Sun 01 Nov, Mon 02 Nov\./),
+    ).toBeInTheDocument();
     await u.clear(screen.getByLabelText(/^Rooms/));
     await u.type(screen.getByLabelText(/^Rooms/), '5');
     await next(u);
     await next(u);
 
     expect(await screen.findByText('This request cannot be offered')).toBeInTheDocument();
+    // The issue button says why it cannot be used.
+    expect(screen.getByRole('button', { name: 'Issue quote' })).toHaveAccessibleDescription(
+      'Nothing can be offered for this request. Change the dates, rooms or room type.',
+    );
     await waitFor(() =>
       expect(within(meter()).getByText('Cannot offer: no rooms available')).toBeInTheDocument(),
     );
@@ -438,6 +445,9 @@ describe('quote builder: the live meter names the decision', () => {
     await u.type(screen.getByLabelText(/Organiser name/), 'Winter Group');
     await u.type(screen.getByLabelText(/Check-in date/), '2026-12-20');
     await next(u);
+    expect(
+      await screen.findByText(/Standard rooms are not on sale on Sun 20 Dec, Mon 21 Dec/),
+    ).toBeInTheDocument();
     await next(u);
     await next(u);
 
@@ -448,6 +458,114 @@ describe('quote builder: the live meter names the decision', () => {
       ).toBeInTheDocument(),
     );
     expect(within(meter()).queryByText(/review required/)).not.toBeInTheDocument();
+  });
+});
+
+describe('quote builder: help while filling it in', () => {
+  it('shows the check-out date and the rooms free on every night', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    expect(screen.getByText('1 to 28 nights. Check-out Tue 03 Nov 2026.')).toBeInTheDocument();
+    await u.clear(screen.getByLabelText(/^Nights/));
+    await u.type(screen.getByLabelText(/^Nights/), '3');
+    expect(screen.getByText('1 to 28 nights. Check-out Wed 04 Nov 2026.')).toBeInTheDocument();
+    await u.clear(screen.getByLabelText(/^Nights/));
+    await u.type(screen.getByLabelText(/^Nights/), '2');
+    await next(u);
+
+    expect(
+      await screen.findByText(/^Up to 10 Standard rooms free on every night of this stay\./),
+    ).toBeInTheDocument();
+    await u.clear(screen.getByLabelText(/^Rooms/));
+    await u.type(screen.getByLabelText(/^Rooms/), '12');
+    expect(screen.getByText(/Asking for 12 gives a partial offer of 10\./)).toBeInTheDocument();
+  });
+
+  it('shows the full price, the Sales limit and the price a discount gives', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    expect(
+      await screen.findByText(
+        'Full price ₹2,000 per room-night. Sales can give up to 10% off (down to ₹1,800) alone; a lower price goes to an Owner.',
+      ),
+    ).toBeInTheDocument();
+    const discount = screen.getByLabelText('Discount off full price (%)');
+    await u.clear(discount);
+    await u.type(discount, '10');
+    expect(
+      await screen.findByText('Price: ₹2,000 full price, 10% off = ₹1,800 per room-night'),
+    ).toBeInTheDocument();
+  });
+
+  it('adds a common inclusion in one click', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    await u.click(screen.getByRole('button', { name: 'Add breakfast' }));
+    expect(screen.getByLabelText(/Inclusion 1 name/)).toHaveValue('Breakfast');
+    expect(screen.getByLabelText('Charged')).toHaveValue('per_guest_night');
+    // Not offered twice.
+    expect(screen.queryByRole('button', { name: 'Add breakfast' })).not.toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Add parking' }));
+    expect(screen.getByLabelText(/Inclusion 2 name/)).toHaveValue('Parking');
+  });
+
+  it('lists what to fix above the form, and each item goes to its field', async () => {
+    const u = user();
+    renderBuilder();
+    await next(u);
+    const summary = screen.getByRole('alert');
+    expect(within(summary).getByText('Check 2 fields to continue')).toBeInTheDocument();
+    expect(summary.parentElement).toHaveFocus();
+    await u.click(within(summary).getByRole('button', { name: 'Organiser name: Enter a name' }));
+    expect(screen.getByLabelText(/Organiser name/)).toHaveFocus();
+
+    await fillGroup(u);
+    expect(screen.queryByText(/to continue$/)).not.toBeInTheDocument();
+  });
+
+  it('checks the details on the last step, with a way back to each part', async () => {
+    const u = user();
+    renderBuilder();
+    await toReview(u, { rooms: '8' });
+    const details = (await screen.findByRole('heading', { name: 'Check the details' })).closest(
+      'section',
+    ) as HTMLElement;
+    expect(within(details).getByText('Fictional Events Pvt Ltd')).toBeInTheDocument();
+    expect(
+      within(details).getByText('Sun 01 Nov 2026 to Tue 03 Nov 2026 (2 nights)'),
+    ).toBeInTheDocument();
+    expect(within(details).getByText('8 Standard rooms')).toBeInTheDocument();
+
+    await u.click(within(details).getByRole('button', { name: 'Edit rooms and type' }));
+    expect(await screen.findByRole('heading', { name: 'Rooms and type' })).toBeInTheDocument();
+    // The stepper opens a finished step too.
+    await u.click(screen.getByRole('button', { name: /Group and dates/ }));
+    expect(await screen.findByRole('heading', { name: 'Group and dates' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Fictional Events Pvt Ltd');
+  });
+
+  it('starts over after a confirm, clearing the form and the draft', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await u.click(screen.getByRole('button', { name: 'Start over' }));
+    await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Fictional Events Pvt Ltd');
+
+    await u.click(screen.getByRole('button', { name: 'Start over' }));
+    await u.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Clear everything' }),
+    );
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('');
+    expect(sessionStorage.getItem('c32.quote-draft')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Start over' })).not.toBeInTheDocument();
   });
 });
 
@@ -480,6 +598,163 @@ describe('quote builder: check-in dates', () => {
     await waitFor(() =>
       expect(within(meter()).getByText('Cannot offer: too late to quote')).toBeInTheDocument(),
     );
+  });
+});
+
+describe('quote builder: a discount in rupees, the contact and a note for the Owner', () => {
+  async function toPricing(u: ReturnType<typeof user>) {
+    await u.type(screen.getByLabelText(/Organiser name/), 'Fictional Events Pvt Ltd');
+    await u.type(screen.getByLabelText(/Contact person/), 'Priya Rao');
+    await u.type(screen.getByLabelText(/Email/), 'priya@fictional.example');
+    await u.type(screen.getByLabelText(/Phone/), '+91 98765 43210');
+    await u.type(screen.getByLabelText(/Check-in date/), '2026-11-01');
+    await next(u);
+    await next(u);
+    await u.click(screen.getByRole('radio', { name: '₹ per room-night' }));
+  }
+  const discount = () => screen.getByLabelText('Discount off full price (₹ per room-night)');
+
+  it('₹200 off the ₹2,000 full price is the 10% limit: a clean offer with the contact kept', async () => {
+    const u = user();
+    renderBuilder();
+    await toPricing(u);
+    await u.clear(discount());
+    await u.type(discount(), '200');
+    await next(u);
+
+    expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Note for the Owner' })).not.toBeInTheDocument();
+    const issue = screen.getByRole('button', { name: 'Issue quote' });
+    await waitFor(() => expect(issue).toBeEnabled());
+    await u.click(issue);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    const saved = [...store.quotes.values()][0];
+    expect(saved?.request).toMatchObject({
+      discount_inr: 200,
+      organiser: {
+        contact_name: 'Priya Rao',
+        email: 'priya@fictional.example',
+        phone: '+91 98765 43210',
+      },
+    });
+    expect(screen.getByText('₹2,000 full price, ₹200 off = ₹1,800 per room-night')).toBeVisible();
+    expect(screen.getByText('Priya Rao')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'priya@fictional.example' })).toHaveAttribute(
+      'href',
+      'mailto:priya@fictional.example',
+    );
+    expect(screen.getByRole('link', { name: '+91 98765 43210' })).toHaveAttribute(
+      'href',
+      'tel:+919876543210',
+    );
+  });
+
+  it('₹201 off needs the Owner, and the note for the Owner is sent with it', async () => {
+    const u = user();
+    renderBuilder();
+    await toPricing(u);
+    await u.clear(discount());
+    await u.type(discount(), '201');
+    await next(u);
+
+    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    await u.type(
+      screen.getByLabelText(/Why these terms/),
+      'Repeat client; they book every quarter.',
+    );
+    const send = screen.getByRole('button', { name: 'Send for Owner review' });
+    await waitFor(() => expect(send).toBeEnabled());
+    await u.click(send);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    expect([...store.quotes.values()][0]?.request.note_for_owner).toBe(
+      'Repeat client; they book every quarter.',
+    );
+    expect(screen.getByText('Repeat client; they book every quarter.')).toBeVisible();
+  });
+});
+
+describe('quote builder: compare two options and issue the one chosen', () => {
+  const compareTable = () => screen.getByRole('table', { name: 'The options side by side' });
+  const column = (label: string) => {
+    const cells = within(compareTable()).getAllByRole('row');
+    const index = within(cells[0] as HTMLElement)
+      .getAllByRole('columnheader')
+      .findIndex((h) => h.textContent === label);
+    return (row: string) => {
+      const tr = cells.find((r) => within(r).queryByRole('rowheader', { name: row }));
+      const td = within(tr as HTMLElement)
+        .getAllByRole('cell')
+        [index]?.cloneNode(true) as HTMLElement;
+      // Badge icons are decoration, hidden from screen readers; read the cell as they do.
+      td.querySelectorAll('[aria-hidden="true"]').forEach((el) => el.remove());
+      return td.textContent ?? '';
+    };
+  };
+
+  /** Option A at full price, then Option B with 15% off, both compared on the last step. */
+  async function compareFullPriceWith15Off(u: ReturnType<typeof user>) {
+    await toReview(u, {});
+    expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Compare with another option' }));
+    expect(await screen.findByRole('heading', { name: 'Pricing' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Option B' })).toBeChecked();
+    const discount = screen.getByLabelText('Discount off full price (%)');
+    await u.clear(discount);
+    await u.type(discount, '15');
+    await next(u);
+    await waitFor(() => expect(column('Option B')('Decision')).toBe('Owner review required'));
+    await waitFor(() => expect(column('Option A')('Decision')).toBe('Ready to offer'));
+  }
+
+  it('shows both side by side, then issues only the option chosen', async () => {
+    const u = user();
+    const { container } = renderBuilder();
+    await compareFullPriceWith15Off(u);
+    expect(await axe(container)).toHaveNoViolations();
+
+    expect(column('Option A')('Total for the client')).toBe('₹40,000');
+    expect(column('Option B')('Total for the client')).toBe('₹34,000');
+    expect(column('Option B')('Price')).toBe('₹2,000 full price, 15% off = ₹1,700 per room-night');
+    expect(screen.queryByRole('button', { name: /Issue quote|Send for Owner review/ })).toBeNull();
+
+    await u.click(screen.getByRole('button', { name: 'Choose Option B' }));
+    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'The options side by side' })).toBeNull();
+    const send = screen.getByRole('button', { name: 'Send for Owner review' });
+    await waitFor(() => expect(send).toBeEnabled());
+    await u.click(send);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    // Only the chosen option was issued, so no rooms were held twice.
+    expect(store.quotes.size).toBe(1);
+    expect([...store.quotes.values()][0]?.request.discount_pct).toBe(15);
+  });
+
+  it('choosing Option A issues it at full price', async () => {
+    const u = user();
+    renderBuilder();
+    await compareFullPriceWith15Off(u);
+    await u.click(screen.getByRole('button', { name: 'Choose Option A' }));
+    const issue = await screen.findByRole('button', { name: 'Issue quote' });
+    await waitFor(() => expect(issue).toBeEnabled());
+    await u.click(issue);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    expect(store.quotes.size).toBe(1);
+    expect([...store.quotes.values()][0]?.request.discount_pct).toBe(0);
+  });
+
+  it('keeps both options in the draft when the person leaves', async () => {
+    const u = user();
+    const { router } = renderBuilder();
+    await compareFullPriceWith15Off(u);
+    await act(() => router.navigate('/'));
+    const dialog = await screen.findByRole('dialog', { name: 'Leave this quote?' });
+    await u.click(within(dialog).getByRole('button', { name: 'Leave' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+
+    await act(() => router.navigate('/quotes/new'));
+    await u.click(await screen.findByRole('button', { name: 'Resume draft' }));
+    await waitFor(() => expect(column('Option B')('Decision')).toBe('Owner review required'));
+    expect(column('Option A')('Decision')).toBe('Ready to offer');
   });
 });
 

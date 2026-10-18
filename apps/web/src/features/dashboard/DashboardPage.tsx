@@ -128,15 +128,18 @@ export function DashboardPage() {
         </h2>
         <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {QUOTE_STATUSES.map((status) => (
-            <li
-              key={status}
-              className="rounded-card border border-border bg-surface p-4 shadow-card"
-            >
-              <p className="text-3xl font-bold tabular-nums">{counts[status]}</p>
-              <p className="mt-1">
-                <StatusBadge status={status} />
-              </p>
-              <span className="sr-only">{STATUS_LABEL[status]} quotes</span>
+            <li key={status}>
+              {/* Each count opens the quotes with that status. */}
+              <Link
+                to={`/quotes?status=${status}`}
+                className="block h-full rounded-card border border-border bg-surface p-4 shadow-card hover:border-brand"
+              >
+                <span className="block text-3xl font-bold tabular-nums">{counts[status]}</span>
+                <span className="mt-1 block">
+                  <StatusBadge status={status} />
+                </span>
+                <span className="sr-only">{STATUS_LABEL[status]} quotes</span>
+              </Link>
             </li>
           ))}
         </ul>
@@ -190,6 +193,9 @@ export function DashboardPage() {
           <h2 id="recent" className="text-lg font-semibold">
             Recent quotes
           </h2>
+          <Link to="/quotes" className="mr-auto ml-3 text-sm font-semibold text-brand underline">
+            View all quotes
+          </Link>
           {canCreate && (
             <Link
               to="/quotes/new"

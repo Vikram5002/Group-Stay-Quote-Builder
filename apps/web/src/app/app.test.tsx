@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider } from 'react-router-dom';
 import type { Role } from '@c32/core';
@@ -41,12 +41,48 @@ describe('app shell and routing', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute('aria-current');
   });
 
-  it('navigates by keyboard and moves focus to the main content', async () => {
+  it("navigates by keyboard and moves focus to the new screen's heading", async () => {
     const user = userEvent.setup();
     renderAt('/');
     await user.click(screen.getByRole('link', { name: 'Availability' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Availability' })).toBeInTheDocument();
-    expect(screen.getByRole('main')).toHaveFocus();
+    expect(screen.getByRole('heading', { level: 1, name: 'Availability' })).toHaveFocus();
+  });
+
+  it('groups the menu, with New quote as the main action and project pages set apart', () => {
+    renderAt('/', 'Owner');
+    const menu = screen.getByRole('navigation', { name: 'Primary' });
+    const labels = within(menu)
+      .getAllByRole('link')
+      .map((l) => l.textContent?.replace(/,.*$/, '').replace(/^\+/, ''));
+    expect(labels).toEqual([
+      'New quote',
+      'Dashboard',
+      'Quotes',
+      'Review queue',
+      'Availability',
+      'Imports and exports',
+      'Policy',
+      'Evidence',
+      'Experiment log',
+      'Design system',
+    ]);
+    expect(within(menu).getByText('About this project').closest('details')).not.toHaveAttribute(
+      'open',
+    );
+  });
+
+  it('opens and closes the menu on small screens', async () => {
+    const user = userEvent.setup();
+    renderAt('/');
+    const button = screen.getByRole('button', { name: 'Menu' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    await user.click(button);
+    expect(screen.getByRole('button', { name: 'Close menu' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await user.click(screen.getByRole('link', { name: 'Availability' }));
+    expect(screen.getByRole('button', { name: 'Menu' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('keeps the browser tab title in step with the screen', async () => {

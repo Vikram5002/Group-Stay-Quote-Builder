@@ -68,7 +68,7 @@ function pipelineCount(label: string): string {
   const item = within(section as HTMLElement)
     .getAllByRole('listitem')
     .find((li) => within(li).queryByText(label, { selector: 'span' }));
-  return (item?.querySelector('p')?.textContent ?? '').trim();
+  return (item?.querySelector('a > span')?.textContent ?? '').trim();
 }
 
 describe('dashboard', () => {
@@ -97,6 +97,11 @@ describe('dashboard', () => {
     expect(pipelineCount('Offered')).toBe('1');
     expect(pipelineCount('Pending review')).toBe('2');
     expect(pipelineCount('Confirmed')).toBe('0');
+    // Each count opens the quotes list filtered to that status.
+    expect(screen.getByRole('link', { name: /^1\s*Offered/ })).toHaveAttribute(
+      'href',
+      '/quotes?status=OFFERED',
+    );
 
     const risk = screen
       .getByRole('heading', { name: 'Contribution at risk' })

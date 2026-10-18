@@ -27,6 +27,8 @@ export interface LineForm {
 export interface QuoteForm {
   organiser: string;
   reference: string;
+  /** Where the quote and invoice PDFs go; optional. */
+  email: string;
   checkIn: string;
   nights: string;
   roomType: string;
@@ -48,6 +50,7 @@ export const ROOM_TYPES = PROPERTY_ROOM_TYPES;
 export const initialForm: QuoteForm = {
   organiser: '',
   reference: '',
+  email: '',
   checkIn: '',
   nights: '2',
   roomType: 'standard',
@@ -112,6 +115,7 @@ export function toRequest(form: QuoteForm): unknown {
     organiser: {
       name: form.organiser,
       ...(form.reference.trim() ? { reference: form.reference } : {}),
+      ...(form.email.trim() ? { email: form.email.trim() } : {}),
     },
     stay: {
       check_in: form.checkIn,

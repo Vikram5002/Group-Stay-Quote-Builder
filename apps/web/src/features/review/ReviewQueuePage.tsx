@@ -9,6 +9,7 @@ import { cn } from '../../lib/cn';
 import { useAuth } from '../auth/auth';
 import { REASON_LABEL } from '../quotes/labels';
 import { QUOTES_KEY, useNow } from '../quotes/queries';
+import type { BackState } from '../quotes/QuoteDetailPage';
 import { ReviewPanel } from './ReviewPanel';
 import type { ReviewResult } from './ReviewPanel';
 
@@ -41,6 +42,7 @@ export function ReviewQueuePage() {
         action={
           <Link
             to={`/quotes/${result.quote.quote_id}`}
+            state={{ from: { to: '/review', label: 'Review queue' } } satisfies BackState}
             className="font-semibold text-brand underline"
           >
             Open {result.quote.request.organiser.name}

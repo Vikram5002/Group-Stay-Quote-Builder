@@ -8,7 +8,10 @@ import { counted, plural } from '../../lib/plural';
 import { useAuth } from '../auth/auth';
 import { OPEN_STATUSES, STATUS_LABEL } from '../quotes/labels';
 import { useNow, useQuoteList } from '../quotes/queries';
+import type { BackState } from '../quotes/QuoteDetailPage';
 import { StatusBadge } from '../quotes/StatusBadge';
+
+const BACK: BackState = { from: { to: '/', label: 'Dashboard' } };
 
 const SOON_HOURS = 24;
 
@@ -175,7 +178,11 @@ export function DashboardPage() {
                   key={q.quote_id}
                   className="flex flex-wrap items-center justify-between gap-2 text-sm"
                 >
-                  <Link to={`/quotes/${q.quote_id}`} className="font-semibold text-brand underline">
+                  <Link
+                    to={`/quotes/${q.quote_id}`}
+                    state={BACK}
+                    className="font-semibold text-brand underline"
+                  >
                     {q.request.organiser.name}
                   </Link>
                   <span title={`UTC: ${q.valid_until}`}>
@@ -213,7 +220,11 @@ export function DashboardPage() {
             {
               header: 'Organiser',
               render: (q) => (
-                <Link to={`/quotes/${q.quote_id}`} className="font-semibold text-brand underline">
+                <Link
+                  to={`/quotes/${q.quote_id}`}
+                  state={BACK}
+                  className="font-semibold text-brand underline"
+                >
                   {q.request.organiser.name}
                 </Link>
               ),

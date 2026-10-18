@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { QUOTE_STATUSES } from '@c32/core';
 import type { Quote, QuoteStatus } from '@c32/core';
@@ -23,6 +23,7 @@ import { counted } from '../../lib/plural';
 import { useAuth } from '../auth/auth';
 import { OPEN_STATUSES, STATUS_LABEL } from './labels';
 import { clientTotal } from './pricingText';
+import type { BackState } from './QuoteDetailPage';
 import { QUOTES_KEY, useNow } from './queries';
 import { reviewBadge, reviewState } from './reviewState';
 import { StatusBadge } from './StatusBadge';
@@ -56,6 +57,7 @@ export function QuotesPage() {
   const { session } = useAuth();
   const now = useNow();
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
 
   const search = params.get('q') ?? '';
   const status = (params.get('status') ?? '') as StatusFilter;
@@ -113,7 +115,11 @@ export function QuotesPage() {
 
   const organiser = (q: Quote) => (
     <div>
-      <Link to={`/quotes/${q.quote_id}`} className="font-semibold text-brand underline">
+      <Link
+        to={`/quotes/${q.quote_id}`}
+        state={{ from: { to: `/quotes${location.search}`, label: 'Quotes' } } satisfies BackState}
+        className="font-semibold text-brand underline"
+      >
         {q.request.organiser.name}
       </Link>
       {q.request.organiser.reference && (

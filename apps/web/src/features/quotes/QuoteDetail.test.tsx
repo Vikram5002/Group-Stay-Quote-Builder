@@ -106,10 +106,20 @@ describe('quote detail', () => {
     const u = userEvent.setup();
     renderDetail(quote.quote_id);
 
-    await u.click(await screen.findByRole('button', { name: 'Confirm quote' }));
+    await u.click(await screen.findByRole('button', { name: 'Confirm booking…' }));
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('heading', { name: 'Confirm this booking?' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/10 Standard rooms, Sun 01 Nov 2026 to Tue 03 Nov 2026/),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByText('₹40,000')).toBeInTheDocument();
+    await u.click(within(dialog).getByRole('button', { name: 'Confirm booking' }));
     await waitFor(() => expect(store.quotes.get(quote.quote_id)?.status).toBe('CONFIRMED'));
     expect((await screen.findAllByText('Confirmed')).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: 'Confirm quote' })).not.toBeInTheDocument();
+    expect(await screen.findByText(/Booking confirmed/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm booking…' })).not.toBeInTheDocument();
     expect(store.events.filter((e) => e.type === 'CONFIRMED')).toHaveLength(1);
     expect(screen.queryByRole('heading', { name: 'Hold countdown' })).not.toBeInTheDocument();
   });
@@ -120,8 +130,11 @@ describe('quote detail', () => {
     const u = userEvent.setup();
     renderDetail(quote.quote_id);
 
-    await u.click(await screen.findByRole('button', { name: 'Extend validity' }));
+    await u.click(await screen.findByRole('button', { name: 'Extend validity…' }));
     const hours = screen.getByLabelText('Extra hours');
+    await u.click(screen.getByRole('button', { name: '48 hours' }));
+    expect(hours).toHaveValue(48);
+    expect(screen.getByText(/; after this, until/)).toBeInTheDocument();
     await u.clear(hours);
     await u.type(hours, '0');
     await u.click(screen.getByRole('button', { name: 'Extend' }));
@@ -134,6 +147,7 @@ describe('quote detail', () => {
     const after = store.quotes.get(quote.quote_id)?.valid_until as string;
     expect(Date.parse(after) - Date.parse(before)).toBe(24 * 3_600_000);
     expect(await screen.findByText('Validity extended')).toBeInTheDocument();
+    expect(await screen.findByText(/Rooms are now held until/)).toBeInTheDocument();
   });
 
   it("limits extra hours to the policy's validity window for an Owner", async () => {
@@ -142,7 +156,7 @@ describe('quote detail', () => {
     const u = userEvent.setup();
     renderDetail(quote.quote_id, 'Owner', 'Meera');
 
-    await u.click(await screen.findByRole('button', { name: 'Extend validity' }));
+    await u.click(await screen.findByRole('button', { name: 'Extend validity…' }));
     const dialog = screen.getByRole('dialog');
     const hours = within(dialog).getByLabelText('Extra hours');
     await waitFor(() => expect(hours).toHaveAttribute('max', '24'));
@@ -171,7 +185,7 @@ describe('quote detail', () => {
     // Sales cannot read the policy, so the server is the one that refuses.
     renderDetail(quote.quote_id);
 
-    await u.click(await screen.findByRole('button', { name: 'Extend validity' }));
+    await u.click(await screen.findByRole('button', { name: 'Extend validity…' }));
     const dialog = screen.getByRole('dialog');
     const hours = within(dialog).getByLabelText('Extra hours');
     await u.clear(hours);
@@ -192,7 +206,7 @@ describe('quote detail', () => {
     const u = userEvent.setup();
     renderDetail(quote.quote_id);
 
-    await u.click(await screen.findByRole('button', { name: 'Cancel quote' }));
+    await u.click(await screen.findByRole('button', { name: 'Cancel quote…' }));
     // Someone else cancels it after this page loaded.
     store.quotes.set(quote.quote_id, { ...quote, status: 'CANCELLED' });
     const dialog = screen.getByRole('dialog');
@@ -206,7 +220,7 @@ describe('quote detail', () => {
     const u = userEvent.setup();
     renderDetail(quote.quote_id);
 
-    await u.click(await screen.findByRole('button', { name: 'Cancel quote' }));
+    await u.click(await screen.findByRole('button', { name: 'Cancel quote…' }));
     expect(screen.getByRole('heading', { name: 'Cancel this quote?' })).toBeInTheDocument();
     await u.type(screen.getByLabelText(/Reason/), 'Client changed plans');
     const dialog = screen.getByRole('dialog');
@@ -220,12 +234,17 @@ describe('quote detail', () => {
     expect(night?.available_units).toBe(10);
   });
 
-  it('is read-only for a Viewer, who can still download the JSON', async () => {
+  it('is read-only for a Viewer, who can still download the quotation', async () => {
     const quote = await seed();
     renderDetail(quote.quote_id, 'Viewer', 'Vik');
     await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
     expect(screen.getByText(/can view this quote but not change it/)).toBeInTheDocument();
-    for (const name of ['Confirm quote', 'Extend validity', 'Cancel quote']) {
+    for (const name of [
+      'Confirm booking…',
+      'Extend validity…',
+      'Cancel quote…',
+      'Change and re-quote',
+    ]) {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
     }
     expect(screen.getByRole('button', { name: 'Download quotation (PDF)' })).toBeInTheDocument();
@@ -234,9 +253,23 @@ describe('quote detail', () => {
   it('shows that an Owner must approve a pending-review quote', async () => {
     const quote = await seed({ rate_per_room_night_inr: 1700 });
     renderDetail(quote.quote_id);
-    expect(await screen.findByText('Waiting for Owner approval')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Confirm quote' })).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(/An Owner who did not create this quote must approve it/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm booking…' })).not.toBeInTheDocument();
     expect(screen.getAllByText('Pending review').length).toBeGreaterThan(0);
+    // Said once, in the decision banner, not again above the actions.
+    expect(screen.getAllByText('Owner review required')).toHaveLength(1);
+    expect(screen.queryByRole('link', { name: 'Review this quote' })).not.toBeInTheDocument();
+  });
+
+  it('gives an Owner a link from a pending quote to the review queue', async () => {
+    const quote = await seed({ rate_per_room_night_inr: 1700 });
+    renderDetail(quote.quote_id, 'Owner', 'Meera');
+    expect(await screen.findByRole('link', { name: 'Review this quote' })).toHaveAttribute(
+      'href',
+      `/review?quote=${quote.quote_id}`,
+    );
   });
 
   describe('review state follows the quote, not the original evaluation', () => {
@@ -280,7 +313,10 @@ describe('quote detail', () => {
       await approve(quote.quote_id);
       const u = userEvent.setup();
       renderDetail(quote.quote_id);
-      await u.click(await screen.findByRole('button', { name: 'Confirm quote' }));
+      await u.click(await screen.findByRole('button', { name: 'Confirm booking…' }));
+      await u.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirm booking' }),
+      );
 
       await waitFor(() => expect(store.quotes.get(quote.quote_id)?.status).toBe('CONFIRMED'));
       expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
@@ -333,6 +369,11 @@ describe('quote detail', () => {
       /^Quotation for Fictional Events Pvt Ltd \(ref \w{8}\)\nValid until /,
     );
     expect(await screen.findByText(/Quotation summary copied/)).toBeInTheDocument();
+
+    // The short reference is shown; the full id can be copied for support.
+    expect(screen.getByText(quote.quote_id.slice(-8))).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Copy the full quote id' }));
+    expect(await navigator.clipboard.readText()).toBe(quote.quote_id);
     click.mockRestore();
   });
 
@@ -343,31 +384,115 @@ describe('quote detail', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows an expired quote with a way to start again', async () => {
-    const quote = await seed();
+  it('re-quotes an expired quote with its details filled in', async () => {
+    const quote = await seed({
+      organiser: { name: 'Fictional Events Pvt Ltd', reference: 'FE-9' },
+    });
     store.quotes.set(quote.quote_id, { ...quote, valid_until: '2020-01-01T00:00:00.000Z' });
+    const u = userEvent.setup();
     renderDetail(quote.quote_id);
     expect(await screen.findByText('This quote expired')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Start a new quote' })).toHaveAttribute(
-      'href',
-      '/quotes/new',
+    expect(screen.queryByRole('button', { name: 'Confirm booking…' })).not.toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: 'Re-quote with these details' }));
+    // Nothing is held any more, so there is nothing to cancel first.
+    await screen.findByRole('heading', { level: 1, name: 'New quote' });
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Fictional Events Pvt Ltd');
+    expect(screen.getByLabelText('Reference (optional)')).toHaveValue('FE-9');
+    expect(screen.getByLabelText(/Check-in date/)).toHaveValue('2026-11-01');
+    expect(
+      screen.getByText(/Started from the quote for Fictional Events Pvt Ltd/),
+    ).toBeInTheDocument();
+    expect(store.quotes.get(quote.quote_id)?.status).toBe('EXPIRED');
+  });
+
+  it('re-quotes a pending quote at the suggested rate, cancelling it first', async () => {
+    const quote = await seed({ rate_per_room_night_inr: 1700 });
+    const u = userEvent.setup();
+    renderDetail(quote.quote_id);
+
+    await u.click(await screen.findByRole('button', { name: /^Re-quote at ₹/ }));
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('heading', { name: 'Replace this quote?' }),
+    ).toBeInTheDocument();
+    // Keeping it changes nothing.
+    await u.click(within(dialog).getByRole('button', { name: 'Keep this quote' }));
+    expect(store.quotes.get(quote.quote_id)?.status).toBe('PENDING_REVIEW');
+
+    await u.click(screen.getByRole('button', { name: /^Re-quote at ₹/ }));
+    await u.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel it and re-quote' }),
     );
-    expect(screen.queryByRole('button', { name: 'Confirm quote' })).not.toBeInTheDocument();
+    await screen.findByRole('heading', { level: 1, name: 'New quote' });
+    expect(store.quotes.get(quote.quote_id)?.status).toBe('CANCELLED');
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Fictional Events Pvt Ltd');
+
+    await u.click(screen.getByRole('button', { name: 'Next' }));
+    await u.click(await screen.findByRole('button', { name: 'Next' }));
+    expect(await screen.findByLabelText('Or a fixed rate per room-night (INR)')).toHaveValue(1800);
+  });
+
+  it('reduces the rooms in a confirmed booking', async () => {
+    const quote = await seed();
+    const client = createApiClient({
+      baseUrl: BASE,
+      getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+    });
+    await client.confirmQuote(quote.quote_id, { idempotencyKey: newIdempotencyKey() });
+    const u = userEvent.setup();
+    renderDetail(quote.quote_id);
+
+    await u.click(await screen.findByRole('button', { name: 'Reduce rooms…' }));
+    const dialog = screen.getByRole('dialog');
+    const rooms = within(dialog).getByLabelText(/Rooms to keep/);
+    expect(rooms).toHaveValue(9);
+    await u.clear(rooms);
+    await u.type(rooms, '10');
+    await u.click(within(dialog).getByRole('button', { name: 'Reduce rooms' }));
+    expect(within(dialog).getByText('Enter a number of rooms from 1 to 9')).toBeInTheDocument();
+
+    await u.clear(rooms);
+    await u.type(rooms, '8');
+    await u.click(within(dialog).getByRole('button', { name: 'Reduce rooms' }));
+    await waitFor(() => expect(store.quotes.get(quote.quote_id)?.request.rooms).toBe(8));
+    expect(await screen.findByText('Booking reduced to 8 rooms.')).toBeInTheDocument();
+    const night = store.inventory.find(
+      (r) => r.date === '2026-11-01' && r.room_type === 'standard',
+    );
+    expect(night?.confirmed_units).toBe(8);
+  });
+
+  it('marks a hold that is about to end, and goes back to all quotes', async () => {
+    const quote = await seed();
+    store.quotes.set(quote.quote_id, { ...quote, valid_until: '2026-10-20T06:30:00.000Z' });
+    renderDetail(quote.quote_id);
+    expect(await screen.findByText('Less than an hour left on this hold.')).toBeInTheDocument();
+    expect(screen.getByText('0h 30m left')).toHaveClass('text-danger');
+    expect(screen.getByRole('link', { name: /All quotes/ })).toHaveAttribute('href', '/quotes');
   });
 
   it("shows the server's refusal and refreshes the quote", async () => {
     const quote = await seed();
     const u = userEvent.setup();
     renderDetail(quote.quote_id);
-    const confirm = await screen.findByRole('button', { name: 'Confirm quote' });
+    await u.click(await screen.findByRole('button', { name: 'Confirm booking…' }));
 
     // The hold lapses after the page loaded.
     store.quotes.set(quote.quote_id, { ...quote, valid_until: '2020-01-01T00:00:00.000Z' });
-    await u.click(confirm);
+    await u.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirm booking' }),
+    );
 
-    expect(await screen.findByText('Could not confirm the quote')).toBeInTheDocument();
+    expect(await screen.findByText('Could not confirm the booking')).toBeInTheDocument();
     expect(screen.getByText(/Quote expired at 2020-01-01/)).toBeInTheDocument();
     expect(await screen.findByText('This quote expired')).toBeInTheDocument();
+    // The refusal offers the way forward: a new quote with the same details.
+    expect(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Re-quote with these details',
+      }),
+    ).toBeInTheDocument();
   });
 
   it('has no accessibility violations', async () => {

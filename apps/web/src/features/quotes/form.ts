@@ -1,5 +1,5 @@
 import { LIMITS, parseWith, pastCheckInIssue, PROPERTY_ROOM_TYPES, QuoteRequest } from '@c32/core';
-import type { INCLUSION_BASES, InclusionInput, ValidationIssue } from '@c32/core';
+import type { INCLUSION_BASES, InclusionInput, Quote, ValidationIssue } from '@c32/core';
 
 export type InclusionBasisValue = (typeof INCLUSION_BASES)[number];
 
@@ -95,6 +95,45 @@ export function newInclusion(): InclusionForm {
     costUnknown: false,
     includedInRate: true,
     price: '',
+  };
+}
+
+/**
+ * A form filled from a saved quote, to re-quote it: the same group, dates, rooms, price and
+ * inclusions, with any changes on top (for example a suggested rate).
+ */
+export function formFromQuote(quote: Quote, changes: Partial<QuoteForm> = {}): QuoteForm {
+  const r = quote.request;
+  const text = (n: number | undefined) => (n === undefined ? '' : String(n));
+  const pricing: Pick<QuoteForm, 'discount' | 'discountKind' | 'rate'> =
+    r.rate_per_room_night_inr !== undefined
+      ? { discount: '0', discountKind: 'pct', rate: String(r.rate_per_room_night_inr) }
+      : r.discount_inr !== undefined
+        ? { discount: String(r.discount_inr), discountKind: 'inr', rate: '' }
+        : { discount: text(r.discount_pct) || '0', discountKind: 'pct', rate: '' };
+  return {
+    ...initialForm,
+    organiser: r.organiser.name,
+    reference: r.organiser.reference ?? '',
+    contactName: r.organiser.contact_name ?? '',
+    email: r.organiser.email ?? '',
+    phone: r.organiser.phone ?? '',
+    checkIn: quote.evaluation.check_in,
+    nights: String(quote.evaluation.nights),
+    roomType: r.room_type,
+    rooms: String(r.rooms),
+    ...pricing,
+    guests: text(r.guests_per_room_units),
+    inclusions: (r.inclusions ?? []).map((inc) => ({
+      id: newInclusion().id,
+      name: inc.name,
+      basis: inc.basis,
+      unitCost: inc.unit_cost_inr === null ? '' : String(inc.unit_cost_inr),
+      costUnknown: inc.unit_cost_inr === null,
+      includedInRate: inc.included_in_rate,
+      price: text(inc.price_inr),
+    })),
+    ...changes,
   };
 }
 

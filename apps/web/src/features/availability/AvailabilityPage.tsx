@@ -20,6 +20,7 @@ import { cn } from '../../lib/cn';
 import { usePolicy } from '../policy/queries';
 import { ROOM_TYPES } from '../quotes/form';
 import { STATUS_LABEL } from '../quotes/labels';
+import type { BackState } from '../quotes/QuoteDetailPage';
 import { useQuoteList } from '../quotes/queries';
 import { StatusBadge } from '../quotes/StatusBadge';
 import { counted } from '../../lib/plural';
@@ -191,7 +192,13 @@ function NightDetail({ cell, roomType }: { cell: Cell; roomType: string }) {
             {
               header: 'Organiser',
               render: (q) => (
-                <Link to={`/quotes/${q.quote_id}`} className="font-semibold text-brand underline">
+                <Link
+                  to={`/quotes/${q.quote_id}`}
+                  state={
+                    { from: { to: '/availability', label: 'Availability' } } satisfies BackState
+                  }
+                  className="font-semibold text-brand underline"
+                >
                   {q.request.organiser.name}
                 </Link>
               ),

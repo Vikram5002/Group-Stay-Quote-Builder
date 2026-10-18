@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ExtendRequest, LIMITS, parseWith, startOfDayUtc } from '@c32/core';
+import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  AmendmentRequest,
+  ExtendRequest,
+  LIMITS,
+  parseWith,
+  PROPERTY_ROOM_TYPES,
+  startOfDayUtc,
+} from '@c32/core';
 import type { Policy, Quote, Role } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
 import {
@@ -14,15 +22,20 @@ import {
 } from '../../components';
 import { ApiError } from '../../lib/api';
 import { saveFile } from '../../lib/download';
-import { usePolicy } from '../policy/queries';
-import { friendlyIssue } from './form';
-import { OPEN_STATUSES } from './labels';
-import { quotationFileName, quotationPdf, quotationText } from './quotation';
-import { useQuoteAction } from './queries';
+import { formatIst, formatInr, formatStay } from '../../lib/format';
 import { counted } from '../../lib/plural';
+import { usePolicy } from '../policy/queries';
+import { formFromQuote, friendlyIssue } from './form';
+import type { QuoteForm } from './form';
+import { OPEN_STATUSES } from './labels';
+import { clientTotal, describePricing } from './pricingText';
+import { quotationFileName, quotationPdf, quotationText } from './quotation';
+import type { RequoteState } from './QuoteBuilderPage';
+import { useQuoteAction } from './queries';
 
 const WRITE_ROLES: readonly Role[] = ['Sales', 'Owner'];
 const HOUR_MS = 3_600_000;
+const QUICK_HOURS = [12, 24, 48, 72];
 
 /**
  * The most hours the server accepts for this quote (apps/api extendQuote): one validity window
@@ -37,22 +50,112 @@ export function maxExtensionHours(quote: Quote, policy: Policy | undefined): num
   return Math.min(policy.validity_hours, toCutoff);
 }
 
-/** A link to start again when the hold is gone; the refusal itself says why. */
-function requoteLink(error: unknown) {
-  return error instanceof ApiError && error.friendly.action === 're-quote' ? (
-    <Link to="/quotes/new" className="font-semibold text-brand underline">
-      Start a new quote
-    </Link>
-  ) : undefined;
+/** Move focus to the screen's heading, after an action removed the button that had it. */
+function focusHeading() {
+  const heading = document.querySelector<HTMLElement>('main h1');
+  if (!heading) return;
+  heading.setAttribute('tabindex', '-1');
+  heading.focus();
 }
 
-/** The quotation for the organiser, as a PDF with its validity date (no internal costs). */
-function downloadQuotation(quote: Quote) {
-  saveFile(quotationPdf(quote), quotationFileName(quote), 'application/pdf');
+/** One line for the dialogs: "10 Standard rooms, Sun 01 Nov 2026 to Tue 03 Nov 2026". */
+function termsLine(quote: Quote): string {
+  const e = quote.evaluation;
+  const type =
+    PROPERTY_ROOM_TYPES.find((t) => t.code === quote.request.room_type)?.label ??
+    quote.request.room_type;
+  return `${counted(e.offered_rooms, `${type} room`)}, ${formatStay(e.check_in, e.check_out)}`;
+}
+
+/**
+ * Re-quote: open the builder with this quote's details (and any changes, such as a suggested
+ * rate). A quote that still holds rooms is cancelled first, after a confirm, so the new quote
+ * can hold the same rooms; a closed or confirmed quote is only copied.
+ */
+export function useRequote(quote: Quote) {
+  const api = useApi();
+  const navigate = useNavigate();
+  const cancel = useQuoteAction<{ reason?: string }>(quote.quote_id, (input, o) =>
+    api.cancelQuote(quote.quote_id, input, o),
+  );
+  const [pending, setPending] = useState<{ changes: Partial<QuoteForm>; what: string } | null>(
+    null,
+  );
+  const holds = OPEN_STATUSES.includes(quote.status);
+
+  const open = (form: QuoteForm) => {
+    const state: RequoteState = { prefill: form };
+    navigate('/quotes/new', { state });
+  };
+  const start = (changes: Partial<QuoteForm> = {}, what = 'with these details') => {
+    if (holds) setPending({ changes, what });
+    else open(formFromQuote(quote, changes));
+  };
+  const close = () => {
+    setPending(null);
+    cancel.reset();
+  };
+  const go = () => open(formFromQuote(quote, pending?.changes ?? {}));
+
+  const dialog = (
+    <Dialog
+      open={pending !== null}
+      title="Replace this quote?"
+      onClose={close}
+      footer={
+        <>
+          <Button variant="secondary" onClick={close}>
+            Keep this quote
+          </Button>
+          <Button
+            loading={cancel.isPending}
+            onClick={() =>
+              cancel.mutate(
+                { reason: 'Replaced by a new quote' },
+                {
+                  onSuccess: go,
+                  // Already expired or closed: its rooms are released, so carry on.
+                  onError: (error) => {
+                    if (
+                      error instanceof ApiError &&
+                      (error.code === 'QUOTE_EXPIRED' || error.code === 'INVALID_STATE')
+                    ) {
+                      go();
+                    }
+                  },
+                },
+              )
+            }
+          >
+            Cancel it and re-quote
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 text-sm">
+        <ProblemAlert error={cancel.error} title="Could not cancel this quote" />
+        <p>
+          This quote holds {termsLine(quote)}. To re-quote {pending?.what}, it is cancelled first
+          and its rooms are released, so the new quote can hold them.
+        </p>
+        <p>The new quote opens with the same details for you to check and issue.</p>
+      </div>
+    </Dialog>
+  );
+  return { start, dialog };
 }
 
 /** Actions allowed for this role and status. The server still decides; this only hides the obvious. */
-export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
+export function QuoteActions({
+  quote,
+  role,
+  onRequote,
+}: {
+  quote: Quote;
+  role: Role;
+  /** Opens the re-quote flow (see useRequote). */
+  onRequote: () => void;
+}) {
   const api = useApi();
   const id = quote.quote_id;
   const notify = useToast();
@@ -61,30 +164,50 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
 
   const confirm = useQuoteAction<undefined>(id, (_input, o) => api.confirmQuote(id, o));
   const extend = useQuoteAction<{ hours: number }>(id, (input, o) => api.extendQuote(id, input, o));
+  const amend = useQuoteAction<{ rooms: number; reason?: string }>(id, (input, o) =>
+    api.amendQuote(id, input, o),
+  );
   const cancel = useQuoteAction<{ reason?: string }>(id, (input, o) =>
     api.cancelQuote(id, input, o),
   );
-
-  const [dialog, setDialog] = useState<'extend' | 'cancel' | null>(null);
-  const [hours, setHours] = useState('24');
-  const [hoursError, setHoursError] = useState<string | undefined>();
-  const [reason, setReason] = useState('');
 
   const policy = usePolicy();
   const maxHours = maxExtensionHours(quote, policy.data);
   const cannotExtend = maxHours !== null && maxHours < 1;
   const hoursLimit = maxHours ?? LIMITS.MAX_POLICY_HOURS;
 
+  const [dialog, setDialog] = useState<'confirm' | 'extend' | 'amend' | 'cancel' | null>(null);
+  // Never start above what the policy allows, so the first try does not fail.
+  const [hours, setHours] = useState(() => String(Math.max(1, Math.min(24, hoursLimit))));
+  const [hoursError, setHoursError] = useState<string | undefined>();
+  const [rooms, setRooms] = useState('');
+  const [roomsError, setRoomsError] = useState<string | undefined>();
+  const [reason, setReason] = useState('');
+
   function close() {
     setDialog(null);
     setHoursError(undefined);
+    setRoomsError(undefined);
+    confirm.reset();
     extend.reset();
+    amend.reset();
     cancel.reset();
   }
+  const done = (message: string) => {
+    close();
+    notify(message);
+    focusHeading();
+  };
+
+  const hoursValue = Number(hours);
+  const newExpiry =
+    quote.valid_until && Number.isInteger(hoursValue) && hoursValue >= 1
+      ? new Date(Date.parse(quote.valid_until) + hoursValue * HOUR_MS).toISOString()
+      : null;
 
   function submitExtend() {
     const parsed = parseWith(ExtendRequest, {
-      hours: hours.trim() === '' ? undefined : Number(hours),
+      hours: hours.trim() === '' ? undefined : hoursValue,
     });
     const tooMany = parsed.ok && parsed.value.hours > hoursLimit;
     if (!parsed.ok || tooMany) {
@@ -99,51 +222,94 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
       return;
     }
     setHoursError(undefined);
-    extend.mutate(parsed.value, { onSuccess: close });
+    extend.mutate(parsed.value, {
+      onSuccess: (saved) => done(`Rooms are now held until ${formatIst(saved.valid_until)}.`),
+    });
   }
+
+  const current = quote.evaluation.offered_rooms;
+  function submitAmend() {
+    const value = rooms.trim() === '' ? undefined : Number(rooms);
+    const parsed = parseWith(AmendmentRequest, {
+      rooms: value,
+      ...(reason.trim() ? { reason: reason.trim() } : {}),
+    });
+    if (!parsed.ok || parsed.value.rooms >= current) {
+      setRoomsError(`Enter a number of rooms from 1 to ${current - 1}`);
+      return;
+    }
+    setRoomsError(undefined);
+    amend.mutate(parsed.value, {
+      onSuccess: (saved) =>
+        done(
+          saved.review_required
+            ? `Booking reduced to ${counted(saved.evaluation.offered_rooms, 'room')}. It is now below the floor, so an Owner is asked to review it.`
+            : `Booking reduced to ${counted(saved.evaluation.offered_rooms, 'room')}.`,
+        ),
+    });
+  }
+
+  const pricing = describePricing(quote.request, quote.evaluation.totals);
+  const total = clientTotal(quote.evaluation.totals);
+  const closedForRequote = !isOpen && quote.status !== 'CONFIRMED';
+  const requoteLabel = closedForRequote
+    ? 'Re-quote with these details'
+    : quote.status === 'CONFIRMED'
+      ? 'New quote from this one'
+      : 'Change and re-quote';
+
+  const dialogFooter = (
+    onGo: () => void,
+    label: string,
+    busy: boolean,
+    danger = false,
+    disabled = false,
+  ): ReactNode => (
+    <>
+      <Button variant="secondary" onClick={close}>
+        {dialog === 'cancel' ? 'Keep the quote' : 'Not now'}
+      </Button>
+      <Button
+        variant={danger ? 'danger' : 'primary'}
+        loading={busy}
+        disabled={disabled}
+        onClick={onGo}
+      >
+        {label}
+      </Button>
+    </>
+  );
 
   return (
     <div className="flex flex-col gap-4">
-      <ProblemAlert
-        error={confirm.error}
-        title="Could not confirm the quote"
-        action={requoteLink(confirm.error)}
-      />
-
       {!canWrite && (
         <p className="text-sm text-ink-muted">Your role can view this quote but not change it.</p>
       )}
-      {canWrite && quote.status === 'PENDING_REVIEW' && (
-        <Alert tone="warning" title="Waiting for Owner approval">
-          This quote is below the contribution floor or has an unknown value. An Owner who did not
-          create it must approve it before it can be confirmed.
-          {role === 'Owner' && (
-            <span className="mt-2 block">
-              <Link to={`/review?quote=${id}`} className="font-semibold text-brand underline">
-                Review this quote
-              </Link>
-            </span>
-          )}
-        </Alert>
-      )}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {canWrite && quote.status === 'OFFERED' && (
-          <Button loading={confirm.isPending} onClick={() => confirm.mutate(undefined)}>
-            Confirm quote
-          </Button>
+          <Button onClick={() => setDialog('confirm')}>Confirm booking…</Button>
         )}
         {canWrite && isOpen && (
           <Button variant="secondary" onClick={() => setDialog('extend')}>
-            Extend validity
+            Extend validity…
           </Button>
         )}
-        {canWrite && (isOpen || quote.status === 'CONFIRMED') && (
-          <Button variant="danger" onClick={() => setDialog('cancel')}>
-            Cancel quote
+        {canWrite && quote.status === 'CONFIRMED' && current > 1 && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setRooms(String(current - 1));
+              setDialog('amend');
+            }}
+          >
+            Reduce rooms…
           </Button>
         )}
-        <Button variant="secondary" onClick={() => downloadQuotation(quote)}>
+        <Button
+          variant="secondary"
+          onClick={() => saveFile(quotationPdf(quote), quotationFileName(quote), 'application/pdf')}
+        >
           Download quotation (PDF)
         </Button>
         <Button
@@ -159,28 +325,65 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
         >
           Copy summary
         </Button>
+        {/* An expired quote offers this in its own warning, at the top of the page. */}
+        {canWrite && quote.status !== 'EXPIRED' && (
+          <Button variant="ghost" onClick={onRequote}>
+            {requoteLabel}
+          </Button>
+        )}
+        {canWrite && (isOpen || quote.status === 'CONFIRMED') && (
+          <Button variant="danger" className="sm:ml-auto" onClick={() => setDialog('cancel')}>
+            Cancel {quote.status === 'CONFIRMED' ? 'booking' : 'quote'}…
+          </Button>
+        )}
       </div>
+
+      <Dialog
+        open={dialog === 'confirm'}
+        title="Confirm this booking?"
+        onClose={close}
+        footer={dialogFooter(
+          () =>
+            confirm.mutate(undefined, {
+              onSuccess: () => done('Booking confirmed. The held rooms are now booked.'),
+            }),
+          'Confirm booking',
+          confirm.isPending,
+        )}
+      >
+        <div className="flex flex-col gap-3 text-sm">
+          <ProblemAlert
+            error={confirm.error}
+            title="Could not confirm the booking"
+            action={requoteAction(confirm.error, () => {
+              close();
+              onRequote();
+            })}
+          />
+          <p>
+            <strong>{quote.request.organiser.name}</strong>: {termsLine(quote)}, at {pricing.text}.
+          </p>
+          <p>
+            Total for the client: <strong>{formatInr(total)}</strong>.
+          </p>
+          <p>Confirm only once the client has accepted. The held rooms become booked.</p>
+        </div>
+      </Dialog>
 
       <Dialog
         open={dialog === 'extend'}
         title="Extend validity"
         onClose={close}
-        footer={
-          <>
-            <Button variant="secondary" onClick={close}>
-              Keep as is
-            </Button>
-            <Button loading={extend.isPending} disabled={cannotExtend} onClick={submitExtend}>
-              Extend
-            </Button>
-          </>
-        }
+        footer={dialogFooter(submitExtend, 'Extend', extend.isPending, false, cannotExtend)}
       >
         <div className="flex flex-col gap-3">
           <ProblemAlert
             error={extend.error}
             title="Could not extend the validity"
-            action={requoteLink(extend.error)}
+            action={requoteAction(extend.error, () => {
+              close();
+              onRequote();
+            })}
           />
           {cannotExtend ? (
             <Alert tone="info" title="This quote cannot be extended">
@@ -188,49 +391,96 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
               {counted(policy.data?.stay_cutoff_hours ?? 0, 'hour')} before check-in.
             </Alert>
           ) : (
-            <TextField
-              label="Extra hours"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={hoursLimit}
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
-              hint={
-                maxHours === null
-                  ? 'Rooms stay held for this long after the current expiry. The server checks the policy limit and availability.'
-                  : `Rooms stay held for this long after the current expiry, up to ${counted(maxHours, 'hour')} under the policy. The server re-checks availability.`
-              }
-              {...(hoursError ? { error: hoursError } : {})}
-            />
+            <>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Quick choices">
+                {QUICK_HOURS.filter((h) => h <= hoursLimit).map((h) => (
+                  <Button
+                    key={h}
+                    variant={String(h) === hours ? 'primary' : 'secondary'}
+                    aria-pressed={String(h) === hours}
+                    onClick={() => setHours(String(h))}
+                  >
+                    {counted(h, 'hour')}
+                  </Button>
+                ))}
+              </div>
+              <TextField
+                label="Extra hours"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={hoursLimit}
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                hint={
+                  maxHours === null
+                    ? 'Rooms stay held for this long after the current expiry. The server checks the policy limit and availability.'
+                    : `Up to ${counted(maxHours, 'hour')} under the policy. The server re-checks availability.`
+                }
+                {...(hoursError ? { error: hoursError } : {})}
+              />
+              <p className="text-sm" role="status">
+                Now held until <strong>{formatIst(quote.valid_until)}</strong>
+                {newExpiry && (
+                  <>
+                    ; after this, until <strong>{formatIst(newExpiry)}</strong>
+                  </>
+                )}
+                .
+              </p>
+            </>
           )}
         </div>
       </Dialog>
 
       <Dialog
-        open={dialog === 'cancel'}
-        title="Cancel this quote?"
+        open={dialog === 'amend'}
+        title="Reduce the rooms in this booking"
         onClose={close}
-        footer={
-          <>
-            <Button variant="secondary" onClick={close}>
-              Keep the quote
-            </Button>
-            <Button
-              variant="danger"
-              loading={cancel.isPending}
-              onClick={() =>
-                cancel.mutate(reason.trim() ? { reason: reason.trim() } : {}, { onSuccess: close })
-              }
-            >
-              Cancel quote
-            </Button>
-          </>
-        }
+        footer={dialogFooter(submitAmend, 'Reduce rooms', amend.isPending)}
+      >
+        <div className="flex flex-col gap-3">
+          <ProblemAlert error={amend.error} title="Could not reduce the rooms" />
+          <p className="text-sm">
+            The booking has {counted(current, 'room')}. The rooms you remove are released at once.
+            If the smaller booking falls below the floor, an Owner is asked to review it.
+          </p>
+          <TextField
+            label="Rooms to keep"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={current - 1}
+            required
+            value={rooms}
+            onChange={(e) => setRooms(e.target.value)}
+            {...(roomsError ? { error: roomsError } : {})}
+          />
+          <TextAreaField
+            label="Reason (optional)"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={dialog === 'cancel'}
+        title={quote.status === 'CONFIRMED' ? 'Cancel this booking?' : 'Cancel this quote?'}
+        onClose={close}
+        footer={dialogFooter(
+          () =>
+            cancel.mutate(reason.trim() ? { reason: reason.trim() } : {}, {
+              onSuccess: () => done('Cancelled. The rooms were released.'),
+            }),
+          quote.status === 'CONFIRMED' ? 'Cancel booking' : 'Cancel quote',
+          cancel.isPending,
+          true,
+        )}
       >
         {cancel.error && (
           <div className="mb-3">
-            <ProblemAlert error={cancel.error} title="Could not cancel the quote" />
+            <ProblemAlert error={cancel.error} title="Could not cancel" />
           </div>
         )}
         <p className="mb-3 text-sm">
@@ -244,4 +494,13 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
       </Dialog>
     </div>
   );
+}
+
+/** For an error that means the hold is gone: a way to start again with the same details. */
+export function requoteAction(error: unknown, onRequote: () => void): ReactNode {
+  return error instanceof ApiError && error.friendly.action === 're-quote' ? (
+    <Button variant="secondary" onClick={onRequote}>
+      Re-quote with these details
+    </Button>
+  ) : undefined;
 }

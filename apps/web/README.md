@@ -40,10 +40,11 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 
 ## Work package T2-04: Quote Detail and Dashboard
 
-- `/quotes/:id` shows the saved result, the arithmetic trail, a ticking hold countdown (IST with the exact UTC on hover), the request summary, any approval, and the audit timeline.
-- Actions follow role and status: Confirm, Extend validity and Cancel for Sales and Owner; read-only for Viewer; JSON download for everyone. Each action waits for the server, uses one idempotency key per request, and shows a plain-language message with a next step if the server refuses (for example a lapsed hold).
+- `/quotes/:id` shows the saved result, the arithmetic trail, a hold countdown that turns amber under 6 hours and red under 1 hour (IST with the exact UTC on hover), the request summary with a short copyable reference, any approval, and the audit timeline. The back link returns to the screen the quote was opened from.
+- Actions follow role and status: Confirm (after a dialog that repeats the terms and total), Extend validity (quick choices and the new expiry shown before saving), Reduce rooms on a confirmed booking, Cancel, and Re-quote for Sales and Owner; read-only for Viewer; the quotation PDF and a copyable summary for everyone. Each action waits for the server, uses one idempotency key per request, confirms success in a message, and shows a plain-language message with a next step if the server refuses (for example a lapsed hold offers a re-quote).
+- Re-quote opens the builder with the quote's details filled in (or at a suggested floor-safe rate). A quote that still holds rooms is cancelled first, after a confirm, so the new quote can hold the same rooms.
 - `/` shows the pipeline by status, contribution at risk on open quotes (unknown contributions are counted separately and never added as zero), holds expiring in 24 hours, and recent quotes, with an empty state that guides a new user.
-- Approve and reject are part of the review queue (T2-05); a pending-review quote tells Sales that an Owner must approve it.
+- Approve and reject are part of the review queue (T2-05); a pending-review quote tells Sales that an Owner must approve it, and gives an Owner a link to review it.
 
 ## Work package T2-05: Review queue and approval
 

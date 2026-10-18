@@ -466,7 +466,15 @@ describe('quote builder: a discount in rupees, the contact and a note for the Ow
       },
     });
     expect(screen.getByText('₹2,000 full price, ₹200 off = ₹1,800 per room-night')).toBeVisible();
-    expect(screen.getByText(/Priya Rao · priya@fictional.example/)).toBeVisible();
+    expect(screen.getByText('Priya Rao')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'priya@fictional.example' })).toHaveAttribute(
+      'href',
+      'mailto:priya@fictional.example',
+    );
+    expect(screen.getByRole('link', { name: '+91 98765 43210' })).toHaveAttribute(
+      'href',
+      'tel:+919876543210',
+    );
   });
 
   it('₹201 off needs the Owner, and the note for the Owner is sent with it', async () => {

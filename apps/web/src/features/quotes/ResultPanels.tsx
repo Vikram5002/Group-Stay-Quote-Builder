@@ -130,7 +130,9 @@ const DECISION_VIEW: Record<
 export function DecisionSummary({
   evaluation,
   review,
+  reviewAction,
   onUseRate,
+  useRateLabel = (rate) => `Use rate ${rate}`,
   onUseRooms,
 }: {
   evaluation: Evaluation;
@@ -139,8 +141,12 @@ export function DecisionSummary({
    * title, which only says what the engine found when the quote was issued.
    */
   review?: ReviewBanner | null;
+  /** A next step shown in the banner, for example the Owner's link to the review queue. */
+  reviewAction?: React.ReactNode;
   /** Offered on the builder only. A saved quote cannot be edited, so these are omitted there. */
   onUseRate?: (rate: number) => void;
+  /** The button text for a suggested rate. */
+  useRateLabel?: (rate: number) => string;
   onUseRooms?: (rooms: number) => void;
 }) {
   const decision = DECISION_VIEW[evaluation.decision];
@@ -148,7 +154,7 @@ export function DecisionSummary({
   const partial = evaluation.offered_rooms > 0 && evaluation.shortfall_rooms > 0;
   return (
     <div className="flex flex-col gap-4">
-      <Alert tone={view.tone} title={view.title}>
+      <Alert tone={view.tone} title={view.title} action={reviewAction}>
         {evaluation.reasons.length > 0 ? (
           <ul className="list-disc pl-5">
             {evaluation.reasons.map((reason) => (
@@ -196,7 +202,7 @@ export function DecisionSummary({
                       variant="secondary"
                       onClick={() => onUseRate(offer.rate_per_room_night_inr as number)}
                     >
-                      Use rate {offer.rate_per_room_night_inr}
+                      {useRateLabel(offer.rate_per_room_night_inr)}
                     </Button>
                   )}
               </li>

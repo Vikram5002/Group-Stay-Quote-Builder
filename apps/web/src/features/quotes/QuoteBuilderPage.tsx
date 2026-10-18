@@ -35,6 +35,11 @@ import { GroupStep, PricingStep, RoomsStep } from './steps';
 import { liveMeterState, usePreview } from './usePreview';
 
 const LAST = STEPS.length - 1;
+
+/** Navigation state that opens the builder with a form already filled in, to re-quote. */
+export interface RequoteState {
+  prefill: QuoteForm;
+}
 const PRICING_STEP = 2;
 const OPTION_LABELS = ['Option A', 'Option B'] as const;
 
@@ -49,13 +54,15 @@ export function QuoteBuilderPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
+  // A re-quote arrives with the earlier quote's details filled in (see useRequote).
+  const [prefill] = useState(() => (location.state as RequoteState | null)?.prefill ?? null);
   // One option, or two being compared before one is chosen and issued.
-  const [options, setOptions] = useState<QuoteForm[]>([initialForm]);
+  const [options, setOptions] = useState<QuoteForm[]>(() => [prefill ?? initialForm]);
   const [active, setActive] = useState(0);
   const form = options[active] ?? initialForm;
   const comparing = options.length > 1;
   // Unfinished input from an earlier visit in this tab, offered before anything else.
-  const [offer, setOffer] = useState<QuoteDraft | null>(() => loadDraft());
+  const [offer, setOffer] = useState<QuoteDraft | null>(() => (prefill ? null : loadDraft()));
   const done = useRef(false);
   const [showErrors, setShowErrors] = useState(false);
   // Fields the person has changed or left; their errors show at once, the rest after Next.
@@ -180,6 +187,17 @@ export function QuoteBuilderPage() {
     if (options.every(isBlank)) clearDraft();
     else saveDraft({ form, step, ...(comparing ? { options, active } : {}) });
   }, [form, step, offer, options, active, comparing]);
+
+  // Say where a re-quote's details came from, once.
+  const told = useRef(false);
+  useEffect(() => {
+    if (!prefill || told.current) return;
+    told.current = true;
+    notify(
+      `Started from the quote for ${prefill.organiser}. Check the details, then issue it.`,
+      'info',
+    );
+  }, [prefill, notify]);
 
   /** Offer the group a second version: a copy of this one, opened at its pricing. */
   function startComparing() {

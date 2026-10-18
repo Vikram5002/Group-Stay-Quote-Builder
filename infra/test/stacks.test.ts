@@ -223,7 +223,9 @@ describe('quote and invoice email (D-059)', () => {
     });
     const text = JSON.stringify(t['api']!.findResources('AWS::IAM::Policy'));
     expect(text).toContain('ses:SendRawEmail');
-    expect(text).not.toMatch(/ses:\*|identity\/\*/);
+    expect(text).not.toContain('ses:*');
+    // Any recipient, but only ever sent as the hotel's sender address.
+    expect(text).toContain('"ses:FromAddress"');
   });
 });
 

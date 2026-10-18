@@ -157,12 +157,13 @@ export class ApiStack extends Stack {
     const sender = new ses.EmailIdentity(this, 'Sender', {
       identity: ses.Identity.email(config.senderEmail),
     });
+    // SES checks the recipient's identity too (in the sandbox every recipient is one), so the
+    // resource is any identity, but only ever with this sender as the From address.
     this.apiFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-        resources: [
-          `arn:aws:ses:${this.region}:${this.account}:identity/${sender.emailIdentityName}`,
-        ],
+        resources: [`arn:aws:ses:${this.region}:${this.account}:identity/*`],
+        conditions: { StringEquals: { 'ses:FromAddress': sender.emailIdentityName } },
       }),
     );
 

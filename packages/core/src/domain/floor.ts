@@ -37,8 +37,8 @@ export function amountOffRate(policy: FloorPolicy, discountInr: number): number 
 }
 
 /**
- * Lowest rate Sales may agree to without owner review: the floor rate less the owner's maximum
- * Sales discount. Example: 2000 less 10% = 1800.
+ * Lowest rate Reception may agree to without owner review: the floor rate less the owner's maximum
+ * Reception discount. Example: 2000 less 10% = 1800.
  */
 export function minimumRate(policy: FloorPolicy): number {
   assertInt('max_sales_discount_pct', policy.max_sales_discount_pct, 0, 100);
@@ -48,7 +48,7 @@ export function minimumRate(policy: FloorPolicy): number {
 /**
  * The floor expressed as contribution for a package: minimum rate x room-nights - variable cost.
  * A package passes when its contribution reaches it, which with a flat rate and no inclusions is
- * exactly "rate >= minimum rate", that is "discount <= the Sales limit"; a bundled inclusion's
+ * exactly "rate >= minimum rate", that is "discount <= the Reception limit"; a bundled inclusion's
  * cost must also be covered. Null when the variable cost is unknown (never treated as 0).
  */
 export function floorFor(

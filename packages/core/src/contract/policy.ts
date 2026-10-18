@@ -28,7 +28,7 @@ const PolicyFields = z.strictObject({
     .max(LIMITS.MAX_UNIT_INR * 100),
   /** Rooms the hotel has (owner setting). Divides the package floor; sets each night's total. */
   total_rooms_units: z.int().min(1).max(LIMITS.MAX_ROOMS),
-  /** Largest discount off the floor rate Sales may give without owner review (D-057). */
+  /** Largest discount off the floor rate Reception may give without owner review (D-057). */
   max_sales_discount_pct: z.int().min(0).max(100),
   /** Printed on every quote and invoice PDF (D-059). */
   hotel_name: NonEmptyText(120),

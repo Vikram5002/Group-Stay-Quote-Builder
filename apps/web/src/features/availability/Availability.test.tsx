@@ -10,6 +10,8 @@ import { createApiClient, newIdempotencyKey } from '../../lib/api';
 import { makeMockToken } from '../../mocks/auth';
 import { createTestApi } from '../../mocks/server';
 import { mockSession } from '../auth/auth';
+import { saveDraft } from '../quotes/draft';
+import { initialForm } from '../quotes/form';
 
 const BASE = 'http://api.test';
 const { server, store } = createTestApi();
@@ -203,6 +205,62 @@ describe('availability calendar', () => {
     await u.clear(first);
     await u.type(first, '2026-12-01');
     expect(await screen.findByText('No inventory for these dates')).toBeInTheDocument();
+  });
+
+  it('moves the dates a range at a time, and back to today', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    await night(/20 Oct/);
+    await u.click(screen.getByRole('button', { name: /Next 14 nights/ }));
+    expect(screen.getByLabelText('First night')).toHaveValue('2026-11-03');
+    expect(screen.getByLabelText('Last night')).toHaveValue('2026-11-16');
+    await u.click(screen.getByRole('button', { name: /Previous 14 nights/ }));
+    await u.click(screen.getByRole('button', { name: /Previous 14 nights/ }));
+    expect(screen.getByLabelText('First night')).toHaveValue('2026-10-06');
+    await u.click(screen.getByRole('button', { name: 'From today' }));
+    expect(screen.getByLabelText('First night')).toHaveValue('2026-10-20');
+    expect(screen.getByRole('button', { name: 'From today' })).toBeDisabled();
+  });
+
+  it('marks sold-out nights and says how many there are', async () => {
+    await create();
+    renderPage();
+    expect(await night(/0?1 Nov.*Sold out.*0 of 10 free/)).toBeInTheDocument();
+    expect(screen.getByText(/^2 nights sold out\./)).toBeInTheDocument();
+  });
+
+  it('starts a quote from a night for Sales, with the date and room type filled in', async () => {
+    const u = userEvent.setup();
+    renderPage('Sales');
+    await u.click(await night(/0?2 Nov/));
+    await u.click(await screen.findByRole('link', { name: 'Start a quote from this night' }));
+    await screen.findByRole('heading', { level: 1, name: 'New quote' });
+    expect(screen.getByLabelText(/Check-in date/)).toHaveValue('2026-11-02');
+    expect(
+      screen.getByText(/Check-in Mon 02 Nov 2026 and Standard rooms filled in from the calendar/),
+    ).toBeInTheDocument();
+  });
+
+  it('says when a started quote replaces an unfinished draft', async () => {
+    saveDraft({ form: { ...initialForm, organiser: 'Draft Group' }, step: 0 });
+    const u = userEvent.setup();
+    renderPage('Sales');
+    await u.click(await night(/0?2 Nov/));
+    await u.click(await screen.findByRole('link', { name: 'Start a quote from this night' }));
+    expect(
+      await screen.findByText(/Your unfinished draft for Draft Group was replaced\./),
+    ).toBeInTheDocument();
+    sessionStorage.clear();
+  });
+
+  it('does not offer a Viewer to start a quote', async () => {
+    const u = userEvent.setup();
+    renderPage('Viewer');
+    await u.click(await night(/0?2 Nov/));
+    await screen.findByRole('heading', { name: /Night of/ });
+    expect(
+      screen.queryByRole('link', { name: 'Start a quote from this night' }),
+    ).not.toBeInTheDocument();
   });
 
   it('has no accessibility violations', async () => {

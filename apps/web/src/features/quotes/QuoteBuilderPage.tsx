@@ -41,6 +41,8 @@ const LAST = STEPS.length - 1;
 /** Navigation state that opens the builder with a form already filled in, to re-quote. */
 export interface RequoteState {
   prefill: QuoteForm;
+  /** Where the details came from, said once on arrival. */
+  message?: string;
 }
 const PRICING_STEP = 2;
 const OPTION_LABELS = ['Option A', 'Option B'] as const;
@@ -57,7 +59,10 @@ export function QuoteBuilderPage() {
   const queryClient = useQueryClient();
   const location = useLocation();
   // A re-quote arrives with the earlier quote's details filled in (see useRequote).
-  const [prefill] = useState(() => (location.state as RequoteState | null)?.prefill ?? null);
+  const [arrival] = useState(() => location.state as RequoteState | null);
+  const prefill = arrival?.prefill ?? null;
+  // A prefilled form takes the draft's place, so say whose draft it replaces.
+  const [replaced] = useState(() => (prefill ? loadDraft() : null));
   // One option, or two being compared before one is chosen and issued.
   const [options, setOptions] = useState<QuoteForm[]>(() => [prefill ?? initialForm]);
   const [active, setActive] = useState(0);
@@ -190,16 +195,19 @@ export function QuoteBuilderPage() {
     else saveDraft({ form, step, ...(comparing ? { options, active } : {}) });
   }, [form, step, offer, options, active, comparing]);
 
-  // Say where a re-quote's details came from, once.
+  // Say where prefilled details came from, once.
   const told = useRef(false);
   useEffect(() => {
     if (!prefill || told.current) return;
     told.current = true;
-    notify(
-      `Started from the quote for ${prefill.organiser}. Check the details, then issue it.`,
-      'info',
-    );
-  }, [prefill, notify]);
+    const from =
+      arrival?.message ??
+      `Started from the quote for ${prefill.organiser}. Check the details, then issue it.`;
+    const draft = replaced
+      ? ` Your unfinished draft for ${replaced.form.organiser.trim() || 'an unnamed group'} was replaced.`
+      : '';
+    notify(`${from}${draft}`, replaced ? 'warning' : 'info');
+  }, [prefill, arrival, replaced, notify]);
 
   /** Offer the group a second version: a copy of this one, opened at its pricing. */
   function startComparing() {

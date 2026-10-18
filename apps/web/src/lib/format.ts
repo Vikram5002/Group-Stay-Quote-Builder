@@ -11,8 +11,40 @@ export function formatInr(value: number | null | undefined): string {
   return value === null || value === undefined ? UNKNOWN_LABEL : inr.format(value);
 }
 
+const count = new Intl.NumberFormat('en-IN');
+
 export function formatCount(value: number | null | undefined): string {
-  return value === null || value === undefined ? UNKNOWN_LABEL : String(value);
+  return value === null || value === undefined ? UNKNOWN_LABEL : count.format(value);
+}
+
+/** A calendar date (YYYY-MM-DD, already in the property time zone), read as UTC so it never shifts. */
+function calendarDate(iso: string): Date | null {
+  const date = new Date(`${iso}T00:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const dayMonth = (date: Date) =>
+  `${WEEKDAYS[date.getUTCDay()]} ${String(date.getUTCDate()).padStart(2, '0')} ${MONTHS[date.getUTCMonth()]}`;
+
+/** "Sun 01 Nov 2026" for a calendar date. Anything that is not one is shown as it is. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return UNKNOWN_LABEL;
+  const date = calendarDate(iso);
+  return date ? `${dayMonth(date)} ${date.getUTCFullYear()}` : iso;
+}
+
+/** "Sun 01 Nov" for a calendar date, where the year is clear from the context. */
+export function formatDateShort(iso: string): string {
+  const date = calendarDate(iso);
+  return date ? dayMonth(date) : iso;
+}
+
+/** "Sun 01 Nov 2026 to Tue 03 Nov 2026" */
+export function formatStay(checkIn: string, checkOut: string): string {
+  return `${formatDate(checkIn)} to ${formatDate(checkOut)}`;
 }
 
 const ist = new Intl.DateTimeFormat('en-IN', {

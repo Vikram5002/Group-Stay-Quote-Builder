@@ -3,11 +3,21 @@ import { Link } from 'react-router-dom';
 import { ExtendRequest, LIMITS, parseWith, startOfDayUtc } from '@c32/core';
 import type { Policy, Quote, Role } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
-import { Alert, Button, Dialog, ProblemAlert, TextAreaField, TextField } from '../../components';
+import {
+  Alert,
+  Button,
+  Dialog,
+  ProblemAlert,
+  TextAreaField,
+  TextField,
+  useToast,
+} from '../../components';
 import { ApiError } from '../../lib/api';
+import { saveFile } from '../../lib/download';
 import { usePolicy } from '../policy/queries';
 import { friendlyIssue } from './form';
 import { OPEN_STATUSES } from './labels';
+import { quotationFileName, quotationPdf, quotationText } from './quotation';
 import { useQuoteAction } from './queries';
 import { counted } from '../../lib/plural';
 
@@ -36,20 +46,16 @@ function requoteLink(error: unknown) {
   ) : undefined;
 }
 
-function downloadJson(quote: Quote) {
-  const blob = new Blob([JSON.stringify(quote, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `quote-${quote.quote_id}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
+/** The quotation for the organiser, as a PDF with its validity date (no internal costs). */
+function downloadQuotation(quote: Quote) {
+  saveFile(quotationPdf(quote), quotationFileName(quote), 'application/pdf');
 }
 
 /** Actions allowed for this role and status. The server still decides; this only hides the obvious. */
 export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
   const api = useApi();
   const id = quote.quote_id;
+  const notify = useToast();
   const canWrite = WRITE_ROLES.includes(role);
   const isOpen = OPEN_STATUSES.includes(quote.status);
 
@@ -137,8 +143,21 @@ export function QuoteActions({ quote, role }: { quote: Quote; role: Role }) {
             Cancel quote
           </Button>
         )}
-        <Button variant="secondary" onClick={() => downloadJson(quote)}>
-          Download JSON
+        <Button variant="secondary" onClick={() => downloadQuotation(quote)}>
+          Download quotation (PDF)
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            void navigator.clipboard
+              ?.writeText(quotationText(quote))
+              .then(() => notify('Quotation summary copied. Paste it into an email or a message.'))
+              .catch(() =>
+                notify('Copying is blocked in this browser. Use the PDF instead.', 'warning'),
+              );
+          }}
+        >
+          Copy summary
         </Button>
       </div>
 

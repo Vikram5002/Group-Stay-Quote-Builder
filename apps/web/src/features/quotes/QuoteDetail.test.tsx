@@ -228,7 +228,7 @@ describe('quote detail', () => {
     for (const name of ['Confirm quote', 'Extend validity', 'Cancel quote']) {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
     }
-    expect(screen.getByRole('button', { name: 'Download JSON' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download quotation (PDF)' })).toBeInTheDocument();
   });
 
   it('shows that an Owner must approve a pending-review quote', async () => {
@@ -301,6 +301,39 @@ describe('quote detail', () => {
       expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
       expect(screen.getByText('Closed before an Owner decided')).toBeInTheDocument();
     });
+  });
+
+  it('downloads the quotation as a PDF, and copies a summary to paste in a message', async () => {
+    const quote = await seed();
+    const saved: Blob[] = [];
+    const createObjectURL = vi.fn((blob: Blob) => {
+      saved.push(blob);
+      return 'blob:quotation';
+    });
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const u = userEvent.setup();
+    renderDetail(quote.quote_id);
+
+    await u.click(await screen.findByRole('button', { name: 'Download quotation (PDF)' }));
+    expect(saved[0]?.type).toBe('application/pdf');
+    const bytes = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsBinaryString(saved[0] as Blob);
+    });
+    expect(bytes).toMatch(/^%PDF-1\.4/);
+    expect((click.mock.instances[0] as HTMLAnchorElement).download).toBe(
+      'quotation-fictional-events-pvt-ltd-2026-11-01.pdf',
+    );
+    expect(screen.queryByRole('button', { name: 'Download JSON' })).not.toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: 'Copy summary' }));
+    expect(await navigator.clipboard.readText()).toMatch(
+      /^Quotation for Fictional Events Pvt Ltd \(ref \w{8}\)\nValid until /,
+    );
+    expect(await screen.findByText(/Quotation summary copied/)).toBeInTheDocument();
+    click.mockRestore();
   });
 
   it('says so when the quote does not exist', async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_POLICY,
+  amountOffRate,
   discountedRate,
   floorFor,
   floorPasses,
@@ -63,5 +64,14 @@ describe('floorPasses (BR-06)', () => {
   it('passes at exactly the floor and fails one rupee below', () => {
     expect(floorPasses(24000, 24000)).toBe(true);
     expect(floorPasses(23999, 24000)).toBe(false);
+  });
+});
+
+describe('Sales discount in rupees off the full price', () => {
+  it('amountOffRate: rupees off the floor rate, never below 0', () => {
+    expect(amountOffRate(DEFAULT_POLICY, 0)).toBe(2000);
+    expect(amountOffRate(DEFAULT_POLICY, 200)).toBe(1800);
+    expect(amountOffRate(DEFAULT_POLICY, 2500)).toBe(0);
+    expect(() => amountOffRate(DEFAULT_POLICY, -1)).toThrow(RangeError);
   });
 });

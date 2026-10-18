@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Group Stay Quote Builder API",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Case C32. All money is integer INR; null means unknown, never zero. Synthetic data only."
   },
   "servers": [
@@ -2954,11 +2954,20 @@
             "minLength": 1,
             "maxLength": 64
           },
+          "contact_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
           "email": {
             "type": "string",
             "maxLength": 254,
             "format": "email",
             "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9][0-9 ()-]{5,19}$"
           }
         },
         "required": ["name"],
@@ -3540,6 +3549,17 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 100
+          },
+          "discount_inr": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "Whole Indian rupees per unit. Integer, 0 or more."
+          },
+          "note_for_owner": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
           },
           "guests_per_room_units": {
             "type": "integer",

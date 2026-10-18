@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Evaluation,
+  commercialTerms,
   evaluate,
   mapC32Fixture,
   validateQuoteRequest,
@@ -211,9 +212,100 @@ describe('Sales discount off the full price (D-057)', () => {
         {
           path: 'discount_pct',
           code: 'INCONSISTENT',
-          message: 'Give a discount or a rate, not both',
+          message: 'Give one price: a % discount, a ₹ discount or a rate',
         },
       ]);
     }
+  });
+});
+
+describe('Sales discount in rupees off the full price', () => {
+  const base = { rate_per_room_night_inr: undefined };
+
+  it('200 off 2000 is a rate of 1800: the 10% limit, still a clean OFFER', () => {
+    const { evaluation: e } = run({ ...base, discount_inr: 200 });
+    expect(e.decision).toBe('OFFER');
+    expect(e.totals).toMatchObject({
+      room_revenue_inr: 36000,
+      list_revenue_inr: 40000,
+      discount_pct: 10,
+    });
+    expect(e.trail.join('\n')).toMatch(/discount 200 off the full price 2000 = rate 1800/);
+  });
+
+  it('201 off goes to the owner, and the fix raises the rate without the discount', () => {
+    const { evaluation: e } = run({ ...base, discount_inr: 201 });
+    expect(e).toMatchObject({ decision: 'REVIEW', reasons: ['FLOOR_BREACH'] });
+    expect(e.counter_offers[0]).toMatchObject({
+      type: 'RAISE_RATE',
+      rate_per_room_night_inr: 1800,
+    });
+  });
+
+  it.each([
+    ['a % and a ₹ discount', { discount_pct: 5, discount_inr: 100 }],
+    ['a ₹ discount and a rate', { discount_inr: 100, rate_per_room_night_inr: 2000 }],
+    ['a % discount and a rate', { discount_pct: 5, rate_per_room_night_inr: 2000 }],
+  ])('%s together are refused', (_label, over) => {
+    const v = validateQuoteRequest({ ...fx.request, ...over });
+    expect(v.ok).toBe(false);
+    if (!v.ok) {
+      expect(v.problem.errors).toEqual([
+        {
+          path: 'discount_pct' in over ? 'discount_pct' : 'discount_inr',
+          code: 'INCONSISTENT',
+          message: 'Give one price: a % discount, a ₹ discount or a rate',
+        },
+      ]);
+    }
+  });
+});
+
+describe('the organiser contact and the note for the owner', () => {
+  it('are accepted, and are not part of the commercial terms', () => {
+    const plain = validateQuoteRequest(fx.request);
+    const full = validateQuoteRequest({
+      ...fx.request,
+      organiser: {
+        name: 'Fictional Events Pvt Ltd',
+        contact_name: 'Priya Rao',
+        email: 'priya@fictional.example',
+        phone: '+91 98765 43210',
+      },
+      note_for_owner: 'Repeat client; they book every quarter.',
+    });
+    expect(plain.ok && full.ok).toBe(true);
+    if (plain.ok && full.ok) {
+      const e = evaluate(full.value, ctx()).evaluation;
+      expect(commercialTerms(full.value, e)).toBe(commercialTerms(plain.value, e));
+    }
+  });
+
+  it('a ₹ discount is part of the terms; without one the terms text is unchanged', () => {
+    const v = validateQuoteRequest({
+      ...fx.request,
+      rate_per_room_night_inr: undefined,
+      discount_inr: 100,
+    });
+    const plain = validateQuoteRequest(fx.request);
+    if (!v.ok || !plain.ok) throw new Error('invalid');
+    expect(commercialTerms(v.value, evaluate(v.value, ctx()).evaluation)).toContain(
+      '"discount_inr":100',
+    );
+    expect(commercialTerms(plain.value, evaluate(plain.value, ctx()).evaluation)).not.toContain(
+      'discount_inr',
+    );
+  });
+
+  it.each([
+    ['an email that is not one', { email: 'priya-at-example' }, 'organiser.email'],
+    ['a phone with letters', { phone: 'call me' }, 'organiser.phone'],
+  ])('refuses %s', (_label, contact, path) => {
+    const v = validateQuoteRequest({
+      ...fx.request,
+      organiser: { name: 'Fictional Events Pvt Ltd', ...contact },
+    });
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.problem.errors?.map((i) => i.path)).toEqual([path]);
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { RequoteState } from '../quotes/QuoteBuilderPage';
 import { useQuery } from '@tanstack/react-query';
 import { addDays, daysBetween, DEFAULT_POLICY, LIMITS, localDate, stayNights } from '@c32/core';
 import type { InventoryNight, Quote } from '@c32/core';
@@ -17,9 +18,12 @@ import {
 } from '../../components';
 import { ApiError } from '../../lib/api';
 import { cn } from '../../lib/cn';
+import { formatDate } from '../../lib/format';
+import { useAuth } from '../auth/auth';
 import { usePolicy } from '../policy/queries';
-import { ROOM_TYPES } from '../quotes/form';
+import { initialForm, ROOM_TYPES } from '../quotes/form';
 import { STATUS_LABEL } from '../quotes/labels';
+import type { BackState } from '../quotes/QuoteDetailPage';
 import { useQuoteList } from '../quotes/queries';
 import { StatusBadge } from '../quotes/StatusBadge';
 import { counted } from '../../lib/plural';
@@ -46,6 +50,13 @@ function cellFor(date: string, byDate: Map<string, InventoryNight>): Cell {
   if (night.total_units === null) return { kind: 'unknown', date, night };
   return { kind: 'sale', date, night };
 }
+
+/** A night with a fifth of its rooms or fewer still free. */
+const isLow = (n: InventoryNight) =>
+  n.total_units !== null &&
+  n.available_units !== null &&
+  n.available_units > 0 &&
+  n.available_units <= n.total_units / 5;
 
 function Segment({ value, total, className }: { value: number; total: number; className: string }) {
   if (value === 0 || total === 0) return null;
@@ -74,7 +85,13 @@ function NightButton({
       onClick={onSelect}
       className={cn(base, tone, selected && 'outline outline-3 outline-offset-1 outline-focus')}
     >
-      <span className="font-semibold">{dayLabel(cell.date)}</span>
+      <span className="flex flex-wrap items-center justify-between gap-1">
+        <span className="font-semibold">{dayLabel(cell.date)}</span>
+        {cell.kind === 'sale' && cell.night.available_units === 0 && (
+          <Badge tone="danger">Sold out</Badge>
+        )}
+        {cell.kind === 'sale' && isLow(cell.night) && <Badge tone="warning">Few left</Badge>}
+      </span>
       {cell.kind === 'sale' && (
         <>
           <span className="tabular-nums">
@@ -148,9 +165,17 @@ function holdingQuotes(quotes: readonly Quote[], date: string, roomType: string)
   );
 }
 
-function NightDetail({ cell, roomType }: { cell: Cell; roomType: string }) {
+function NightDetail({ cell, roomType, today }: { cell: Cell; roomType: string; today: string }) {
   const quotes = useQuoteList();
+  const { session } = useAuth();
   const heading = `Night of ${dayLabel(cell.date)}`;
+  const label = ROOM_TYPES.find((t) => t.code === roomType)?.label ?? roomType;
+  const canQuote =
+    (session?.user.role === 'Sales' || session?.user.role === 'Owner') && cell.date >= today;
+  const start: RequoteState = {
+    prefill: { ...initialForm, checkIn: cell.date, roomType },
+    message: `Check-in ${formatDate(cell.date)} and ${label} rooms filled in from the calendar.`,
+  };
 
   if (cell.kind !== 'sale') {
     return (
@@ -191,7 +216,13 @@ function NightDetail({ cell, roomType }: { cell: Cell; roomType: string }) {
             {
               header: 'Organiser',
               render: (q) => (
-                <Link to={`/quotes/${q.quote_id}`} className="font-semibold text-brand underline">
+                <Link
+                  to={`/quotes/${q.quote_id}`}
+                  state={
+                    { from: { to: '/availability', label: 'Availability' } } satisfies BackState
+                  }
+                  className="font-semibold text-brand underline"
+                >
                   {q.request.organiser.name}
                 </Link>
               ),
@@ -200,6 +231,15 @@ function NightDetail({ cell, roomType }: { cell: Cell; roomType: string }) {
             { header: 'Rooms', numeric: true, render: (q) => q.evaluation.offered_rooms },
           ]}
         />
+      )}
+      {canQuote && n.available_units !== null && n.available_units > 0 && (
+        <Link
+          to="/quotes/new"
+          state={start}
+          className="mt-4 inline-flex min-h-11 items-center rounded-control bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-hover"
+        >
+          Start a quote from this night
+        </Link>
       )}
       <p className="mt-3 text-xs text-ink-muted">
         Showing the latest 100 quotes. {STATUS_LABEL.OFFERED} and{' '}
@@ -243,6 +283,18 @@ export function AvailabilityPage() {
   const byDate = new Map((query.data?.nights ?? []).map((n) => [n.date, n] as const));
   const cells = dates.map((d) => cellFor(d, byDate));
   const selectedCell = cells.find((c) => c.date === selected);
+  const length = problem ? DEFAULT_NIGHTS : daysBetween(from, to) + 1;
+  const shift = (days: number) => {
+    setFrom(addDays(from, days));
+    setTo(addDays(to, days));
+    setSelected(null);
+  };
+  const sale = cells.flatMap((c) => (c.kind === 'sale' ? [c.night] : []));
+  const soldOut = sale.filter((n) => n.available_units === 0).length;
+  const fewest = sale.reduce<InventoryNight | null>(
+    (min, n) => (min === null || (n.available_units ?? 0) < (min.available_units ?? 0) ? n : min),
+    null,
+  );
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -281,6 +333,30 @@ export function AvailabilityPage() {
             onChange={(e) => setTo(e.target.value)}
             {...(problem ? { error: problem } : {})}
           />
+          <div
+            className="flex flex-wrap gap-2 md:col-span-3"
+            role="group"
+            aria-label="Move the dates"
+          >
+            <Button variant="secondary" disabled={Boolean(problem)} onClick={() => shift(-length)}>
+              <span aria-hidden="true">← </span>Previous {counted(length, 'night')}
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={fromInput === null && toInput === null}
+              onClick={() => {
+                setFrom(null);
+                setTo(null);
+                setSelected(null);
+              }}
+            >
+              From today
+            </Button>
+            <Button variant="secondary" disabled={Boolean(problem)} onClick={() => shift(length)}>
+              Next {counted(length, 'night')}
+              <span aria-hidden="true"> →</span>
+            </Button>
+          </div>
         </form>
       </Card>
 
@@ -315,6 +391,14 @@ export function AvailabilityPage() {
         ) : (
           <div className="flex flex-col gap-4">
             <Legend />
+            {sale.length > 0 && (
+              <p className="text-sm" role="status">
+                {soldOut > 0 ? `${counted(soldOut, 'night')} sold out. ` : 'No night is sold out. '}
+                {fewest &&
+                  (fewest.available_units ?? 0) > 0 &&
+                  `Fewest free: ${counted(fewest.available_units ?? 0, 'room')} on ${dayLabel(fewest.date)}.`}
+              </p>
+            )}
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
               {cells.map((cell) => (
                 <li key={cell.date}>
@@ -332,7 +416,7 @@ export function AvailabilityPage() {
 
       {selectedCell && (
         <div className="mt-6" aria-live="polite">
-          <NightDetail cell={selectedCell} roomType={roomType} />
+          <NightDetail cell={selectedCell} roomType={roomType} today={today} />
         </div>
       )}
     </div>

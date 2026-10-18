@@ -61,7 +61,8 @@ test('primary actions are easy to touch', async ({ page }) => {
   for (const control of [
     page.getByRole('button', { name: 'Next' }),
     page.getByLabel('Organiser name'),
-    page.getByRole('link', { name: 'Availability' }),
+    // On a phone the menu opens from this button.
+    page.getByRole('button', { name: 'Menu', exact: true }),
   ]) {
     const box = await control.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(40);

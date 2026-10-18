@@ -35,15 +35,18 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - Validation uses the same Zod schema as the server (`QuoteRequest` from `@c32/core`), so the two cannot drift. Messages are plain language.
 - A live contribution meter with a labelled floor marker sits beside the form. When only the rate changes it updates at once using the shared `price()` function and the server's last cost per room-night, marked as an estimate until the server confirms. Anything else waits for the server.
 - The review step shows the decision, reasons, partial-offer card, floor-safe alternatives (for example "Use rate 1800"), totals, the arithmetic trail and the hold expiry in IST.
+- Each step helps as it is filled in: the check-out date under Nights, the rooms free on every night of the stay (and when a request becomes a partial offer), the full price and the Sales limit beside the discount with the price it gives, and one-click common inclusions (breakfast, lunch, dinner, parking).
+- Next with problems lists them above the form, focused, each linked to its field. Finished steps can be opened again from the stepper; the last step repeats the details with an Edit link per part, and says why Issue is unavailable when it is. Start over clears the form and the draft after a confirm.
 - Issuing is never optimistic and carries one idempotency key per request, so a double click replays the same quote.
 - Unknown values show as `Unknown`, never zero.
 
 ## Work package T2-04: Quote Detail and Dashboard
 
-- `/quotes/:id` shows the saved result, the arithmetic trail, a ticking hold countdown (IST with the exact UTC on hover), the request summary, any approval, and the audit timeline.
-- Actions follow role and status: Confirm, Extend validity and Cancel for Sales and Owner; read-only for Viewer; JSON download for everyone. Each action waits for the server, uses one idempotency key per request, and shows a plain-language message with a next step if the server refuses (for example a lapsed hold).
+- `/quotes/:id` shows the saved result, the arithmetic trail, a hold countdown that turns amber under 6 hours and red under 1 hour (IST with the exact UTC on hover), the request summary with a short copyable reference, any approval, and the audit timeline. The back link returns to the screen the quote was opened from.
+- Actions follow role and status: Confirm (after a dialog that repeats the terms and total), Extend validity (quick choices and the new expiry shown before saving), Reduce rooms on a confirmed booking, Cancel, and Re-quote for Sales and Owner; read-only for Viewer; the quotation PDF and a copyable summary for everyone. Each action waits for the server, uses one idempotency key per request, confirms success in a message, and shows a plain-language message with a next step if the server refuses (for example a lapsed hold offers a re-quote).
+- Re-quote opens the builder with the quote's details filled in (or at a suggested floor-safe rate). A quote that still holds rooms is cancelled first, after a confirm, so the new quote can hold the same rooms.
 - `/` shows the pipeline by status, contribution at risk on open quotes (unknown contributions are counted separately and never added as zero), holds expiring in 24 hours, and recent quotes, with an empty state that guides a new user.
-- Approve and reject are part of the review queue (T2-05); a pending-review quote tells Sales that an Owner must approve it.
+- Approve and reject are part of the review queue (T2-05); a pending-review quote tells Sales that an Owner must approve it, and gives an Owner a link to review it.
 
 ## Work package T2-05: Review queue and approval
 

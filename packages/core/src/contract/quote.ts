@@ -55,8 +55,15 @@ export type InclusionInput = z.infer<typeof InclusionInput>;
 export const Organiser = z.strictObject({
   name: NonEmptyText(120),
   reference: NonEmptyText(64).optional(),
+  /** Who to address the quotation to. Contact details are not part of the commercial terms. */
+  contact_name: NonEmptyText(120).optional(),
   /** Where the quote and invoice PDFs are emailed (D-059). */
   email: z.email().max(254).optional(),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9][0-9 ()-]{5,19}$/, 'Use digits, spaces, brackets or dashes')
+    .optional(),
 });
 export type Organiser = z.infer<typeof Organiser>;
 
@@ -132,6 +139,14 @@ export const QuoteRequest = z.strictObject({
    * (100 - discount) / 100, rounded up. Give this or a rate, not both.
    */
   discount_pct: z.int().min(0).max(100).optional(),
+  /**
+   * Discount in whole rupees off the floor rate per room-night. The rate becomes floor rate -
+   * discount, never below 0; the owner's limit still applies as a percentage. Give one of
+   * discount_pct, discount_inr or a rate.
+   */
+  discount_inr: UnitInr.optional(),
+  /** Why Sales offers these terms, for the Owner who reviews them. Not a commercial term. */
+  note_for_owner: NonEmptyText(500).optional(),
   /** Overrides the policy default for per-guest inclusions. */
   guests_per_room_units: z.int().min(1).max(LIMITS.MAX_GUESTS_PER_ROOM).optional(),
   inclusions: z.array(InclusionInput).max(LIMITS.MAX_INCLUSIONS).optional(),

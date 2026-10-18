@@ -340,7 +340,7 @@ describe('policy and health', () => {
   it('reports health with the contract version', async () => {
     const health = await clientFor(null).getHealth();
     expect(health.status).toBe('ok');
-    expect(health.contract_version).toBe('0.2.0');
+    expect(health.contract_version).toBe('0.3.0');
   });
 
   it('is Owner only and uses an optimistic version check', async () => {
@@ -363,7 +363,7 @@ describe('how the caller is identified', () => {
     status: 'ok',
     service: 'c32-api',
     version: 'dev',
-    contract_version: '0.2.0',
+    contract_version: '0.3.0',
   });
 
   async function headersSentWith(options: Partial<Parameters<typeof createApiClient>[0]>) {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AuthProvider } from '../features/auth/auth';
 import type { Session } from '../features/auth/auth';
+import { ToastProvider } from '../components';
 import { ApiProvider } from './ApiProvider';
 
 export function Providers({
@@ -20,7 +21,7 @@ export function Providers({
         {...(fetchImpl ? { fetchImpl } : {})}
         {...(baseUrl !== undefined ? { baseUrl } : {})}
       >
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </ApiProvider>
     </AuthProvider>
   );

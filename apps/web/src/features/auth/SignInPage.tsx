@@ -51,7 +51,7 @@ function SignInFrame({ children }: { children: ReactNode }) {
           Group Stay Quote Builder
         </p>
         <div className="my-auto flex justify-center py-8">
-          <HotelScene className="h-72 w-auto xl:h-80" />
+          <HotelScene className="c32-float h-72 w-auto xl:h-80" />
         </div>
         <div className="max-w-lg">
           <p className="text-5xl leading-[1.05] font-bold tracking-[-0.04em] text-ink">

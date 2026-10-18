@@ -16,12 +16,17 @@ export function RequireRole({
   if (!roles || (session && roles.includes(session.user.role))) return <>{children}</>;
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold">Not allowed</h1>
+      <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+        Not allowed
+      </h1>
       <div className="mt-6">
         <EmptyState
           title="Your role cannot open this screen"
           action={
-            <Link to="/" className="font-semibold text-brand underline">
+            <Link
+              to="/"
+              className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+            >
               Back to the dashboard
             </Link>
           }

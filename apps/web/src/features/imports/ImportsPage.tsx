@@ -149,7 +149,9 @@ export function ImportsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold">Imports and exports</h1>
+      <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+        Imports and exports
+      </h1>
       <p className="mt-1 text-ink-muted">
         Load inventory and rates from a file, or download quotes and the evidence bundle.
       </p>
@@ -200,7 +202,7 @@ export function ImportsPage() {
             </div>
             <p className="mt-3 text-sm">
               <a
-                className="font-semibold text-brand underline"
+                className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
                 download={`${kind}-template.csv`}
                 href={`data:text/csv;charset=utf-8,${encodeURIComponent(templateCsv(kind))}`}
               >
@@ -242,7 +244,10 @@ export function ImportsPage() {
             )}
             {report && (report.status === 'COMMITTED' || report.status === 'UNCHANGED') && (
               <div className="mt-4 flex flex-wrap items-center gap-4">
-                <Link to="/availability" className="font-semibold text-brand underline">
+                <Link
+                  to="/availability"
+                  className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+                >
                   {kind === 'inventory'
                     ? 'See the rooms on the availability calendar'
                     : 'See the nights on the availability calendar'}

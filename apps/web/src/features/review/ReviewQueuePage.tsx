@@ -57,7 +57,9 @@ export function ReviewQueuePage() {
     queryFn: () => api.listQuotes({ status: 'PENDING_REVIEW', limit: '100' }),
   });
 
-  const heading = <h1 className="text-2xl font-bold">Review queue</h1>;
+  const heading = (
+    <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">Review queue</h1>
+  );
   const intro = (
     <p className="mt-1 text-ink-muted">
       Floor breaches and unknowns waiting for an Owner decision.
@@ -73,7 +75,7 @@ export function ReviewQueuePage() {
           <Link
             to={`/quotes/${result.quote.quote_id}`}
             state={{ from: { to: '/review', label: 'Review queue' } } satisfies BackState}
-            className="font-semibold text-brand underline"
+            className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
           >
             Open {result.quote.request.organiser.name}
           </Link>
@@ -166,7 +168,10 @@ export function ReviewQueuePage() {
             tone="info"
             title="That quote is no longer waiting for review"
             action={
-              <Link to={`/quotes/${selectedId}`} className="font-semibold text-brand underline">
+              <Link
+                to={`/quotes/${selectedId}`}
+                className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
+              >
                 Open it to see what happened
               </Link>
             }

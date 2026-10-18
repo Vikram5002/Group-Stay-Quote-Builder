@@ -49,7 +49,9 @@ export function DesignSystemPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold">Design system</h1>
+      <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+        Design system
+      </h1>
       <p className="mt-1 text-ink-muted">
         Tokens and components used across the application. Every text and background pair below is
         contrast-checked by an automated test.

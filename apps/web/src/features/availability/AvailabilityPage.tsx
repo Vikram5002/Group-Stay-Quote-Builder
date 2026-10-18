@@ -221,7 +221,7 @@ function NightDetail({ cell, roomType, today }: { cell: Cell; roomType: string; 
                   state={
                     { from: { to: '/availability', label: 'Availability' } } satisfies BackState
                   }
-                  className="font-semibold text-brand underline"
+                  className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
                 >
                   {q.request.organiser.name}
                 </Link>
@@ -298,7 +298,9 @@ export function AvailabilityPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <h1 className="text-2xl font-bold">Availability</h1>
+      <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">
+        Availability
+      </h1>
       <p className="mt-1 text-ink-muted">
         Room-nights by date: available, held by open quotes, and confirmed. Choose a night to see
         which quotes hold it.

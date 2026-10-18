@@ -76,7 +76,9 @@ export function PolicyPage() {
     },
   });
 
-  const heading = <h1 className="text-2xl font-bold">Policy</h1>;
+  const heading = (
+    <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">Policy</h1>
+  );
 
   if (query.isPending || (query.data && !form)) {
     return (

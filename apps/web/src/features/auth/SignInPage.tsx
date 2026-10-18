@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ROLES } from '@c32/core';
 import type { Role } from '@c32/core';
-import { Alert, Button, Card, SelectField, TextField } from '../../components';
+import { Alert, Button, Card, HotelScene, SelectField, TextField } from '../../components';
 import { useAuth } from './auth';
 import type { SignInState } from './RequireAuth';
 
@@ -70,7 +70,8 @@ export function SignInPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-4">
-      <h1 className="text-2xl font-bold">Sign in</h1>
+      <HotelScene className="mx-auto h-32 w-auto drop-shadow-xl" />
+      <h1 className="text-center text-3xl font-bold">Sign in</h1>
       {ended}
       <Alert tone="info" title="Practice sign-in">
         This is a stand-in for the real sign-in. It only picks a role so you can try each screen.

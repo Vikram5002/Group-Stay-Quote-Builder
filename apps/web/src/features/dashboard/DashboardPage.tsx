@@ -10,6 +10,7 @@ import {
   EmptyState,
   Money,
   Spinner,
+  HotelScene,
 } from '../../components';
 import { ApiError } from '../../lib/api';
 import { cn } from '../../lib/cn';
@@ -136,7 +137,20 @@ export function DashboardPage() {
   const now = useNow();
   const canCreate = session?.user.role !== 'Viewer';
 
-  const heading = <h1 className="text-2xl font-bold">Dashboard</h1>;
+  const heading = (
+    <div className="flex items-center justify-between gap-6 overflow-hidden rounded-card bg-nav px-6 py-5 text-on-nav shadow-raised md:px-8">
+      <div>
+        <p className="text-xs font-semibold tracking-[0.12em] text-nav-accent uppercase">
+          Group stays
+        </p>
+        <h1 className="mt-1 text-3xl font-bold">Dashboard</h1>
+        {session && (
+          <p className="mt-1 text-sm text-on-nav-muted">Welcome back, {session.displayName}.</p>
+        )}
+      </div>
+      <HotelScene className="hidden h-24 w-auto shrink-0 sm:block" />
+    </div>
+  );
 
   if (list.isPending) {
     return (

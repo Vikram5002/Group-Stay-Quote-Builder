@@ -131,7 +131,7 @@ describe('multi-line rules', () => {
     expect(e.totals.room_nights).toBe(15 + 8);
   });
 
-  it('the Sales discount applies to every line; over the limit goes to the owner', () => {
+  it('the Reception discount applies to every line; over the limit goes to the owner', () => {
     expect(run({ discount_pct: 10 }).decision).toBe('OFFER');
     const e = run({ discount_pct: 11 });
     expect(e).toMatchObject({ decision: 'REVIEW', reasons: ['FLOOR_BREACH'] });

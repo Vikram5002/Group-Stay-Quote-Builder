@@ -39,7 +39,7 @@ describe.skipIf(!hasDb)('amend, cancel and extend (DynamoDB Local)', () => {
     return confirmQuote(h.deps, q.quote_id, sales);
   }
 
-  /** 10 rooms at 1500 (25% off, over the Sales limit), approved by the owner, then confirmed. */
+  /** 10 rooms at 1500 (25% off, over the Reception limit), approved by the owner, then confirmed. */
   async function confirmedDiscount(h: Awaited<ReturnType<typeof setup>>) {
     const q = await createQuote(h.deps, request({ rate_per_room_night_inr: 1500 }), sales);
     await approveQuote(h.deps, q.quote_id, owner, 'Long-standing corporate client');
@@ -78,7 +78,7 @@ describe.skipIf(!hasDb)('amend, cancel and extend (DynamoDB Local)', () => {
       expect(checkLedger(await readLedger(h.ctx))).toEqual([]);
     });
 
-    it('a booking approved over the Sales limit is flagged for owner review after amending', async () => {
+    it('a booking approved over the Reception limit is flagged for owner review after amending', async () => {
       const h = await setup();
       const c = await confirmedDiscount(h);
       const a = await amendQuote(h.deps, c.quote_id, sales, 7, null);

@@ -73,7 +73,7 @@ describe('Lambda adapter (serverless-express, HTTP API v2)', () => {
         authenticate: jwtAuthenticate(() => getCurrentInvoke().event),
       });
       const handler = configure({ app });
-      const claims = { sub: 'cognito-user-1', 'cognito:groups': '[Sales]' };
+      const claims = { sub: 'cognito-user-1', 'cognito:groups': '[Reception]' };
 
       const created = (await handler(
         httpApiEvent('POST', '/v1/quotes', { body: fixture.request, claims }),
@@ -82,7 +82,7 @@ describe('Lambda adapter (serverless-express, HTTP API v2)', () => {
       )) as LambdaResult;
       expect(created.statusCode).toBe(201);
       const quote = JSON.parse(created.body);
-      expect(quote.created_by).toEqual({ user_id: 'cognito-user-1', role: 'Sales' });
+      expect(quote.created_by).toEqual({ user_id: 'cognito-user-1', role: 'Reception' });
       expect(quote.evaluation.totals.contribution_inr).toBe(24000);
 
       const confirmed = (await handler(
@@ -101,7 +101,7 @@ describe('Lambda adapter (serverless-express, HTTP API v2)', () => {
 
       // No claims (authorizer missing) is 401; the dev header is ignored in this mode.
       const anon = (await handler(
-        httpApiEvent('GET', '/v1/quotes', { headers: { 'x-dev-user': 'owner-1:Owner' } }),
+        httpApiEvent('GET', '/v1/quotes', { headers: { 'x-dev-user': 'owner-1:ServiceManager' } }),
         lambdaContext,
         () => {},
       )) as LambdaResult;

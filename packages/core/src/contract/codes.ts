@@ -126,7 +126,7 @@ export const ERROR_TITLES: Readonly<Record<ErrorCode, string>> = {
   UNAUTHENTICATED: 'Sign-in required',
   FORBIDDEN: 'Not allowed',
   NOT_FOUND: 'Not found',
-  APPROVAL_REQUIRED: 'Owner approval required',
+  APPROVAL_REQUIRED: 'Service Manager approval required',
   HOLD_CONFLICT: 'Room-nights are no longer available',
   VERSION_CONFLICT: 'The record was changed by someone else',
   INVALID_STATE: 'Action not allowed in the current state',
@@ -162,7 +162,8 @@ export type ValidationIssueCode = z.infer<typeof ValidationIssueCode>;
 // Other enumerations
 // ---------------------------------------------------------------------------
 
-export const ROLES = ['Sales', 'Owner', 'Viewer'] as const;
+/** Reception builds quotes, the Service Manager also reviews, the Owner sets discounts (D-062). */
+export const ROLES = ['Reception', 'ServiceManager', 'Owner', 'Viewer'] as const;
 export const Role = z.enum(ROLES);
 export type Role = z.infer<typeof Role>;
 
@@ -194,6 +195,8 @@ export const QUOTE_EVENT_TYPES = [
   'EXPIRED',
   'PAYMENT_RECORDED',
   'EMAILED',
+  'SENT_TO_OWNER',
+  'OWNER_DISCOUNTED',
 ] as const;
 export const QuoteEventType = z.enum(QUOTE_EVENT_TYPES);
 export type QuoteEventType = z.infer<typeof QuoteEventType>;

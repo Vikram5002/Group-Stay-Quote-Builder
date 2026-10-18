@@ -43,7 +43,7 @@ function offersFor(request: object, context: EvaluationContext = ctx()): Counter
 const types = (offers: CounterOffer[]) => offers.map((o) => o.type);
 
 describe('RAISE_RATE (blueprint 9.3 example)', () => {
-  it('rate 1500 breaches the floor: raise to the lowest Sales rate 1800', () => {
+  it('rate 1500 breaches the floor: raise to the lowest Reception rate 1800', () => {
     expect(offersFor({ rate_per_room_night_inr: 1500 })).toEqual([
       {
         type: 'RAISE_RATE',
@@ -97,7 +97,7 @@ describe('PARTIAL_ROOMS', () => {
   });
 
   it('a partial that also breaches the floor gets fixes priced for the sellable rooms', () => {
-    // night 2 has 8 rooms; 1700 is over the 10% Sales limit on all 16 room-nights
+    // night 2 has 8 rooms; 1700 is over the 10% Reception limit on all 16 room-nights
     const inventory = [withRooms(10)[0]!, { ...withRooms(8)[1]! }];
     const offers = offersFor({ rooms: 12, rate_per_room_night_inr: 1700 }, ctx({ inventory }));
     expect(types(offers)).toEqual(['RAISE_RATE']);
@@ -133,7 +133,7 @@ describe('every counter-offer is floor-safe when re-run (FR-12)', () => {
     ['bundled breakfast', { inclusions: [breakfast] }, ctx()],
     ['12 rooms', { rooms: 12 }, ctx()],
     [
-      'partial over the Sales limit',
+      'partial over the Reception limit',
       { rooms: 12, rate_per_room_night_inr: 1700 },
       ctx({ inventory: [withRooms(10)[0]!, withRooms(8)[1]!] }),
     ],

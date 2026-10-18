@@ -231,7 +231,7 @@ describe('quote and invoice email (D-059)', () => {
 
 describe('auth, observability and the deploy role', () => {
   it('Cognito has the three role groups and a PKCE client without a secret', () => {
-    for (const name of ['Owner', 'Sales', 'Viewer']) {
+    for (const name of ['Owner', 'ServiceManager', 'Reception', 'Viewer']) {
       t['auth']!.hasResourceProperties('AWS::Cognito::UserPoolGroup', { GroupName: name });
     }
     t['auth']!.hasResourceProperties('AWS::Cognito::UserPool', {

@@ -28,7 +28,7 @@ describe('floor rate rule (D-056: package floor / total rooms, cost included)', 
     expect(r.floor_ok).toBe(true);
   });
 
-  it('the minimum safe rate is the lowest Sales rate whatever the volume', () => {
+  it('the minimum safe rate is the lowest Reception rate whatever the volume', () => {
     for (const rooms of [1, 7, 10, 50]) {
       expect(price(pkg(rooms)).totals.min_rate_per_room_night_inr).toBe(1800);
     }
@@ -223,11 +223,11 @@ describe('arithmetic trail (explainable decisions)', () => {
       '20 x 2000 = 40000 room revenue',
       '20 x 800 = 16000 variable cost',
       'full price 20000 / 10 rooms = 2000 per room-night (floor rate, variable cost included)',
-      '20 x 2000 = 40000 full revenue; discount 0% (Sales limit 10%)',
-      'lowest Sales rate 2000 less 10% = 1800, so at least 36000 room revenue',
+      '20 x 2000 = 40000 full revenue; discount 0% (Reception limit 10%)',
+      'lowest Reception rate 2000 less 10% = 1800, so at least 36000 room revenue',
       'floor 20 x 1800 - 16000 = 20000 contribution',
       '40000 - 16000 = 24000 contribution >= 20000 floor, headroom 4000',
-      'minimum safe rate = lowest Sales rate 1800',
+      'minimum safe rate = lowest Reception rate 1800',
     ]);
   });
 

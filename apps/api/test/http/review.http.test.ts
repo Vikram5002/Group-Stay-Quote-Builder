@@ -24,8 +24,8 @@ describe.skipIf(!hasDb)('review queue over HTTP (DynamoDB Local)', () => {
       request(app).post(path).set('x-dev-user', user).send(body),
     get: (path: string) => request(app).get(path).set('x-dev-user', user),
   });
-  const sales = as('sales-1:Sales');
-  const owner = as('owner-1:Owner');
+  const sales = as('sales-1:Reception');
+  const owner = as('owner-1:ServiceManager');
 
   async function belowFloor(by = sales) {
     const res = await by
@@ -52,7 +52,7 @@ describe.skipIf(!hasDb)('review queue over HTTP (DynamoDB Local)', () => {
     expect(audit.items.map((e) => e.type)).toEqual(['QUOTE_CREATED', 'APPROVED', 'CONFIRMED']);
   });
 
-  it('T17: self-approval is 403; a Sales user cannot approve at all', async () => {
+  it('T17: self-approval is 403; a Reception user cannot approve at all', async () => {
     const q = await belowFloor(owner);
     const self = await owner.post(`/v1/quotes/${q.quote_id}/approve`, { reason: 'My own deal' });
     expect(self.status).toBe(403);

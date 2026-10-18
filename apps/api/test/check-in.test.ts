@@ -41,7 +41,7 @@ describe('a check-in before today (property time zone) is refused with a field e
   it.each(['/v1/quotes/preview', '/v1/quotes'])('%s', async (path) => {
     const res = await request(app())
       .post(path)
-      .set('x-dev-user', 'sales-1:Sales')
+      .set('x-dev-user', 'sales-1:Reception')
       .set('Idempotency-Key', 'past-check-in-1')
       .send(body('2025-01-01'))
       .expect(422);
@@ -60,7 +60,7 @@ describe('a check-in before today (property time zone) is refused with a field e
   it('today is still quoted (here declined as too late, which is a decision, not an error)', async () => {
     const res = await request(app())
       .post('/v1/quotes/preview')
-      .set('x-dev-user', 'sales-1:Sales')
+      .set('x-dev-user', 'sales-1:Reception')
       .send(body('2026-10-18'))
       .expect(200);
     expect(QuotePreviewResponse.parse(res.body).evaluation).toMatchObject({

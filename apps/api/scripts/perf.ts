@@ -61,7 +61,7 @@ const app = createApp({
 });
 const server = app.listen(0);
 const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-const headers = { 'content-type': 'application/json', 'x-dev-user': 'sales-1:Sales' };
+const headers = { 'content-type': 'application/json', 'x-dev-user': 'sales-1:Reception' };
 
 async function timed(fn: () => Promise<Response>) {
   const t = performance.now();

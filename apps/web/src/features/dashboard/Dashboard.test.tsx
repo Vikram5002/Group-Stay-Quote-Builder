@@ -149,6 +149,60 @@ describe('dashboard', () => {
     expect(within(table).getByText(/24,000/)).toBeInTheDocument();
   });
 
+  it('lists what needs this person now, by role', async () => {
+    await create({}); // asha's, offered
+    await create({ stay: { check_in: '2026-11-04', nights: 2 }, rate_per_room_night_inr: 1700 });
+    renderDashboard('Owner');
+    const next = (await screen.findByRole('heading', { name: 'Needs you now' })).closest(
+      'section',
+    ) as HTMLElement;
+    expect(
+      within(next).getByRole('link', { name: /1 quote is waiting for your review/ }),
+    ).toHaveAttribute('href', '/review');
+    // Ravi created none of them, so none are "your quotes".
+    expect(within(next).queryByText(/of your quotes/)).not.toBeInTheDocument();
+  });
+
+  it('points Sales at their own offered quotes, and groups the pipeline', async () => {
+    await create({});
+    render(
+      <Providers initialSession={mockSession('Sales', 'Asha')} baseUrl={BASE}>
+        <RouterProvider router={createTestRouter(['/'])} />
+      </Providers>,
+    );
+    expect(
+      await screen.findByRole('link', {
+        name: /1 of your quotes is offered and waiting for the client to accept/,
+      }),
+    ).toHaveAttribute('href', '/quotes?status=OFFERED&mine=1');
+    const pipeline = screen
+      .getByRole('heading', { name: 'Pipeline by status' })
+      .closest('section') as HTMLElement;
+    for (const group of ['Open', 'Booked', 'Closed']) {
+      expect(within(pipeline).getByRole('heading', { name: group })).toBeInTheDocument();
+    }
+  });
+
+  it('says when nothing needs this person', async () => {
+    await create({});
+    renderDashboard('Viewer');
+    expect(await screen.findByText('Nothing needs you right now.')).toBeInTheDocument();
+  });
+
+  it('marks a hold under an hour', async () => {
+    const quote = await create({});
+    store.quotes.set(quote.quote_id, {
+      ...quote,
+      valid_until: new Date(Date.now() + 30 * 60_000).toISOString(),
+    });
+    renderDashboard();
+    const card = (
+      await screen.findByRole('heading', { name: 'Holds expiring in 24 hours' })
+    ).closest('section') as HTMLElement;
+    expect(within(card).getByText('Under 1 hour')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /1 hold ends within 24 hours/ })).toBeInTheDocument();
+  });
+
   it('has no accessibility violations', async () => {
     await create({});
     const { container } = renderDashboard();

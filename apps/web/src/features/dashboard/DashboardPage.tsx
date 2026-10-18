@@ -1,19 +1,97 @@
 import { Link } from 'react-router-dom';
 import { QUOTE_STATUSES } from '@c32/core';
-import type { Quote } from '@c32/core';
-import { Alert, Button, Card, DataTable, EmptyState, Money, Spinner } from '../../components';
+import type { Quote, QuoteStatus } from '@c32/core';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  DataTable,
+  EmptyState,
+  Money,
+  Spinner,
+} from '../../components';
 import { ApiError } from '../../lib/api';
-import { formatCountdown, formatIst } from '../../lib/format';
+import { cn } from '../../lib/cn';
+import { formatCountdown, formatDateShort, formatIst } from '../../lib/format';
 import { counted, plural } from '../../lib/plural';
 import { useAuth } from '../auth/auth';
 import { OPEN_STATUSES, STATUS_LABEL } from '../quotes/labels';
 import { useNow, useQuoteList } from '../quotes/queries';
+import { clientTotal } from '../quotes/pricingText';
 import type { BackState } from '../quotes/QuoteDetailPage';
 import { StatusBadge } from '../quotes/StatusBadge';
 
 const BACK: BackState = { from: { to: '/', label: 'Dashboard' } };
 
 const SOON_HOURS = 24;
+const HOUR_MS = 3_600_000;
+
+/** The pipeline in the order work moves: still open, booked, then closed one way or another. */
+const PIPELINE: ReadonlyArray<{ title: string; statuses: readonly QuoteStatus[] }> = [
+  { title: 'Open', statuses: ['OFFERED', 'PENDING_REVIEW'] },
+  { title: 'Booked', statuses: ['CONFIRMED'] },
+  { title: 'Closed', statuses: ['DECLINED', 'REJECTED', 'EXPIRED', 'CANCELLED'] },
+];
+
+/** Amber under 6 hours, red under 1, so the most urgent holds stand out. */
+function holdTone(validUntil: string, now: Date): string | undefined {
+  const ms = Date.parse(validUntil) - now.getTime();
+  if (ms < HOUR_MS) return 'font-semibold text-danger';
+  if (ms < 6 * HOUR_MS) return 'font-semibold text-warning';
+  return undefined;
+}
+
+interface NextStep {
+  to: string;
+  text: string;
+}
+
+/** What needs this person now, by role: reviews for an Owner, their own open quotes, ending holds. */
+function nextSteps(
+  quotes: readonly Quote[],
+  userId: string,
+  role: string,
+  soon: number,
+): NextStep[] {
+  const steps: NextStep[] = [];
+  if (role === 'Owner') {
+    // An Owner cannot approve a quote they created (four-eyes), so those are not counted.
+    const reviews = quotes.filter(
+      (q) => q.status === 'PENDING_REVIEW' && q.created_by.user_id !== userId,
+    ).length;
+    if (reviews > 0) {
+      steps.push({
+        to: '/review',
+        text: `${counted(reviews, 'quote')} ${plural(reviews, 'is', 'are')} waiting for your review`,
+      });
+    }
+  }
+  if (role === 'Sales' || role === 'Owner') {
+    const mine = quotes.filter((q) => q.created_by.user_id === userId);
+    const offered = mine.filter((q) => q.status === 'OFFERED').length;
+    if (offered > 0) {
+      steps.push({
+        to: '/quotes?status=OFFERED&mine=1',
+        text: `${offered} of your quotes ${plural(offered, 'is', 'are')} offered and waiting for the client to accept`,
+      });
+    }
+    const pending = mine.filter((q) => q.status === 'PENDING_REVIEW').length;
+    if (pending > 0) {
+      steps.push({
+        to: '/quotes?status=PENDING_REVIEW&mine=1',
+        text: `${pending} of your quotes ${plural(pending, 'is', 'are')} waiting for an Owner`,
+      });
+    }
+  }
+  if (soon > 0) {
+    steps.push({
+      to: '/quotes?status=OPEN&sort=expiry',
+      text: `${counted(soon, 'hold')} ${plural(soon, 'ends', 'end')} within ${SOON_HOURS} hours`,
+    });
+  }
+  return steps;
+}
 
 function expiringSoon(quotes: readonly Quote[], now: Date): Quote[] {
   const limit = now.getTime() + SOON_HOURS * 3_600_000;
@@ -37,6 +115,19 @@ function contributionAtRisk(quotes: readonly Quote[]) {
     else total += value;
   }
   return { total, unknown, openCount: open.length };
+}
+
+/** Contribution already booked: confirmed quotes, with unknowns counted apart. */
+function bookedContribution(quotes: readonly Quote[]) {
+  let total = 0;
+  let unknown = 0;
+  const booked = quotes.filter((q) => q.status === 'CONFIRMED');
+  for (const q of booked) {
+    const value = q.evaluation.totals.contribution_inr;
+    if (value === null) unknown += 1;
+    else total += value;
+  }
+  return { total, unknown, count: booked.length };
 }
 
 export function DashboardPage() {
@@ -116,6 +207,10 @@ export function DashboardPage() {
 
   const soon = expiringSoon(quotes, now);
   const risk = contributionAtRisk(quotes);
+  const booked = bookedContribution(quotes);
+  const steps = session
+    ? nextSteps(quotes, session.user.user_id, session.user.role, soon.length)
+    : [];
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -125,27 +220,70 @@ export function DashboardPage() {
         {list.data.next_cursor ? ' (showing the latest 100)' : ''}
       </p>
 
+      <section aria-labelledby="next" className="mt-6">
+        <h2 id="next" className="mb-3 text-lg font-semibold">
+          Needs you now
+        </h2>
+        {steps.length === 0 ? (
+          <p className="rounded-card border border-border bg-surface p-4 text-sm text-ink-muted">
+            Nothing needs you right now.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {steps.map((step) => (
+              <li key={step.to}>
+                <Link
+                  to={step.to}
+                  className="flex min-h-11 items-center justify-between gap-3 rounded-card border border-border bg-surface px-4 py-2 text-sm font-semibold text-brand hover:border-brand"
+                >
+                  {step.text}
+                  <span aria-hidden="true">→</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section aria-labelledby="pipeline" className="mt-6">
         <h2 id="pipeline" className="mb-3 text-lg font-semibold">
           Pipeline by status
         </h2>
-        <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {QUOTE_STATUSES.map((status) => (
-            <li key={status}>
-              {/* Each count opens the quotes with that status. */}
-              <Link
-                to={`/quotes?status=${status}`}
-                className="block h-full rounded-card border border-border bg-surface p-4 shadow-card hover:border-brand"
+        <div className="grid gap-4 md:grid-cols-[2fr_1fr] lg:grid-cols-[2fr_1fr_4fr]">
+          {PIPELINE.map((group) => (
+            <div key={group.title}>
+              <h3 className="mb-2 text-sm font-semibold text-ink-muted">{group.title}</h3>
+              <ul
+                className={cn(
+                  'grid gap-3',
+                  group.statuses.length === 1
+                    ? 'grid-cols-1'
+                    : group.statuses.length === 2
+                      ? 'grid-cols-2'
+                      : 'grid-cols-2 sm:grid-cols-4',
+                )}
               >
-                <span className="block text-3xl font-bold tabular-nums">{counts[status]}</span>
-                <span className="mt-1 block">
-                  <StatusBadge status={status} />
-                </span>
-                <span className="sr-only">{STATUS_LABEL[status]} quotes</span>
-              </Link>
-            </li>
+                {group.statuses.map((status) => (
+                  <li key={status}>
+                    {/* Each count opens the quotes with that status. */}
+                    <Link
+                      to={`/quotes?status=${status}`}
+                      className="block h-full rounded-card border border-border bg-surface p-4 shadow-card hover:border-brand"
+                    >
+                      <span className="block text-3xl font-bold tabular-nums">
+                        {counts[status]}
+                      </span>
+                      <span className="mt-1 block">
+                        <StatusBadge status={status} />
+                      </span>
+                      <span className="sr-only">{STATUS_LABEL[status]} quotes</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       </section>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
@@ -164,6 +302,10 @@ export function DashboardPage() {
               contribution and {plural(risk.unknown, 'is', 'are')} not included in this total.
             </p>
           )}
+          <p className="mt-3 border-t border-border pt-3 text-sm">
+            Booked: <Money value={booked.total} /> on {counted(booked.count, 'confirmed quote')}
+            {booked.unknown > 0 && `, plus ${booked.unknown} with an unknown contribution`}.
+          </p>
         </Card>
 
         <Card title={`Holds expiring in ${SOON_HOURS} hours`}>
@@ -185,7 +327,13 @@ export function DashboardPage() {
                   >
                     {q.request.organiser.name}
                   </Link>
-                  <span title={`UTC: ${q.valid_until}`}>
+                  <span
+                    title={`UTC: ${q.valid_until}`}
+                    className={holdTone(q.valid_until as string, now)}
+                  >
+                    {Date.parse(q.valid_until as string) - now.getTime() < HOUR_MS && (
+                      <Badge tone="danger">Under 1 hour</Badge>
+                    )}{' '}
                     {formatCountdown(q.valid_until as string, now)} · {formatIst(q.valid_until)}
                   </span>
                 </li>
@@ -230,12 +378,32 @@ export function DashboardPage() {
               ),
             },
             { header: 'Status', render: (q) => <StatusBadge status={q.status} /> },
-            { header: 'Check-in', render: (q) => q.evaluation.check_in },
+            {
+              header: 'Stay',
+              render: (q) =>
+                `${formatDateShort(q.evaluation.check_in)} to ${formatDateShort(q.evaluation.check_out)}`,
+            },
             { header: 'Rooms', numeric: true, render: (q) => q.evaluation.offered_rooms },
+            {
+              header: 'Total',
+              numeric: true,
+              render: (q) => <Money value={clientTotal(q.evaluation.totals)} />,
+            },
             {
               header: 'Contribution',
               numeric: true,
               render: (q) => <Money value={q.evaluation.totals.contribution_inr} />,
+            },
+            {
+              header: 'Hold',
+              render: (q) =>
+                OPEN_STATUSES.includes(q.status) && q.valid_until ? (
+                  <span className={holdTone(q.valid_until, now)}>
+                    {formatCountdown(q.valid_until, now)}
+                  </span>
+                ) : (
+                  <span className="text-ink-muted">None</span>
+                ),
             },
           ]}
         />

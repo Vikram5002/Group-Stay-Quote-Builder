@@ -21,8 +21,8 @@ export function SignInPage() {
   const from = arrival?.from ?? '/';
   const ended = arrival?.expired ? (
     <Alert tone="warning" title="Your session ended">
-      Sign in again to carry on where you were. A quote you were building is kept as a draft in
-      this tab.
+      Sign in again to carry on where you were. A quote you were building is kept as a draft in this
+      tab.
     </Alert>
   ) : null;
   const [name, setName] = useState('');

@@ -5,6 +5,7 @@ import { ROLES } from '@c32/core';
 import type { Role } from '@c32/core';
 import { Alert, Button, Card, SelectField, TextField } from '../../components';
 import { useAuth } from './auth';
+import type { SignInState } from './RequireAuth';
 
 const ROLE_HELP: Record<Role, string> = {
   Sales: 'Creates quotes, confirms, extends and cancels.',
@@ -16,7 +17,14 @@ export function SignInPage() {
   const { session, signInMock, mode, signInCognito, pending, authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? '/';
+  const arrival = location.state as Partial<SignInState> | null;
+  const from = arrival?.from ?? '/';
+  const ended = arrival?.expired ? (
+    <Alert tone="warning" title="Your session ended">
+      Sign in again to carry on where you were. A quote you were building is kept as a draft in
+      this tab.
+    </Alert>
+  ) : null;
   const [name, setName] = useState('');
   const [role, setRole] = useState<Role>('Sales');
   const [error, setError] = useState<string | undefined>();
@@ -31,6 +39,7 @@ export function SignInPage() {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-4">
         <h1 className="text-2xl font-bold">Sign in</h1>
+        {ended}
         {authError ? (
           <Alert tone="danger" title="Sign-in did not complete">
             {authError}
@@ -62,6 +71,7 @@ export function SignInPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-4">
       <h1 className="text-2xl font-bold">Sign in</h1>
+      {ended}
       <Alert tone="info" title="Practice sign-in">
         This is a stand-in for the real sign-in. It only picks a role so you can try each screen.
         All data is synthetic.

@@ -15,3 +15,6 @@ export { DataTable } from './Table';
 export type { Column } from './Table';
 export { Count, Money, Unknown } from './Unknown';
 export { HotelScene } from './HotelScene';
+export { Icon } from './Icon';
+export { Logo } from './Logo';
+export type { IconName } from './Icon';

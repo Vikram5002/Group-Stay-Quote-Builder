@@ -52,7 +52,7 @@ function FieldFrame({ label, hint, error, required, children }: FieldFrameProps)
 }
 
 const controlClass =
-  'min-h-11 w-full rounded-control border bg-surface px-3 text-base text-ink placeholder:text-ink-muted disabled:bg-surface-muted';
+  'min-h-11 w-full rounded-control border bg-surface px-3.5 text-base text-ink shadow-[0_1px_2px_rgb(15_18_34/0.04)] placeholder:text-ink-muted hover:border-ink-muted focus-visible:border-brand disabled:bg-surface-muted';
 
 function borderFor(invalid: boolean) {
   return invalid ? 'border-danger' : 'border-border-strong';

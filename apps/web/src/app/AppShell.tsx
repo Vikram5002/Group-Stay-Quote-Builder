@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, HotelScene } from '../components';
+import { Button, Icon, Logo } from '../components';
+import type { IconName } from '../components';
 import { useAuth } from '../features/auth/auth';
 import { OPEN_STATUSES } from '../features/quotes/labels';
 import { QUOTES_KEY, useNow, useQuoteList } from '../features/quotes/queries';
@@ -15,33 +16,44 @@ const DAY_MS = 86_400_000;
 
 const linkClass = (active: boolean) =>
   cn(
-    'flex min-h-11 items-center justify-between gap-2 rounded-full px-4 text-sm font-medium',
+    'group relative flex min-h-11 items-center gap-3 rounded-control px-3 text-sm font-medium',
     active
-      ? 'bg-nav-active text-white'
-      : 'text-on-nav-muted hover:bg-white hover:text-on-nav',
+      ? 'bg-nav-active text-on-nav shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]'
+      : 'text-on-nav-muted hover:bg-white/5 hover:text-on-nav',
   );
 
-/** The product mark: a bed under a roof, navy on the gold accent. */
-function Logo() {
+/** The icon beside each menu entry. */
+const NAV_ICONS: Record<string, IconName> = {
+  '/': 'dashboard',
+  '/quotes': 'quotes',
+  '/quotes/new': 'plus',
+  '/review': 'review',
+  '/availability': 'calendar',
+  '/imports': 'transfer',
+  '/policy': 'policy',
+  '/evidence': 'evidence',
+  '/experiments': 'experiments',
+  [DESIGN_SYSTEM_PATH]: 'palette',
+};
+
+/** The icon in a menu entry: indigo when current, with a bar marking the current page. */
+function NavIcon({ path, active }: { path: string; active: boolean }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 32 32" className="size-9 shrink-0">
-      <rect width="32" height="32" rx="9" className="fill-nav-accent" />
-      <path
-        d="M7 15 16 8l9 7"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2.2"
-        strokeLinecap="round"
+    <>
+      {active && (
+        <span
+          aria-hidden="true"
+          className="absolute top-2.5 bottom-2.5 -left-3 w-1 rounded-r-full bg-[#818cf8]"
+        />
+      )}
+      <Icon
+        name={NAV_ICONS[path] ?? 'layers'}
+        className={cn(
+          'size-[1.15rem]',
+          active ? 'text-[#a5b4fc]' : 'text-on-nav-muted group-hover:text-on-nav',
+        )}
       />
-      <path
-        d="M9 24v-6h14v6M9 21h14M12 18v-1.5a1.5 1.5 0 0 1 1.5-1.5h1a1.5 1.5 0 0 1 1.5 1.5V18"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    </>
   );
 }
 
@@ -49,7 +61,7 @@ function Logo() {
 function CountBadge({ count, label }: { count: number; label: string }) {
   if (count <= 0) return null;
   return (
-    <span className="rounded-full bg-nav-accent px-2 py-0.5 text-xs font-bold text-white">
+    <span className="ml-auto min-w-6 rounded-full bg-nav-accent px-2 py-0.5 text-center text-xs font-bold text-white tabular-nums">
       <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
       <span className="sr-only">
         , {count} {label}
@@ -154,6 +166,7 @@ export function AppShell() {
           aria-current={active ? 'page' : undefined}
           className={linkClass(active)}
         >
+          <NavIcon path={item.path} active={active} />
           <span>{item.label}</span>
           {badge}
         </Link>
@@ -164,100 +177,126 @@ export function AppShell() {
     const list = items.filter((i) => i.group === name);
     if (list.length === 0) return null;
     return (
-      <div className="mt-4 first:mt-0">
+      <div className="mt-6 first:mt-0">
         {heading && (
-          <p className="px-3 pb-1 text-xs font-semibold tracking-[0.12em] text-on-nav-muted uppercase">
+          <p className="px-3 pb-2 text-[0.7rem] font-semibold tracking-[0.14em] text-on-nav-muted uppercase">
             {heading}
           </p>
         )}
-        <ul className="flex flex-col gap-1">{list.map(entry)}</ul>
+        <ul className="flex flex-col gap-0.5">{list.map(entry)}</ul>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[16rem_1fr]">
+    <div className="min-h-screen md:grid md:grid-cols-[17rem_1fr] md:bg-[linear-gradient(to_right,var(--color-nav)_17rem,transparent_17rem)]">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-control focus:bg-surface focus:px-4 focus:py-2"
       >
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 flex flex-col border-r border-border bg-nav text-on-nav md:h-screen md:overflow-y-auto">
-        <div className="flex items-center justify-between gap-3 p-4">
+      <header className="sticky top-0 z-30 flex flex-col bg-nav text-on-nav md:h-screen md:overflow-y-auto">
+        {/* A soft indigo glow at the top of the rail. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(ellipse_at_top_left,rgb(99_102_241/0.30),transparent_70%)]"
+        />
+        <div className="relative flex items-center justify-between gap-3 px-5 py-5">
           <Link to="/" className="flex items-center gap-3 rounded-control">
             <Logo />
             <span>
-              <span className="block text-base leading-tight font-semibold tracking-tight">
+              <span className="block text-[0.95rem] leading-tight font-semibold tracking-tight text-white">
                 {APP_NAME}
               </span>
-              <span className="mt-1 inline-block rounded-full border border-border bg-white px-2 text-xs text-on-nav-muted">
+              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2 py-0.5 text-[0.7rem] font-medium text-on-nav-muted ring-1 ring-white/10">
+                <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-bright" />
                 Demo data
               </span>
             </span>
           </Link>
           <Button
             variant="on-nav"
-            className="md:hidden"
+            className="px-3 md:hidden"
             aria-expanded={menuOpen}
             aria-controls={menuId}
             onClick={() => setMenuOpen((open) => !open)}
           >
+            <Icon name={menuOpen ? 'close' : 'menu'} className="size-4" />
             {menuOpen ? 'Close menu' : 'Menu'}
           </Button>
         </div>
         <div
           id={menuId}
-          className={cn('md:flex md:flex-1 md:flex-col', menuOpen ? 'flex flex-col' : 'hidden')}
+          className={cn(
+            'relative md:flex md:flex-1 md:flex-col',
+            menuOpen ? 'flex flex-col' : 'hidden',
+          )}
         >
-          <nav aria-label="Primary" className="px-2 pb-4">
+          <nav aria-label="Primary" className="px-3 pb-4">
             {action && (
               <Link
                 to={action.path}
                 aria-current={pathname === action.path ? 'page' : undefined}
-                className="mb-5 flex min-h-11 items-center justify-center rounded-full bg-nav-accent px-3 text-sm font-medium text-white hover:bg-brand-hover active:translate-y-px"
+                className="mb-6 flex min-h-11 items-center justify-center gap-2 rounded-control bg-nav-accent px-3 text-sm font-semibold text-white shadow-brand hover:bg-brand-hover active:translate-y-px"
               >
-                <span aria-hidden="true" className="mr-1.5 text-lg leading-none">
-                  +
-                </span>
+                <Icon name="plus" className="size-4" strokeWidth={2.25} />
                 {action.label}
               </Link>
             )}
             {group('work')}
             {group('admin', 'Admin')}
             <details
-              className="mt-4 border-t border-border pt-3"
+              className="group/about mt-6 border-t border-white/10 pt-4"
               {...(projectOpen || pathname === DESIGN_SYSTEM_PATH ? { open: true } : {})}
             >
-              <summary className="flex min-h-11 cursor-pointer items-center rounded-control px-3 text-sm font-medium text-on-nav-muted hover:bg-white hover:text-on-nav">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-control px-3 text-sm font-medium text-on-nav-muted hover:bg-white/5 hover:text-on-nav [&::-webkit-details-marker]:hidden">
+                <Icon name="info" className="size-[1.15rem]" />
                 About this project
+                <span
+                  aria-hidden="true"
+                  className="ml-auto text-base leading-none transition-transform group-open/about:rotate-90"
+                >
+                  ›
+                </span>
               </summary>
-              <ul className="mt-1 flex flex-col gap-1">
+              <ul className="mt-1 flex flex-col gap-0.5">
                 {items.filter((i) => i.group === 'project').map(entry)}
                 <li>
                   <NavLink to={DESIGN_SYSTEM_PATH} className={({ isActive: a }) => linkClass(a)}>
-                    Design system
+                    {({ isActive: a }) => (
+                      <>
+                        <NavIcon path={DESIGN_SYSTEM_PATH} active={a} />
+                        Design system
+                      </>
+                    )}
                   </NavLink>
                 </li>
               </ul>
             </details>
           </nav>
-          <HotelScene className="mx-4 mt-auto hidden h-28 w-auto opacity-90 md:block" />
           {session && (
-            <div className="m-3 rounded-card bg-white p-4 text-sm ring-1 ring-border">
+            <div className="m-3 mt-auto rounded-card bg-white/[0.04] p-3 text-sm ring-1 ring-white/10">
               <div className="flex items-center gap-3">
                 <span
                   aria-hidden="true"
-                  className="grid size-9 shrink-0 place-items-center rounded-full bg-nav-accent text-sm font-bold text-white"
+                  className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#fcd34d] to-[#f59e0b] text-sm font-bold text-[#1e1b4b]"
                 >
                   {(session.displayName.trim()[0] ?? '?').toUpperCase()}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate font-semibold">{session.displayName}</span>
-                  <span className="block text-on-nav-muted">Role: {session.user.role}</span>
+                  <span className="block truncate font-semibold text-white">
+                    {session.displayName}
+                  </span>
+                  <span className="block text-xs text-on-nav-muted">Role: {session.user.role}</span>
                 </span>
               </div>
-              <Button variant="on-nav" className="mt-3 w-full" onClick={() => signOut('manual')}>
+              <Button
+                variant="on-nav"
+                className="mt-3 min-h-10 w-full"
+                onClick={() => signOut('manual')}
+              >
+                <Icon name="logout" className="size-4" />
                 Sign out
               </Button>
             </div>
@@ -268,7 +307,7 @@ export function AppShell() {
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className="min-w-0 p-4 focus:outline-none md:p-10"
+        className="min-w-0 px-4 py-6 focus:outline-none md:px-10 md:py-10"
       >
         {/* Each screen fades in (keyed by path); reduced motion turns it off. */}
         <div key={pathname} className="animate-enter">

@@ -14,50 +14,57 @@
     'Inter Variable', Inter, 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
-  /* Monochrome commerce palette (D-061): near-black ink on white and soft greys, one green accent. */
-  --color-canvas: #f8f8f9;
+  /*
+   * Hospitality palette (D-062): cool ink on a soft blue-grey canvas, one indigo brand colour, and
+   * a deep navy navigation rail. Status colours stay distinct from the brand so they read as state.
+   */
+  --color-canvas: #f4f5fa;
   --color-surface: #ffffff;
-  --color-surface-muted: #f2f2f2;
-  --color-border: #e3e3e3;
-  --color-border-strong: #797a7c;
+  --color-surface-muted: #f1f3f9;
+  --color-border: #e3e6ef;
+  --color-border-strong: #767d94;
 
-  --color-ink: #101319;
-  --color-ink-muted: #4a4b4c;
+  --color-ink: #0f1222;
+  --color-ink-muted: #525a70;
 
-  --color-brand: #101319;
-  --color-brand-hover: #2b2e35;
-  --color-brand-soft: #f2f2f2;
+  --color-brand: #4f46e5;
+  --color-brand-hover: #4338ca;
+  --color-brand-soft: #eef0ff;
   --color-on-brand: #ffffff;
 
-  /* Green: text-safe on white and on its soft tint; the bright green is for lines and marks only. */
-  --color-accent: #13723c;
-  --color-accent-soft: #e6f4ec;
-  --color-accent-bright: #2fb86a;
+  /* Emerald: text-safe on white and on its soft tint; the bright one is for lines and marks only. */
+  --color-accent: #047857;
+  --color-accent-soft: #e5f6ef;
+  --color-accent-bright: #10b981;
 
-  --color-success: #13723c;
-  --color-success-soft: #e6f4ec;
-  --color-warning: #8a4b00;
-  --color-warning-soft: #fbefd8;
-  --color-danger: #b4232f;
-  --color-danger-soft: #fbe8ea;
-  --color-info: #1d5b94;
-  --color-info-soft: #e8f0f8;
-  --color-unknown: #4a4b4c;
-  --color-unknown-soft: #f2f2f2;
+  /* Warm gold, for lit windows and small highlights only (never text). */
+  --color-gold: #f5b942;
 
-  --color-focus: #101319;
+  --color-success: #047857;
+  --color-success-soft: #e5f6ef;
+  --color-warning: #92400e;
+  --color-warning-soft: #fef3e2;
+  --color-danger: #be123c;
+  --color-danger-soft: #fdecef;
+  --color-info: #1d4ed8;
+  --color-info-soft: #e9f0ff;
+  --color-unknown: #525a70;
+  --color-unknown-soft: #f1f3f9;
 
-  /* The navigation rail: light grey, with a black pill for the current page. */
-  --color-nav: #f2f2f2;
-  --color-nav-active: #101319;
-  --color-on-nav: #101319;
-  --color-on-nav-muted: #4a4b4c;
-  --color-nav-accent: #101319;
+  --color-focus: #4f46e5;
 
-  --radius-control: 0.75rem;
-  --radius-card: 1.25rem;
-  --shadow-card: 0 1px 2px rgb(16 19 25 / 0.04);
-  --shadow-raised: 0 1px 2px rgb(16 19 25 / 0.04), 0 12px 32px -16px rgb(16 19 25 / 0.18);
+  /* The navigation rail: deep navy, a lifted pill for the current page, indigo for the action. */
+  --color-nav: #0d1024;
+  --color-nav-active: #262b4f;
+  --color-on-nav: #f4f5ff;
+  --color-on-nav-muted: #a7adca;
+  --color-nav-accent: #4f46e5;
+
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(15 18 34 / 0.04), 0 2px 6px -2px rgb(15 18 34 / 0.05);
+  --shadow-raised: 0 1px 2px rgb(15 18 34 / 0.05), 0 16px 40px -18px rgb(30 27 75 / 0.28);
+  --shadow-brand: 0 8px 20px -8px rgb(79 70 229 / 0.55);
 
   --animate-enter: c32-enter 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade: c32-fade 0.25s ease-out both;
@@ -71,11 +78,18 @@
     background: var(--color-canvas);
     -webkit-font-smoothing: antialiased;
   }
-  /* Page titles: large, tight Inter, as on modern commerce sites. */
+  /* Page titles: large, tight Inter. Section headings are a touch tighter than body text. */
   main h1 {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.035em;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  main h2,
+  main h3 {
+    letter-spacing: -0.012em;
+  }
+  ::selection {
+    background: rgb(79 70 229 / 0.18);
   }
   button,
   a,
@@ -92,6 +106,7 @@
   body {
     margin: 0;
     min-height: 100vh;
+    background: var(--color-canvas);
   }
   :focus-visible {
     outline: 3px solid var(--color-focus);

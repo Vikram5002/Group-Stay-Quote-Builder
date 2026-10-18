@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ROLES } from '@c32/core';
 import type { Role } from '@c32/core';
-import { Alert, Button, Card, HotelScene, SelectField, TextField } from '../../components';
+import {
+  Alert,
+  Button,
+  Card,
+  HotelScene,
+  Icon,
+  Logo,
+  SelectField,
+  TextField,
+} from '../../components';
+import type { IconName } from '../../components';
 import { useAuth } from './auth';
 import type { SignInState } from './RequireAuth';
 
@@ -12,6 +22,66 @@ const ROLE_HELP: Record<Role, string> = {
   Owner: 'Everything Sales can do, plus approvals, imports and policy.',
   Viewer: 'Read-only access to quotes, availability and evidence.',
 };
+
+const POINTS: ReadonlyArray<{ icon: IconName; text: string }> = [
+  { icon: 'trending', text: 'See the contribution on every group quote before you send it.' },
+  { icon: 'clock', text: 'Rooms are held with a clear expiry, so nothing is double-booked.' },
+  { icon: 'review', text: 'Quotes below the floor go to an Owner for a second look.' },
+];
+
+/** The sign-in layout: the brand side with the hotel on wide screens, the form beside it. */
+function SignInFrame({ children }: { children: ReactNode }) {
+  return (
+    <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+      {/* The brand side: the hotel, the product in one line, and what it does. */}
+      <section
+        aria-label="About the product"
+        className="relative isolate hidden overflow-hidden bg-nav px-12 py-12 text-on-nav lg:flex lg:flex-col"
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(70%_60%_at_20%_0%,rgb(99_102_241/0.45),transparent_60%),radial-gradient(60%_50%_at_100%_100%,rgb(245_185_66/0.18),transparent_60%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 [background-image:radial-gradient(rgb(255_255_255/0.07)_1px,transparent_1px)] [background-size:22px_22px]"
+        />
+        <p className="flex items-center gap-3 text-lg font-semibold text-white">
+          <Logo />
+          Group Stay Quote Builder
+        </p>
+        <div className="my-auto flex justify-center py-8">
+          <HotelScene className="h-72 w-auto xl:h-80" />
+        </div>
+        <div className="max-w-lg">
+          <p className="text-4xl leading-tight font-bold tracking-tight text-white">
+            Quote group stays with confidence.
+          </p>
+          <ul className="mt-8 flex flex-col gap-4">
+            {POINTS.map((point) => (
+              <li key={point.text} className="flex items-start gap-3 text-on-nav-muted">
+                <span
+                  aria-hidden="true"
+                  className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/10 text-[#c7d2fe]"
+                >
+                  <Icon name={point.icon} className="size-4" />
+                </span>
+                <span className="pt-1">{point.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <div className="flex flex-col justify-center bg-canvas px-4 py-10 sm:px-8">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-5">
+          <HotelScene className="mx-auto h-32 w-auto lg:hidden" />
+          {children}
+        </div>
+      </div>
+    </main>
+  );
+}
 
 export function SignInPage() {
   const { session, signInMock, mode, signInCognito, pending, authError } = useAuth();
@@ -37,24 +107,34 @@ export function SignInPage() {
 
   if (mode === 'cognito') {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-4">
-        <h1 className="text-2xl font-bold">Sign in</h1>
+      <SignInFrame>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Sign in</h1>
+          <p className="mt-2 text-ink-muted">
+            Sign in with the account the hotel owner created for you.
+          </p>
+        </div>
         {ended}
         {authError ? (
           <Alert tone="danger" title="Sign-in did not complete">
             {authError}
           </Alert>
         ) : null}
-        <Card>
-          <div className="flex flex-col gap-4">
-            <p>Sign in with the account the hotel owner created for you.</p>
-            <Button type="button" disabled={pending} onClick={() => signInCognito(from)}>
-              Sign in
-            </Button>
-          </div>
+        <Card className="shadow-raised">
+          <Button
+            type="button"
+            className="min-h-12 w-full"
+            disabled={pending}
+            onClick={() => signInCognito(from)}
+          >
+            Sign in
+            <Icon name="arrowRight" className="size-4" />
+          </Button>
+          <p className="mt-4 text-center text-sm text-ink-muted">
+            All data in this case is synthetic.
+          </p>
         </Card>
-        <p className="text-sm">All data in this case is synthetic.</p>
-      </main>
+      </SignInFrame>
     );
   }
 
@@ -69,16 +149,18 @@ export function SignInPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 p-4">
-      <HotelScene className="mx-auto h-32 w-auto drop-shadow-xl" />
-      <h1 className="text-center text-3xl font-bold">Sign in</h1>
+    <SignInFrame>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Sign in</h1>
+        <p className="mt-2 text-ink-muted">Pick a name and a role to open the workspace.</p>
+      </div>
       {ended}
       <Alert tone="info" title="Practice sign-in">
         This is a stand-in for the real sign-in. It only picks a role so you can try each screen.
         All data is synthetic.
       </Alert>
-      <Card>
-        <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+      <Card className="shadow-raised">
+        <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
           <TextField
             label="Your name"
             required
@@ -89,6 +171,7 @@ export function SignInPage() {
             }}
             {...(error ? { error } : {})}
             autoComplete="name"
+            placeholder="For example, Asha Rao"
           />
           <SelectField
             label="Role"
@@ -102,9 +185,12 @@ export function SignInPage() {
               </option>
             ))}
           </SelectField>
-          <Button type="submit">Sign in</Button>
+          <Button type="submit" className="min-h-12 w-full">
+            Sign in
+            <Icon name="arrowRight" className="size-4" />
+          </Button>
         </form>
       </Card>
-    </main>
+    </SignInFrame>
   );
 }

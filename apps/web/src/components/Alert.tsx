@@ -19,7 +19,10 @@ export function Alert({
   const role = tone === 'danger' ? 'alert' : 'status';
   return (
     <div role={role} className={cn('flex gap-3 rounded-card border p-4', toneBox(tone))}>
-      <span aria-hidden="true" className="mt-0.5 font-bold">
+      <span
+        aria-hidden="true"
+        className="grid size-6 shrink-0 place-items-center rounded-full bg-current/10 text-xs font-bold"
+      >
         {toneIcon(tone)}
       </span>
       <div className="flex-1">

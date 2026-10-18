@@ -14,3 +14,4 @@ export { Stepper } from './Stepper';
 export { DataTable } from './Table';
 export type { Column } from './Table';
 export { Count, Money, Unknown } from './Unknown';
+export { HotelScene } from './HotelScene';

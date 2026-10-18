@@ -187,6 +187,23 @@ describe('quote builder: several blocks of rooms (D-058)', () => {
   });
 });
 
+describe('quote builder: blocks that overfill a night', () => {
+  it('10 rooms plus 3 more on the same nights says which nights are short, not ₹0', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u, 'Big wedding');
+    await next(u);
+    await u.click(screen.getByRole('button', { name: 'Add another block of rooms' }));
+    await u.clear(screen.getByLabelText(/Block 2 rooms/));
+    await u.type(screen.getByLabelText(/Block 2 rooms/), '3');
+    const card = screen.getByRole('complementary', { name: 'Live price check' });
+    expect(
+      await within(card).findByText('2026-11-01: 13 rooms needed, 10 free'),
+    ).toBeInTheDocument();
+    expect(within(card).queryByText('Total revenue at full price')).not.toBeInTheDocument();
+  });
+});
+
 describe('quote builder: forms and live meter', () => {
   it('blocks Next with plain-language errors from the shared schema', async () => {
     const u = user();

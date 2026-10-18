@@ -1,50 +1,92 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/inter/opsz.css';
 
 /*
  * Design tokens. Every colour pair used for text is checked against WCAG 2.1 AA
  * in src/lib/contrast.test.ts, so change a token and the test tells you if it broke.
  */
 @theme {
-  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  /* Inter is bundled with the app (no third-party request); a serif carries page titles. */
+  --font-sans:
+    'Inter Variable', Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-display:
+    'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
-  --color-canvas: #f6f7f9;
+  /* Hospitality palette: ivory page, deep navy brand, warm gold accent (D-060). */
+  --color-canvas: #f7f5f0;
   --color-surface: #ffffff;
-  --color-surface-muted: #eef0f4;
-  --color-border: #c9ced8;
-  --color-border-strong: #6b7385;
+  --color-surface-muted: #f0ece4;
+  --color-border: #ddd6c8;
+  --color-border-strong: #7a7366;
 
-  --color-ink: #161a23;
-  --color-ink-muted: #4a5163;
+  --color-ink: #16202e;
+  --color-ink-muted: #4a5262;
 
-  --color-brand: #2b4fd8;
-  --color-brand-hover: #2140b5;
-  --color-brand-soft: #e6ecff;
+  --color-brand: #1d3557;
+  --color-brand-hover: #132540;
+  --color-brand-soft: #e7edf5;
   --color-on-brand: #ffffff;
 
-  --color-success: #17693a;
-  --color-success-soft: #e3f5ea;
+  /* Gold: text-safe on white and on its soft tint; the bright gold is for lines and marks only. */
+  --color-accent: #8c6416;
+  --color-accent-soft: #f6eedc;
+  --color-accent-bright: #d9a441;
+
+  --color-success: #1c6b3f;
+  --color-success-soft: #e2f2e8;
   --color-warning: #8a4b00;
-  --color-warning-soft: #fff1d6;
-  --color-danger: #b3261e;
-  --color-danger-soft: #fde8e6;
-  --color-info: #1b5a9c;
-  --color-info-soft: #e1effc;
-  --color-unknown: #4a5163;
-  --color-unknown-soft: #eef0f4;
+  --color-warning-soft: #fbefd8;
+  --color-danger: #ad2a20;
+  --color-danger-soft: #fbe7e4;
+  --color-info: #1d5b94;
+  --color-info-soft: #e3eef9;
+  --color-unknown: #4a5262;
+  --color-unknown-soft: #f0ece4;
 
-  --color-focus: #1d3fc0;
+  --color-focus: #1d3557;
 
-  --radius-control: 0.5rem;
-  --radius-card: 0.75rem;
-  --shadow-card: 0 1px 2px rgb(22 26 35 / 0.08), 0 1px 3px rgb(22 26 35 / 0.06);
+  /* The navigation rail. */
+  --color-nav: #15263d;
+  --color-nav-active: #24395a;
+  --color-on-nav: #ffffff;
+  --color-on-nav-muted: #c2cbd8;
+  --color-nav-accent: #d9a441;
+
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(22 32 46 / 0.06), 0 4px 16px -6px rgb(22 32 46 / 0.1);
+  --shadow-raised: 0 2px 4px rgb(22 32 46 / 0.06), 0 14px 32px -12px rgb(22 32 46 / 0.22);
+
+  --animate-enter: c32-enter 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade: c32-fade 0.25s ease-out both;
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
+    font-optical-sizing: auto;
     color: var(--color-ink);
     background: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Page titles in the display serif, for a hospitality feel; everything else stays in Inter. */
+  main h1 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.12s ease;
   }
   body {
     margin: 0;
@@ -62,4 +104,98 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* Motion (D-060): short, calm, and switched off by the reduced-motion rule above. */
+@keyframes c32-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes c32-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes c32-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@layer components {
+  /* Cards rise in one after another on each screen. */
+  .c32-stagger > * {
+    animation: var(--animate-enter);
+  }
+  .c32-stagger > *:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .c32-stagger > *:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .c32-stagger > *:nth-child(4) {
+    animation-delay: 120ms;
+  }
+  .c32-stagger > *:nth-child(n + 5) {
+    animation-delay: 160ms;
+  }
+}
+
+/* The hotel scene: windows light and dim, stars twinkle, the sign glows (HotelScene.tsx). */
+@keyframes c32-window {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  45% {
+    opacity: 0.95;
+  }
+  55% {
+    opacity: 0.2;
+  }
+  80% {
+    opacity: 0.2;
+  }
+}
+@keyframes c32-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes c32-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgb(217 164 65 / 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 3px rgb(217 164 65 / 0.8));
+  }
+}
+.c32-scene .c32-win {
+  animation: c32-window 9s ease-in-out infinite;
+}
+.c32-scene .c32-win-slow {
+  animation-duration: 14s;
+}
+.c32-scene .c32-win-off {
+  opacity: 0.18;
+}
+.c32-scene .c32-star {
+  animation: c32-twinkle 3.2s ease-in-out infinite;
+}
+.c32-scene .c32-sign {
+  animation: c32-glow 4s ease-in-out infinite;
 }

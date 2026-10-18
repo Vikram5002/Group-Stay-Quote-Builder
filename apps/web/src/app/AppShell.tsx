@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button } from '../components';
+import { Button, HotelScene } from '../components';
 import { useAuth } from '../features/auth/auth';
 import { OPEN_STATUSES } from '../features/quotes/labels';
 import { QUOTES_KEY, useNow, useQuoteList } from '../features/quotes/queries';
@@ -15,20 +15,28 @@ const DAY_MS = 86_400_000;
 
 const linkClass = (active: boolean) =>
   cn(
-    'flex min-h-11 items-center justify-between gap-2 rounded-control px-3 text-sm font-semibold',
-    active ? 'bg-brand-soft text-brand' : 'text-ink hover:bg-surface-muted',
+    'flex min-h-11 items-center justify-between gap-2 rounded-control px-3 text-sm font-medium',
+    active
+      ? 'bg-nav-active text-on-nav shadow-[inset_3px_0_0_var(--color-nav-accent)]'
+      : 'text-on-nav-muted hover:bg-white/5 hover:text-on-nav',
   );
 
-/** The product mark: a bed under a roof, drawn in the brand colour. */
+/** The product mark: a bed under a roof, navy on the gold accent. */
 function Logo() {
   return (
     <svg aria-hidden="true" viewBox="0 0 32 32" className="size-9 shrink-0">
-      <rect width="32" height="32" rx="8" className="fill-brand" />
-      <path d="M7 15 16 8l9 7" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+      <rect width="32" height="32" rx="9" className="fill-nav-accent" />
+      <path
+        d="M7 15 16 8l9 7"
+        fill="none"
+        stroke="#15263d"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
       <path
         d="M9 24v-6h14v6M9 21h14M12 18v-1.5a1.5 1.5 0 0 1 1.5-1.5h1a1.5 1.5 0 0 1 1.5 1.5V18"
         fill="none"
-        stroke="#fff"
+        stroke="#15263d"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -41,7 +49,7 @@ function Logo() {
 function CountBadge({ count, label }: { count: number; label: string }) {
   if (count <= 0) return null;
   return (
-    <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-on-brand">
+    <span className="rounded-full bg-nav-accent px-2 py-0.5 text-xs font-bold text-nav">
       <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
       <span className="sr-only">
         , {count} {label}
@@ -158,7 +166,7 @@ export function AppShell() {
     return (
       <div className="mt-4 first:mt-0">
         {heading && (
-          <p className="px-3 pb-1 text-xs font-semibold tracking-wide text-ink-muted uppercase">
+          <p className="px-3 pb-1 text-xs font-semibold tracking-[0.12em] text-on-nav-muted uppercase">
             {heading}
           </p>
         )}
@@ -175,19 +183,21 @@ export function AppShell() {
       >
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 border-b border-border bg-surface md:h-screen md:overflow-y-auto md:border-b-0 md:border-r">
+      <header className="sticky top-0 z-30 flex flex-col bg-nav text-on-nav md:h-screen md:overflow-y-auto">
         <div className="flex items-center justify-between gap-3 p-4">
           <Link to="/" className="flex items-center gap-3 rounded-control">
             <Logo />
             <span>
-              <span className="block text-base leading-tight font-bold">{APP_NAME}</span>
-              <span className="mt-0.5 inline-block rounded-full bg-surface-muted px-2 text-xs text-ink-muted">
+              <span className="block font-display text-base leading-tight font-semibold">
+                {APP_NAME}
+              </span>
+              <span className="mt-1 inline-block rounded-full bg-white/10 px-2 text-xs text-on-nav-muted">
                 Demo data
               </span>
             </span>
           </Link>
           <Button
-            variant="secondary"
+            variant="on-nav"
             className="md:hidden"
             aria-expanded={menuOpen}
             aria-controls={menuId}
@@ -196,13 +206,16 @@ export function AppShell() {
             {menuOpen ? 'Close menu' : 'Menu'}
           </Button>
         </div>
-        <div id={menuId} className={cn('md:block', menuOpen ? 'block' : 'hidden')}>
+        <div
+          id={menuId}
+          className={cn('md:flex md:flex-1 md:flex-col', menuOpen ? 'flex flex-col' : 'hidden')}
+        >
           <nav aria-label="Primary" className="px-2 pb-4">
             {action && (
               <Link
                 to={action.path}
                 aria-current={pathname === action.path ? 'page' : undefined}
-                className="mb-4 flex min-h-11 items-center justify-center rounded-control bg-brand px-3 text-sm font-semibold text-on-brand hover:bg-brand-hover"
+                className="mb-5 flex min-h-11 items-center justify-center rounded-control bg-nav-accent px-3 text-sm font-semibold text-nav shadow-[0_8px_20px_-10px_rgb(217_164_65_/_0.8)] hover:brightness-105 active:translate-y-px"
               >
                 <span aria-hidden="true" className="mr-1.5 text-lg leading-none">
                   +
@@ -213,10 +226,10 @@ export function AppShell() {
             {group('work')}
             {group('admin', 'Admin')}
             <details
-              className="mt-4 border-t border-border pt-3"
+              className="mt-4 border-t border-white/10 pt-3"
               {...(projectOpen || pathname === DESIGN_SYSTEM_PATH ? { open: true } : {})}
             >
-              <summary className="flex min-h-11 cursor-pointer items-center rounded-control px-3 text-sm font-semibold text-ink-muted hover:bg-surface-muted">
+              <summary className="flex min-h-11 cursor-pointer items-center rounded-control px-3 text-sm font-medium text-on-nav-muted hover:bg-white/5 hover:text-on-nav">
                 About this project
               </summary>
               <ul className="mt-1 flex flex-col gap-1">
@@ -229,19 +242,38 @@ export function AppShell() {
               </ul>
             </details>
           </nav>
+          <HotelScene className="mx-4 mt-auto hidden h-28 w-auto opacity-90 md:block" />
           {session && (
-            <div className="border-t border-border p-4 text-sm">
-              <p className="font-semibold">{session.displayName}</p>
-              <p className="text-ink-muted">Role: {session.user.role}</p>
-              <Button variant="secondary" className="mt-3" onClick={() => signOut('manual')}>
+            <div className="m-3 rounded-card bg-white/5 p-4 text-sm ring-1 ring-white/10">
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="grid size-9 shrink-0 place-items-center rounded-full bg-nav-accent text-sm font-bold text-nav"
+                >
+                  {(session.displayName.trim()[0] ?? '?').toUpperCase()}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold">{session.displayName}</span>
+                  <span className="block text-on-nav-muted">Role: {session.user.role}</span>
+                </span>
+              </div>
+              <Button variant="on-nav" className="mt-3 w-full" onClick={() => signOut('manual')}>
                 Sign out
               </Button>
             </div>
           )}
         </div>
       </header>
-      <main id="main" ref={mainRef} tabIndex={-1} className="min-w-0 p-4 focus:outline-none md:p-8">
-        <Outlet />
+      <main
+        id="main"
+        ref={mainRef}
+        tabIndex={-1}
+        className="min-w-0 p-4 focus:outline-none md:p-10"
+      >
+        {/* Each screen fades in (keyed by path); reduced motion turns it off. */}
+        <div key={pathname} className="animate-enter">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

@@ -1,13 +1,16 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '../lib/cn';
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'on-nav';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand text-on-brand hover:bg-brand-hover border-transparent',
+  primary:
+    'bg-brand text-on-brand hover:bg-brand-hover border-transparent shadow-sm hover:shadow-md active:translate-y-px',
   secondary: 'bg-surface text-ink border-border-strong hover:bg-surface-muted',
   danger: 'bg-danger text-on-brand border-transparent hover:opacity-90',
   ghost: 'bg-transparent text-brand border-transparent hover:bg-brand-soft',
+  /** On the dark navigation rail. */
+  'on-nav': 'bg-transparent text-on-nav border-white/35 hover:bg-white/10',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

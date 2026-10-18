@@ -19,7 +19,8 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     // The full Chromium, so the smaller headless shell is not needed.
-    channel: 'chromium',
+    // PW_CHANNEL=msedge uses the installed Edge instead of the downloaded Chromium.
+    channel: process.env['PW_CHANNEL'] ?? 'chromium',
     baseURL: externalBase ?? `http://localhost:${PORT}`,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

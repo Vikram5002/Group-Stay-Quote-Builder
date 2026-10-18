@@ -36,17 +36,17 @@ function SignInFrame({ children }: { children: ReactNode }) {
       {/* The brand side: the hotel, the product in one line, and what it does. */}
       <section
         aria-label="About the product"
-        className="relative isolate hidden overflow-hidden bg-nav px-12 py-12 text-on-nav lg:flex lg:flex-col"
+        className="relative isolate m-4 hidden overflow-hidden rounded-[2rem] bg-surface-muted px-12 py-12 text-ink lg:flex lg:flex-col"
       >
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-[radial-gradient(70%_60%_at_20%_0%,rgb(99_102_241/0.45),transparent_60%),radial-gradient(60%_50%_at_100%_100%,rgb(245_185_66/0.18),transparent_60%)]"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(50%_45%_at_50%_45%,rgb(255_207_77/0.25),transparent_70%)]"
         />
         <div
           aria-hidden="true"
-          className="absolute inset-0 -z-10 [background-image:radial-gradient(rgb(255_255_255/0.07)_1px,transparent_1px)] [background-size:22px_22px]"
+          className="absolute inset-0 -z-10 [background-image:radial-gradient(rgb(14_14_14/0.08)_1px,transparent_1px)] [background-size:22px_22px]"
         />
-        <p className="flex items-center gap-3 text-lg font-semibold text-white">
+        <p className="flex items-center gap-3 text-lg font-semibold text-ink">
           <Logo />
           Group Stay Quote Builder
         </p>
@@ -54,15 +54,15 @@ function SignInFrame({ children }: { children: ReactNode }) {
           <HotelScene className="h-72 w-auto xl:h-80" />
         </div>
         <div className="max-w-lg">
-          <p className="text-4xl leading-tight font-bold tracking-tight text-white">
+          <p className="text-5xl leading-[1.05] font-bold tracking-[-0.04em] text-ink">
             Quote group stays with confidence.
           </p>
           <ul className="mt-8 flex flex-col gap-4">
             {POINTS.map((point) => (
-              <li key={point.text} className="flex items-start gap-3 text-on-nav-muted">
+              <li key={point.text} className="flex items-start gap-3 text-ink-muted">
                 <span
                   aria-hidden="true"
-                  className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/10 text-[#c7d2fe]"
+                  className="grid size-8 shrink-0 place-items-center rounded-full bg-ink text-white"
                 >
                   <Icon name={point.icon} className="size-4" />
                 </span>

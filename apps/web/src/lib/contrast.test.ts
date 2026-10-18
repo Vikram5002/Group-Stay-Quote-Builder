@@ -31,9 +31,7 @@ const pairs: Array<[string, string, number]> = [
   ['on-nav', 'nav', 4.5],
   ['on-brand', 'nav-active', 4.5],
   ['on-nav-muted', 'nav', 4.5],
-  ['on-nav', 'nav-active', 4.5],
-  ['on-nav-muted', 'nav-active', 4.5],
-  // The indigo action pill on the rail is identified by its white label, checked here.
+  ['nav-accent', 'nav', 4.5],
   ['on-brand', 'nav-accent', 4.5],
   ['success', 'surface', 4.5],
   ['danger', 'surface', 4.5],

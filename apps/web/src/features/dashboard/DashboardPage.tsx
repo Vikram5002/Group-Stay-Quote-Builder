@@ -118,7 +118,7 @@ function nextSteps(
 }
 
 const STEP_TONE: Record<NextStep['tone'], string> = {
-  brand: 'bg-brand-soft text-brand',
+  brand: 'bg-ink text-white',
   info: 'bg-info-soft text-info',
   warning: 'bg-warning-soft text-warning',
   danger: 'bg-danger-soft text-danger',
@@ -196,7 +196,7 @@ function StatCard({
       className={cn(
         'relative overflow-hidden rounded-card border p-6',
         featured
-          ? 'border-transparent bg-gradient-to-br from-[#4338ca] via-[#4f46e5] to-[#6d28d9] text-white shadow-raised'
+          ? 'border-transparent bg-ink text-white shadow-raised'
           : 'border-border bg-surface shadow-card',
         className,
       )}
@@ -215,7 +215,7 @@ function StatCard({
           aria-hidden="true"
           className={cn(
             'grid size-9 place-items-center rounded-xl',
-            featured ? 'bg-white/15 text-white' : 'bg-brand-soft text-brand',
+            featured ? 'bg-white/15 text-white' : 'bg-surface-muted text-ink',
           )}
         >
           <Icon name={icon} className="size-[1.1rem]" />
@@ -276,19 +276,19 @@ export function DashboardPage() {
   const canCreate = session?.user.role !== 'Viewer';
 
   const hero = (summary?: ReactNode, action?: ReactNode) => (
-    <div className="relative isolate overflow-hidden rounded-[1.5rem] border border-border bg-surface px-6 py-7 shadow-card md:px-10 md:py-9">
+    <div className="relative isolate overflow-hidden rounded-[2rem] border border-border bg-surface-muted px-6 py-7 shadow-card md:px-10 md:py-9">
       {/* A soft colour wash behind the greeting. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-[radial-gradient(60%_90%_at_100%_0%,rgb(99_102_241/0.16),transparent_60%),radial-gradient(40%_70%_at_75%_100%,rgb(245_185_66/0.16),transparent_60%),radial-gradient(50%_80%_at_0%_100%,rgb(16_185_129/0.08),transparent_60%)]"
+        className="absolute inset-0 -z-10 bg-[radial-gradient(45%_80%_at_85%_100%,rgb(255_207_77/0.22),transparent_65%)]"
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 [background-image:radial-gradient(rgb(79_70_229/0.10)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_left,black,transparent_65%)]"
+        className="absolute inset-0 -z-10 [background-image:radial-gradient(rgb(14_14_14/0.10)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_left,black,transparent_65%)]"
       />
       <div className="flex items-end justify-between gap-6">
         <div className="min-w-0 pb-1">
-          <p className="inline-flex items-center gap-2 rounded-full border border-brand/15 bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
+          <p className="inline-flex items-center gap-2 rounded-full border border-ink/20 bg-surface px-3 py-1 text-xs font-semibold text-ink">
             <Icon name="bed" className="size-3.5" />
             Group stays
           </p>
@@ -362,7 +362,7 @@ export function DashboardPage() {
               canCreate ? (
                 <Link
                   to="/quotes/new"
-                  className="inline-flex min-h-11 items-center gap-2 rounded-control bg-brand px-5 text-sm font-semibold text-on-brand shadow-brand hover:bg-brand-hover"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-6 text-sm font-semibold text-on-brand shadow-brand hover:bg-brand-hover"
                 >
                   <Icon name="plus" className="size-4" strokeWidth={2.25} />
                   Create the first quote
@@ -391,8 +391,8 @@ export function DashboardPage() {
     : [];
 
   const summary = (
-    <p className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border bg-surface/80 px-4 text-sm font-medium text-ink-muted backdrop-blur">
-      <Icon name="layers" className="size-4 text-brand" />
+    <p className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface/80 px-4 text-sm font-medium text-ink-muted backdrop-blur">
+      <Icon name="layers" className="size-4 text-ink" />
       {counted(quotes.length, 'quote')}
       {list.data.next_cursor ? ' (showing the latest 100)' : ''}
     </p>
@@ -400,7 +400,7 @@ export function DashboardPage() {
   const newQuote = canCreate ? (
     <Link
       to="/quotes/new"
-      className="inline-flex min-h-11 items-center gap-2 rounded-control bg-brand px-5 text-sm font-semibold text-on-brand shadow-brand hover:-translate-y-px hover:bg-brand-hover"
+      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-brand px-6 text-sm font-semibold text-on-brand shadow-brand hover:-translate-y-px hover:bg-brand-hover"
     >
       <Icon name="plus" className="size-4" strokeWidth={2.25} />
       New quote

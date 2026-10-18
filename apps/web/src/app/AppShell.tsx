@@ -16,10 +16,10 @@ const DAY_MS = 86_400_000;
 
 const linkClass = (active: boolean) =>
   cn(
-    'group relative flex min-h-11 items-center gap-3 rounded-control px-3 text-sm font-medium',
+    'group relative flex min-h-11 items-center gap-3 rounded-full px-4 text-sm font-medium',
     active
-      ? 'bg-nav-active text-on-nav shadow-[inset_0_1px_0_rgb(255_255_255/0.06)]'
-      : 'text-on-nav-muted hover:bg-white/5 hover:text-on-nav',
+      ? 'bg-nav-active text-white'
+      : 'text-on-nav-muted hover:bg-surface-muted hover:text-on-nav',
   );
 
 /** The icon beside each menu entry. */
@@ -40,17 +40,11 @@ const NAV_ICONS: Record<string, IconName> = {
 function NavIcon({ path, active }: { path: string; active: boolean }) {
   return (
     <>
-      {active && (
-        <span
-          aria-hidden="true"
-          className="absolute top-2.5 bottom-2.5 -left-3 w-1 rounded-r-full bg-[#818cf8]"
-        />
-      )}
       <Icon
         name={NAV_ICONS[path] ?? 'layers'}
         className={cn(
           'size-[1.15rem]',
-          active ? 'text-[#a5b4fc]' : 'text-on-nav-muted group-hover:text-on-nav',
+          active ? 'text-white' : 'text-on-nav-muted group-hover:text-on-nav',
         )}
       />
     </>
@@ -189,27 +183,22 @@ export function AppShell() {
   };
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[17rem_1fr] md:bg-[linear-gradient(to_right,var(--color-nav)_17rem,transparent_17rem)]">
+    <div className="min-h-screen md:grid md:grid-cols-[17rem_1fr] md:bg-[linear-gradient(to_right,var(--color-nav)_calc(17rem-1px),var(--color-border)_calc(17rem-1px)_17rem,transparent_17rem)]">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-control focus:bg-surface focus:px-4 focus:py-2"
       >
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 flex flex-col bg-nav text-on-nav md:h-screen md:overflow-y-auto">
-        {/* A soft indigo glow at the top of the rail. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(ellipse_at_top_left,rgb(99_102_241/0.30),transparent_70%)]"
-        />
+      <header className="sticky top-0 z-30 flex flex-col border-b border-border bg-nav text-on-nav md:h-screen md:border-r md:border-b-0 md:overflow-y-auto">
         <div className="relative flex items-center justify-between gap-3 px-5 py-5">
           <Link to="/" className="flex items-center gap-3 rounded-control">
             <Logo />
             <span>
-              <span className="block text-[0.95rem] leading-tight font-semibold tracking-tight text-white">
+              <span className="block text-[0.95rem] leading-tight font-semibold tracking-tight text-ink">
                 {APP_NAME}
               </span>
-              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2 py-0.5 text-[0.7rem] font-medium text-on-nav-muted ring-1 ring-white/10">
+              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2 py-0.5 text-[0.7rem] font-medium text-on-nav-muted">
                 <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-bright" />
                 Demo data
               </span>
@@ -238,7 +227,7 @@ export function AppShell() {
               <Link
                 to={action.path}
                 aria-current={pathname === action.path ? 'page' : undefined}
-                className="mb-6 flex min-h-11 items-center justify-center gap-2 rounded-control bg-nav-accent px-3 text-sm font-semibold text-white shadow-brand hover:bg-brand-hover active:translate-y-px"
+                className="mb-6 flex min-h-12 items-center justify-center gap-2 rounded-full bg-nav-accent px-3 text-sm font-semibold text-white shadow-brand hover:bg-brand-hover active:translate-y-px"
               >
                 <Icon name="plus" className="size-4" strokeWidth={2.25} />
                 {action.label}
@@ -247,10 +236,10 @@ export function AppShell() {
             {group('work')}
             {group('admin', 'Admin')}
             <details
-              className="group/about mt-6 border-t border-white/10 pt-4"
+              className="group/about mt-6 border-t border-border pt-4"
               {...(projectOpen || pathname === DESIGN_SYSTEM_PATH ? { open: true } : {})}
             >
-              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-control px-3 text-sm font-medium text-on-nav-muted hover:bg-white/5 hover:text-on-nav [&::-webkit-details-marker]:hidden">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-full px-4 text-sm font-medium text-on-nav-muted hover:bg-surface-muted hover:text-on-nav [&::-webkit-details-marker]:hidden">
                 <Icon name="info" className="size-[1.15rem]" />
                 About this project
                 <span
@@ -276,16 +265,16 @@ export function AppShell() {
             </details>
           </nav>
           {session && (
-            <div className="m-3 mt-auto rounded-card bg-white/[0.04] p-3 text-sm ring-1 ring-white/10">
+            <div className="m-3 mt-auto rounded-card bg-surface-muted p-3 text-sm">
               <div className="flex items-center gap-3">
                 <span
                   aria-hidden="true"
-                  className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#fcd34d] to-[#f59e0b] text-sm font-bold text-[#1e1b4b]"
+                  className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-sm font-bold text-white"
                 >
                   {(session.displayName.trim()[0] ?? '?').toUpperCase()}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate font-semibold text-white">
+                  <span className="block truncate font-semibold text-ink">
                     {session.displayName}
                   </span>
                   <span className="block text-xs text-on-nav-muted">Role: {session.user.role}</span>

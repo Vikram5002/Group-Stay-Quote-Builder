@@ -15,56 +15,57 @@
   --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
   /*
-   * Hospitality palette (D-062): cool ink on a soft blue-grey canvas, one indigo brand colour, and
-   * a deep navy navigation rail. Status colours stay distinct from the brand so they read as state.
+   * Commerce monochrome (D-068, after fynd.com): near-black ink on white, soft greys for sections,
+   * black pill buttons and a light navigation rail with a black pill for the current page. Colour is
+   * kept for status only, so a green or red badge always means something.
    */
-  --color-canvas: #f4f5fa;
+  --color-canvas: #f7f7f7;
   --color-surface: #ffffff;
-  --color-surface-muted: #f1f3f9;
-  --color-border: #e3e6ef;
-  --color-border-strong: #767d94;
+  --color-surface-muted: #f2f2f2;
+  --color-border: #e6e6e6;
+  --color-border-strong: #767676;
 
-  --color-ink: #0f1222;
-  --color-ink-muted: #525a70;
+  --color-ink: #0e0e0e;
+  --color-ink-muted: #545454;
 
-  --color-brand: #4f46e5;
-  --color-brand-hover: #4338ca;
-  --color-brand-soft: #eef0ff;
+  --color-brand: #0e0e0e;
+  --color-brand-hover: #2e2e2e;
+  --color-brand-soft: #f0f0f0;
   --color-on-brand: #ffffff;
 
-  /* Emerald: text-safe on white and on its soft tint; the bright one is for lines and marks only. */
-  --color-accent: #047857;
-  --color-accent-soft: #e5f6ef;
-  --color-accent-bright: #10b981;
+  /* Green: text-safe on white and on its soft tint; the bright one is for lines and marks only. */
+  --color-accent: #0f7a43;
+  --color-accent-soft: #e7f5ed;
+  --color-accent-bright: #22c55e;
 
-  /* Warm gold, for lit windows and small highlights only (never text). */
-  --color-gold: #f5b942;
+  /* Warm yellow, for lit windows and small highlights only (never text). */
+  --color-gold: #ffcf4d;
 
-  --color-success: #047857;
-  --color-success-soft: #e5f6ef;
-  --color-warning: #92400e;
-  --color-warning-soft: #fef3e2;
-  --color-danger: #be123c;
-  --color-danger-soft: #fdecef;
-  --color-info: #1d4ed8;
-  --color-info-soft: #e9f0ff;
-  --color-unknown: #525a70;
-  --color-unknown-soft: #f1f3f9;
+  --color-success: #0f7a43;
+  --color-success-soft: #e7f5ed;
+  --color-warning: #8a4b00;
+  --color-warning-soft: #fdf1dc;
+  --color-danger: #b4232f;
+  --color-danger-soft: #fbe9eb;
+  --color-info: #1d5b94;
+  --color-info-soft: #e9f1f9;
+  --color-unknown: #545454;
+  --color-unknown-soft: #f2f2f2;
 
-  --color-focus: #4f46e5;
+  --color-focus: #0e0e0e;
 
-  /* The navigation rail: deep navy, a lifted pill for the current page, indigo for the action. */
-  --color-nav: #0d1024;
-  --color-nav-active: #262b4f;
-  --color-on-nav: #f4f5ff;
-  --color-on-nav-muted: #a7adca;
-  --color-nav-accent: #4f46e5;
+  /* The navigation rail: white, a black pill for the current page and for the main action. */
+  --color-nav: #ffffff;
+  --color-nav-active: #0e0e0e;
+  --color-on-nav: #0e0e0e;
+  --color-on-nav-muted: #545454;
+  --color-nav-accent: #0e0e0e;
 
-  --radius-control: 0.625rem;
-  --radius-card: 1rem;
-  --shadow-card: 0 1px 2px rgb(15 18 34 / 0.04), 0 2px 6px -2px rgb(15 18 34 / 0.05);
-  --shadow-raised: 0 1px 2px rgb(15 18 34 / 0.05), 0 16px 40px -18px rgb(30 27 75 / 0.28);
-  --shadow-brand: 0 8px 20px -8px rgb(79 70 229 / 0.55);
+  --radius-control: 0.875rem;
+  --radius-card: 1.5rem;
+  --shadow-card: 0 1px 2px rgb(14 14 14 / 0.04);
+  --shadow-raised: 0 1px 2px rgb(14 14 14 / 0.04), 0 18px 40px -20px rgb(14 14 14 / 0.25);
+  --shadow-brand: 0 10px 24px -12px rgb(14 14 14 / 0.55);
 
   --animate-enter: c32-enter 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade: c32-fade 0.25s ease-out both;
@@ -82,14 +83,14 @@
   main h1 {
     font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.04em;
   }
   main h2,
   main h3 {
     letter-spacing: -0.012em;
   }
   ::selection {
-    background: rgb(79 70 229 / 0.18);
+    background: rgb(14 14 14 / 0.12);
   }
   button,
   a,

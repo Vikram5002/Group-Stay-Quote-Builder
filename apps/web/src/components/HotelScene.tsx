@@ -2,14 +2,15 @@ import { useId } from 'react';
 import { cn } from '../lib/cn';
 
 /**
- * A hotel illustration (D-062) with no background of its own, so it sits on any surface: an
- * indigo tower drawn with a little depth, two lower wings, a gold canopy over a lit entrance, two
- * trees and a soft ground shadow. Windows light and dim one after another and a few gold sparkles
- * twinkle. It is decoration only (hidden from assistive technology), drawn as SVG so it is sharp
- * at any size, and the global reduced-motion rule stops it moving. Used on the sign-in page and
- * the dashboard banner.
+ * A hotel illustration (D-068) in the app's monochrome style, with no background of its own so it
+ * sits on any surface: a black tower drawn with a little depth, two outlined white wings, a yellow
+ * canopy over a lit entrance, two round trees and a soft ground shadow. Yellow is the only colour,
+ * used for lit windows. Windows light and dim one after another and a few sparkles twinkle. It is
+ * decoration only (hidden from assistive technology), drawn as SVG so it is sharp at any size, and
+ * the global reduced-motion rule stops it moving. Used on the sign-in page and the dashboard banner.
  */
 
+const INK = '#0e0e0e';
 const ROWS = 7;
 const COLS = 4;
 
@@ -24,10 +25,66 @@ function Sparkle({ x, y, size, delay }: { x: number; y: number; size: number; de
   return (
     <path
       d={`M${x} ${y - s} Q${x} ${y} ${x + s} ${y} Q${x} ${y} ${x} ${y + s} Q${x} ${y} ${x - s} ${y} Q${x} ${y} ${x} ${y - s}z`}
-      fill="#f5b942"
+      fill={INK}
       className="c32-star"
       style={{ animationDelay: `${delay}s` }}
     />
+  );
+}
+
+/** A lower wing: white with an ink outline, and a row of windows, some lit. */
+function Wing({
+  x,
+  y,
+  width,
+  ground,
+  rows,
+  glass,
+  seed,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  ground: number;
+  rows: number;
+  glass: string;
+  seed: number;
+}) {
+  const gap = (width - 2 * 11) / 3;
+  return (
+    <g>
+      <path
+        d={`M${x} ${y} l8 -5 h${width - 8} v5 z`}
+        fill="#f2f2f2"
+        stroke={INK}
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={ground - y}
+        fill="#ffffff"
+        stroke={INK}
+        strokeWidth="1.4"
+      />
+      {Array.from({ length: rows }, (_, r) =>
+        [0, 1].map((c) => (
+          <rect
+            key={`${r}${c}`}
+            x={x + gap + c * (11 + gap)}
+            y={y + 10 + r * 18}
+            width="11"
+            height="10"
+            rx="2"
+            fill={(r + c + seed) % 3 === 0 ? INK : `url(#${glass})`}
+            stroke={INK}
+            strokeWidth="1"
+          />
+        )),
+      )}
+    </g>
   );
 }
 
@@ -57,79 +114,38 @@ export function HotelScene({
     >
       <defs>
         <linearGradient id={id('front')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#6366f1" />
-          <stop offset="1" stopColor="#4338ca" />
-        </linearGradient>
-        <linearGradient id={id('side')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#3730a3" />
-          <stop offset="1" stopColor="#272163" />
-        </linearGradient>
-        <linearGradient id={id('wing')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#c7d2fe" />
-          <stop offset="1" stopColor="#a5b4fc" />
+          <stop offset="0" stopColor="#2e2e2e" />
+          <stop offset="1" stopColor={INK} />
         </linearGradient>
         <linearGradient id={id('glass')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffe3a3" />
-          <stop offset="1" stopColor="#f5b942" />
+          <stop offset="0" stopColor="#ffe08a" />
+          <stop offset="1" stopColor="#ffcf4d" />
         </linearGradient>
         <radialGradient id={id('shadow')} cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stopColor="#312e81" stopOpacity="0.22" />
-          <stop offset="1" stopColor="#312e81" stopOpacity="0" />
+          <stop offset="0" stopColor={INK} stopOpacity="0.16" />
+          <stop offset="1" stopColor={INK} stopOpacity="0" />
         </radialGradient>
       </defs>
 
       {/* Ground shadow */}
       <ellipse cx="120" cy={ground + 2} rx="112" ry="9" fill={`url(#${id('shadow')})`} />
 
-      {/* Left wing */}
-      <path d={`M30 96 l10 -6 h38 v6 z`} fill="#e0e7ff" />
-      <rect x="30" y="96" width="48" height={ground - 96} fill={`url(#${id('wing')})`} />
-      {[0, 1, 2, 3].map((r) =>
-        [0, 1].map((c) => (
-          <rect
-            key={`l${r}${c}`}
-            x={38 + c * 20}
-            y={106 + r * 19}
-            width="12"
-            height="10"
-            rx="2"
-            fill={(r + c) % 2 ? '#ffffff' : `url(#${id('glass')})`}
-            opacity={(r + c) % 2 ? 0.75 : 0.95}
-          />
-        )),
-      )}
-
-      {/* Right wing */}
-      <rect x="172" y="118" width="42" height={ground - 118} rx="1" fill={`url(#${id('wing')})`} />
-      <path d={`M172 118 l8 -5 h34 v5 z`} fill="#e0e7ff" />
-      {[0, 1, 2].map((r) =>
-        [0, 1].map((c) => (
-          <rect
-            key={`r${r}${c}`}
-            x={180 + c * 17}
-            y={128 + r * 18}
-            width="10"
-            height="10"
-            rx="2"
-            fill={(r * 3 + c) % 3 ? `url(#${id('glass')})` : '#ffffff'}
-            opacity={(r * 3 + c) % 3 ? 0.95 : 0.75}
-          />
-        )),
-      )}
+      <Wing x={30} y={96} width={48} ground={ground} rows={4} glass={id('glass')} seed={1} />
+      <Wing x={172} y={118} width={42} ground={ground} rows={3} glass={id('glass')} seed={0} />
 
       {/* Tower: top, side and front faces */}
-      <path d={`M${towerX} ${top} l${depth} -8 h${towerW} l-${depth} 8 z`} fill="#a5b4fc" />
+      <path d={`M${towerX} ${top} l${depth} -8 h${towerW} l-${depth} 8 z`} fill="#4a4a4a" />
       <path
         d={`M${towerX + towerW} ${top} l${depth} -8 V${ground - 6} l-${depth} 6 z`}
-        fill={`url(#${id('side')})`}
+        fill="#000000"
       />
       <rect x={towerX} y={top} width={towerW} height={ground - top} fill={`url(#${id('front')})`} />
       {/* A highlight down the leading edge */}
-      <rect x={towerX} y={top} width="3" height={ground - top} fill="#818cf8" opacity="0.6" />
+      <rect x={towerX} y={top} width="3" height={ground - top} fill="#5a5a5a" opacity="0.7" />
 
       {/* Rooftop sign */}
-      <path d={`M104 ${top - 8} v-6 M132 ${top - 8} v-6`} stroke="#272163" strokeWidth="1.5" />
-      <rect x="94" y="3" width="48" height="14" rx="7" fill="#1e1b4b" />
+      <path d={`M104 ${top - 8} v-6 M132 ${top - 8} v-6`} stroke={INK} strokeWidth="1.5" />
+      <rect x="94" y="3" width="48" height="14" rx="7" fill={INK} />
       <text
         x="118"
         y="12.6"
@@ -137,7 +153,7 @@ export function HotelScene({
         fontSize="7.5"
         fontWeight="700"
         letterSpacing="2.2"
-        fill="#f5b942"
+        fill="#ffcf4d"
         className="c32-sign"
         fontFamily="Inter Variable, Inter, system-ui, sans-serif"
       >
@@ -168,28 +184,33 @@ export function HotelScene({
         <path
           key={`sw${row}`}
           d={`M${towerX + towerW + 4} ${top + 10 + row * 17.5} l6 -3.4 v11 l-6 3.4 z`}
-          fill="#818cf8"
-          opacity={row % 3 === 1 ? 0.75 : 0.35}
+          fill="#5a5a5a"
+          opacity={row % 3 === 1 ? 0.9 : 0.45}
         />
       ))}
 
-      {/* Entrance: gold canopy over a lit door */}
-      <rect x="104" y={ground - 22} width="28" height="22" rx="2" fill="#1e1b4b" />
+      {/* Entrance: yellow canopy over a lit door */}
+      <rect x="104" y={ground - 22} width="28" height="22" rx="2" fill="#000000" />
       <rect x="108" y={ground - 18} width="20" height="18" rx="1.5" fill={`url(#${id('glass')})`} />
-      <rect x="117.4" y={ground - 18} width="1.2" height="18" fill="#1e1b4b" opacity="0.7" />
-      <path d={`M98 ${ground - 22} h40 l-5 -7 h-30 z`} fill="#f5b942" />
-      <rect x="98" y={ground - 22} width="40" height="2" fill="#d99a1e" />
+      <rect x="117.4" y={ground - 18} width="1.2" height="18" fill={INK} opacity="0.7" />
+      <path
+        d={`M98 ${ground - 22} h40 l-5 -7 h-30 z`}
+        fill="#ffcf4d"
+        stroke={INK}
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
 
       {/* Trees */}
-      <rect x="15.8" y="170" width="2.4" height={ground - 170} rx="1" fill="#5b4636" />
-      <circle cx="17" cy="164" r="11" fill="#10b981" />
-      <circle cx="13.5" cy="160.5" r="4.5" fill="#34d399" />
-      <rect x="223.8" y="174" width="2.2" height={ground - 174} rx="1" fill="#5b4636" />
-      <circle cx="225" cy="169" r="8.5" fill="#10b981" />
-      <circle cx="222.5" cy="166.5" r="3.5" fill="#34d399" />
+      <rect x="15.8" y="170" width="2.4" height={ground - 170} rx="1" fill={INK} />
+      <circle cx="17" cy="164" r="11" fill={INK} />
+      <circle cx="13.5" cy="160.5" r="4" fill="#4a4a4a" />
+      <rect x="223.8" y="174" width="2.2" height={ground - 174} rx="1" fill={INK} />
+      <circle cx="225" cy="169" r="8.5" fill={INK} />
+      <circle cx="222.5" cy="166.5" r="3" fill="#4a4a4a" />
 
       {/* Ground line */}
-      <rect x="4" y={ground} width="232" height="1.5" rx="0.75" fill="#c7d2fe" />
+      <rect x="4" y={ground} width="232" height="1.5" rx="0.75" fill={INK} />
 
       {/* Sparkles */}
       <Sparkle x={44} y={58} size={5} delay={0} />

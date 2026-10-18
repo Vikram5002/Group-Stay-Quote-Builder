@@ -232,3 +232,28 @@ describe('a screen that fails', () => {
     expect(shell?.children?.[0]?.errorElement).toBeTruthy();
   });
 });
+
+describe('reminders in the menu', () => {
+  it('lists reviews, the Owner discount, ending holds and unpaid bookings', async () => {
+    const { remindersFor } = await import('./Reminders');
+    const now = Date.parse('2026-10-20T06:00:00Z');
+    const base = {
+      created_by: { user_id: 'ravi', role: 'Reception' as const },
+      valid_until: '2026-10-20T12:00:00Z',
+      payment: null,
+    };
+    const quotes = [
+      { ...base, status: 'PENDING_REVIEW' },
+      { ...base, status: 'PENDING_REVIEW', awaiting_owner: true },
+      { ...base, status: 'CONFIRMED', valid_until: null },
+    ] as unknown as import('@c32/core').Quote[];
+    expect(remindersFor(quotes, 'ServiceManager', 'meera', now).map((r) => r.text)).toEqual([
+      '1 quote waiting for your review',
+      '2 holds end within 24 hours',
+      '1 booking waiting for payment',
+    ]);
+    expect(remindersFor(quotes, 'Owner', 'boss', now)[0]?.text).toBe(
+      '1 quote waiting for your discount',
+    );
+  });
+});

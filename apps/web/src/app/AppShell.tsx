@@ -9,6 +9,7 @@ import { QUOTES_KEY, useNow, useQuoteList } from '../features/quotes/queries';
 import { cn } from '../lib/cn';
 import { ROLE_LABEL } from '../lib/roles';
 import { useApi } from './ApiProvider';
+import { Reminders } from './Reminders';
 import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 import type { NavItem } from './routes';
 
@@ -249,8 +250,9 @@ export function AppShell() {
             {group('work')}
             {group('admin', 'Admin')}
           </nav>
+          {session && <Reminders role={session.user.role} userId={session.user.user_id} />}
           {session && (
-            <div className="m-3 mt-auto rounded-2xl border border-border bg-surface p-3 text-sm shadow-card">
+            <div className="m-3 mt-auto [section+&]:mt-3 rounded-2xl border border-border bg-surface p-3 text-sm shadow-card">
               <div className="flex items-center gap-3">
                 <span
                   aria-hidden="true"

@@ -6,58 +6,58 @@
  * in src/lib/contrast.test.ts, so change a token and the test tells you if it broke.
  */
 @theme {
-  /* Inter is bundled with the app (no third-party request); a serif carries page titles. */
+  /* Inter is bundled with the app (no third-party request); headings use it at display sizes. */
   --font-sans:
     'Inter Variable', Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system,
     'Helvetica Neue', Arial, sans-serif;
   --font-display:
-    'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+    'Inter Variable', Inter, 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
-  /* Hospitality palette: ivory page, deep navy brand, warm gold accent (D-060). */
-  --color-canvas: #f7f5f0;
+  /* Monochrome commerce palette (D-061): near-black ink on white and soft greys, one green accent. */
+  --color-canvas: #f8f8f9;
   --color-surface: #ffffff;
-  --color-surface-muted: #f0ece4;
-  --color-border: #ddd6c8;
-  --color-border-strong: #7a7366;
+  --color-surface-muted: #f2f2f2;
+  --color-border: #e3e3e3;
+  --color-border-strong: #797a7c;
 
-  --color-ink: #16202e;
-  --color-ink-muted: #4a5262;
+  --color-ink: #101319;
+  --color-ink-muted: #4a4b4c;
 
-  --color-brand: #1d3557;
-  --color-brand-hover: #132540;
-  --color-brand-soft: #e7edf5;
+  --color-brand: #101319;
+  --color-brand-hover: #2b2e35;
+  --color-brand-soft: #f2f2f2;
   --color-on-brand: #ffffff;
 
-  /* Gold: text-safe on white and on its soft tint; the bright gold is for lines and marks only. */
-  --color-accent: #8c6416;
-  --color-accent-soft: #f6eedc;
-  --color-accent-bright: #d9a441;
+  /* Green: text-safe on white and on its soft tint; the bright green is for lines and marks only. */
+  --color-accent: #13723c;
+  --color-accent-soft: #e6f4ec;
+  --color-accent-bright: #2fb86a;
 
-  --color-success: #1c6b3f;
-  --color-success-soft: #e2f2e8;
+  --color-success: #13723c;
+  --color-success-soft: #e6f4ec;
   --color-warning: #8a4b00;
   --color-warning-soft: #fbefd8;
-  --color-danger: #ad2a20;
-  --color-danger-soft: #fbe7e4;
+  --color-danger: #b4232f;
+  --color-danger-soft: #fbe8ea;
   --color-info: #1d5b94;
-  --color-info-soft: #e3eef9;
-  --color-unknown: #4a5262;
-  --color-unknown-soft: #f0ece4;
+  --color-info-soft: #e8f0f8;
+  --color-unknown: #4a4b4c;
+  --color-unknown-soft: #f2f2f2;
 
-  --color-focus: #1d3557;
+  --color-focus: #101319;
 
-  /* The navigation rail. */
-  --color-nav: #15263d;
-  --color-nav-active: #24395a;
-  --color-on-nav: #ffffff;
-  --color-on-nav-muted: #c2cbd8;
-  --color-nav-accent: #d9a441;
+  /* The navigation rail: light grey, with a black pill for the current page. */
+  --color-nav: #f2f2f2;
+  --color-nav-active: #101319;
+  --color-on-nav: #101319;
+  --color-on-nav-muted: #4a4b4c;
+  --color-nav-accent: #101319;
 
-  --radius-control: 0.625rem;
-  --radius-card: 1rem;
-  --shadow-card: 0 1px 2px rgb(22 32 46 / 0.06), 0 4px 16px -6px rgb(22 32 46 / 0.1);
-  --shadow-raised: 0 2px 4px rgb(22 32 46 / 0.06), 0 14px 32px -12px rgb(22 32 46 / 0.22);
+  --radius-control: 0.75rem;
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(16 19 25 / 0.04);
+  --shadow-raised: 0 1px 2px rgb(16 19 25 / 0.04), 0 12px 32px -16px rgb(16 19 25 / 0.18);
 
   --animate-enter: c32-enter 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-fade: c32-fade 0.25s ease-out both;
@@ -71,10 +71,11 @@
     background: var(--color-canvas);
     -webkit-font-smoothing: antialiased;
   }
-  /* Page titles in the display serif, for a hospitality feel; everything else stays in Inter. */
+  /* Page titles: large, tight Inter, as on modern commerce sites. */
   main h1 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    font-weight: 600;
+    letter-spacing: -0.035em;
   }
   button,
   a,

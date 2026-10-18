@@ -15,10 +15,10 @@ const DAY_MS = 86_400_000;
 
 const linkClass = (active: boolean) =>
   cn(
-    'flex min-h-11 items-center justify-between gap-2 rounded-control px-3 text-sm font-medium',
+    'flex min-h-11 items-center justify-between gap-2 rounded-full px-4 text-sm font-medium',
     active
-      ? 'bg-nav-active text-on-nav shadow-[inset_3px_0_0_var(--color-nav-accent)]'
-      : 'text-on-nav-muted hover:bg-white/5 hover:text-on-nav',
+      ? 'bg-nav-active text-white'
+      : 'text-on-nav-muted hover:bg-white hover:text-on-nav',
   );
 
 /** The product mark: a bed under a roof, navy on the gold accent. */
@@ -29,14 +29,14 @@ function Logo() {
       <path
         d="M7 15 16 8l9 7"
         fill="none"
-        stroke="#15263d"
+        stroke="#fff"
         strokeWidth="2.2"
         strokeLinecap="round"
       />
       <path
         d="M9 24v-6h14v6M9 21h14M12 18v-1.5a1.5 1.5 0 0 1 1.5-1.5h1a1.5 1.5 0 0 1 1.5 1.5V18"
         fill="none"
-        stroke="#15263d"
+        stroke="#fff"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -49,7 +49,7 @@ function Logo() {
 function CountBadge({ count, label }: { count: number; label: string }) {
   if (count <= 0) return null;
   return (
-    <span className="rounded-full bg-nav-accent px-2 py-0.5 text-xs font-bold text-nav">
+    <span className="rounded-full bg-nav-accent px-2 py-0.5 text-xs font-bold text-white">
       <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
       <span className="sr-only">
         , {count} {label}
@@ -183,15 +183,15 @@ export function AppShell() {
       >
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 flex flex-col bg-nav text-on-nav md:h-screen md:overflow-y-auto">
+      <header className="sticky top-0 z-30 flex flex-col border-r border-border bg-nav text-on-nav md:h-screen md:overflow-y-auto">
         <div className="flex items-center justify-between gap-3 p-4">
           <Link to="/" className="flex items-center gap-3 rounded-control">
             <Logo />
             <span>
-              <span className="block font-display text-base leading-tight font-semibold">
+              <span className="block text-base leading-tight font-semibold tracking-tight">
                 {APP_NAME}
               </span>
-              <span className="mt-1 inline-block rounded-full bg-white/10 px-2 text-xs text-on-nav-muted">
+              <span className="mt-1 inline-block rounded-full border border-border bg-white px-2 text-xs text-on-nav-muted">
                 Demo data
               </span>
             </span>
@@ -215,7 +215,7 @@ export function AppShell() {
               <Link
                 to={action.path}
                 aria-current={pathname === action.path ? 'page' : undefined}
-                className="mb-5 flex min-h-11 items-center justify-center rounded-control bg-nav-accent px-3 text-sm font-semibold text-nav shadow-[0_8px_20px_-10px_rgb(217_164_65_/_0.8)] hover:brightness-105 active:translate-y-px"
+                className="mb-5 flex min-h-11 items-center justify-center rounded-full bg-nav-accent px-3 text-sm font-medium text-white hover:bg-brand-hover active:translate-y-px"
               >
                 <span aria-hidden="true" className="mr-1.5 text-lg leading-none">
                   +
@@ -226,10 +226,10 @@ export function AppShell() {
             {group('work')}
             {group('admin', 'Admin')}
             <details
-              className="mt-4 border-t border-white/10 pt-3"
+              className="mt-4 border-t border-border pt-3"
               {...(projectOpen || pathname === DESIGN_SYSTEM_PATH ? { open: true } : {})}
             >
-              <summary className="flex min-h-11 cursor-pointer items-center rounded-control px-3 text-sm font-medium text-on-nav-muted hover:bg-white/5 hover:text-on-nav">
+              <summary className="flex min-h-11 cursor-pointer items-center rounded-control px-3 text-sm font-medium text-on-nav-muted hover:bg-white hover:text-on-nav">
                 About this project
               </summary>
               <ul className="mt-1 flex flex-col gap-1">
@@ -244,11 +244,11 @@ export function AppShell() {
           </nav>
           <HotelScene className="mx-4 mt-auto hidden h-28 w-auto opacity-90 md:block" />
           {session && (
-            <div className="m-3 rounded-card bg-white/5 p-4 text-sm ring-1 ring-white/10">
+            <div className="m-3 rounded-card bg-white p-4 text-sm ring-1 ring-border">
               <div className="flex items-center gap-3">
                 <span
                   aria-hidden="true"
-                  className="grid size-9 shrink-0 place-items-center rounded-full bg-nav-accent text-sm font-bold text-nav"
+                  className="grid size-9 shrink-0 place-items-center rounded-full bg-nav-accent text-sm font-bold text-white"
                 >
                   {(session.displayName.trim()[0] ?? '?').toUpperCase()}
                 </span>

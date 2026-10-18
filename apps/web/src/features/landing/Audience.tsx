@@ -14,7 +14,7 @@ const AUDIENCES = [
     icon: IconUsers,
     title: 'Small hotel teams',
     text: 'Use a more consistent quotation process even when the owner or manager is handling multiple responsibilities.',
-    points: ['One workflow for everyone', 'Owner approval when a discount goes too far'],
+    points: ['One workflow for everyone', 'Service Manager approval when a discount goes too far'],
   },
   {
     icon: IconBed,

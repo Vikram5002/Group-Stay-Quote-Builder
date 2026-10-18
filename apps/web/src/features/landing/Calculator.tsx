@@ -95,10 +95,10 @@ const VIEW: Record<
       `Only ${offered} rooms are free on every night. You are ${short} short, so the quote holds ${offered} and never more.`,
   },
   REVIEW: {
-    title: 'Owner review required',
+    title: 'Service Manager review required',
     tone: 'bg-warning-soft text-warning',
     icon: IconAlert,
-    line: () => 'It cannot be confirmed automatically. An Owner must approve it first.',
+    line: () => 'It cannot be confirmed automatically. A Service Manager must approve it first.',
   },
 };
 

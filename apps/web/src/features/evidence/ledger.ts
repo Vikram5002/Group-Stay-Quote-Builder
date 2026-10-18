@@ -28,7 +28,8 @@ export const LEDGER: readonly LedgerEntry[] = [
   },
   {
     id: 'E02',
-    claim: 'Minimum safe rate on the fixture is 1800 (full price 2000 less the 10% Sales limit).',
+    claim:
+      'Minimum safe rate on the fixture is 1800 (full price 2000 less the 10% Reception limit).',
     type: 'Derived',
     source: 'Formula; test T03, T18',
     confidence: 'High (arithmetic only)',
@@ -44,7 +45,7 @@ export const LEDGER: readonly LedgerEntry[] = [
   },
   {
     id: 'E04',
-    claim: 'Owners will pay per property per month.',
+    claim: 'Service Managers will pay per property per month.',
     type: 'Assumption',
     source: 'README hypothesis',
     confidence: 'Unknown',
@@ -56,7 +57,7 @@ export const LEDGER: readonly LedgerEntry[] = [
     type: 'Assumption',
     source: 'Team reasoning',
     confidence: 'Unknown',
-    nextTest: 'Owner interviews (H5)',
+    nextTest: 'Service Manager interviews (H5)',
   },
   {
     id: 'E06',

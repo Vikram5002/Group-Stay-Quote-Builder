@@ -23,7 +23,7 @@ beforeEach(() => {
 
 const client = createApiClient({
   baseUrl: BASE,
-  getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+  getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
 });
 
 const issue = (over: Partial<QuoteRequest> = {}): Promise<Quote> =>

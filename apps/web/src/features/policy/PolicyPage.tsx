@@ -232,26 +232,27 @@ export function PolicyPage() {
               {...err('total_rooms_units')}
             />
             <TextField
-              label="Max Sales discount (%)"
+              label="Max Reception discount (%)"
               type="number"
               inputMode="numeric"
               min={0}
               max={100}
               value={form.maxDiscount}
               onChange={(e) => set({ maxDiscount: e.target.value })}
-              hint="Sales can give up to this much off the full price; more needs owner approval."
+              hint="Reception can give up to this much off the full price; more needs owner approval."
               {...err('max_sales_discount_pct')}
             />
           </div>
           <p className="mt-4" aria-live="polite">
             {floorRatePreview(form) === null || lowestRatePreview(form) === null ? (
-              'Enter the numbers to see the full price and the lowest Sales price.'
+              'Enter the numbers to see the full price and the lowest Reception price.'
             ) : (
               <>
                 Full price: <strong>₹{floorRatePreview(form)?.toLocaleString('en-IN')}</strong> per
-                room per night, variable cost included. With up to {form.maxDiscount}% off, Sales
-                can go down to <strong>₹{lowestRatePreview(form)?.toLocaleString('en-IN')}</strong>;
-                anything lower needs owner approval.
+                room per night, variable cost included. With up to {form.maxDiscount}% off,
+                Reception can go down to{' '}
+                <strong>₹{lowestRatePreview(form)?.toLocaleString('en-IN')}</strong>; anything lower
+                needs owner approval.
               </>
             )}
           </p>

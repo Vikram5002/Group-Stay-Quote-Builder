@@ -19,7 +19,7 @@ test.describe('UI tour', () => {
     await page.goto('/sign-in');
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${OUT}02-sign-in.png` });
-    await signIn(page, 'Asha Rao', 'Owner');
+    await signIn(page, 'Asha Rao', 'ServiceManager');
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${OUT}03-dashboard.png` });
 
@@ -35,7 +35,7 @@ test.describe('UI tour', () => {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.waitForTimeout(1200);
     await page.screenshot({ path: `${OUT}06-review.png`, fullPage: true });
-    await page.getByRole('button', { name: /Issue quote|Send for Owner review/ }).click();
+    await page.getByRole('button', { name: /Issue quote|Send for Service Manager review/ }).click();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${OUT}07-quote-detail.png`, fullPage: true });
 

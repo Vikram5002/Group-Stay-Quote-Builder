@@ -3,6 +3,8 @@ import {
   ApproveRequest,
   CancelRequest,
   EmailRequest,
+  OwnerDiscountRequest,
+  ownerDiscountTotals,
   CONTRACT_VERSION,
   ExtendRequest,
   ImportKind,
@@ -45,9 +47,12 @@ function problemResponse(code: ErrorCode, opts?: ProblemOptions) {
   return HttpResponse.json(body, { status: body.status, headers: PROBLEM_HEADERS });
 }
 
-const SALES_OWNER: readonly Role[] = ['Sales', 'Owner'];
+const BUILDERS: readonly Role[] = ['Reception', 'ServiceManager'];
+const BOOKING: readonly Role[] = ['Reception', 'ServiceManager', 'Owner'];
+const REVIEWER: readonly Role[] = ['ServiceManager'];
+const ADMIN: readonly Role[] = ['ServiceManager', 'Owner'];
 const OWNER: readonly Role[] = ['Owner'];
-const ALL: readonly Role[] = ['Sales', 'Owner', 'Viewer'];
+const ALL: readonly Role[] = ['Reception', 'ServiceManager', 'Owner', 'Viewer'];
 
 const OPEN: readonly QuoteStatus[] = ['OFFERED', 'PENDING_REVIEW'];
 
@@ -188,7 +193,7 @@ export function createHandlers(store: MockStore) {
     ) {
       moveRooms(quote, heldRooms(quote), 'held', 'available');
       const expired = save(quote, { status: 'EXPIRED', version: quote.version + 1 });
-      store.addEvent(expired, 'EXPIRED', { user_id: 'system', role: 'Owner' });
+      store.addEvent(expired, 'EXPIRED', { user_id: 'system', role: 'ServiceManager' });
       return expired;
     }
     return quote;
@@ -248,7 +253,7 @@ export function createHandlers(store: MockStore) {
     ),
 
     http.post('*/v1/quotes/preview', async ({ request }) => {
-      const actor = authorise(request, SALES_OWNER);
+      const actor = authorise(request, BUILDERS);
       if (actor instanceof Response) return actor;
       const body = await readBody(request, QuoteRequest);
       if (body.error) return body.error;
@@ -273,7 +278,7 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.post('*/v1/quotes', async ({ request }) => {
-      const actor = authorise(request, SALES_OWNER);
+      const actor = authorise(request, BUILDERS);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), QuoteRequest);
@@ -287,17 +292,25 @@ export function createHandlers(store: MockStore) {
           ratePlan: store.ratePlan,
           nowMs: store.now().getTime(),
         });
-        const status = INITIAL_STATUS[evaluation.decision];
+        const { send_to_owner: toOwner, ...stored } = body.value;
+        if (toOwner && actor.role !== 'ServiceManager') {
+          return problemResponse('FORBIDDEN', {
+            detail: 'Only the Service Manager can send a quote to the Owner',
+          });
+        }
+        const declined = evaluation.decision === 'DECLINE';
+        const status =
+          toOwner && !declined ? 'PENDING_REVIEW' : INITIAL_STATUS[evaluation.decision];
         const now = iso();
         const quote: Quote = {
           quote_id: store.nextId(),
           property_id: store.policy.property_id,
           status,
           version: 1,
-          request: body.value,
+          request: stored,
           evaluation,
           terms_hash: termsHash(
-            body.value,
+            stored,
             evaluation.offered_rooms,
             body.value.rate_per_room_night_inr ?? null,
           ),
@@ -308,6 +321,7 @@ export function createHandlers(store: MockStore) {
           updated_at: now,
           approval: null,
           review_required: false,
+          ...(toOwner && !declined ? { awaiting_owner: true } : {}),
         };
         store.quotes.set(quote.quote_id, quote);
         store.addEvent(quote, status === 'DECLINED' ? 'QUOTE_DECLINED' : 'QUOTE_CREATED', actor);
@@ -355,7 +369,7 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.post('*/v1/quotes/:id/confirm', async ({ request, params }) => {
-      const actor = authorise(request, SALES_OWNER);
+      const actor = authorise(request, BOOKING);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, () => {
         const quote = find(String(params.id));
@@ -380,7 +394,7 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.post('*/v1/quotes/:id/approve', async ({ request, params }) => {
-      const actor = authorise(request, OWNER);
+      const actor = authorise(request, REVIEWER);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), ApproveRequest);
@@ -388,6 +402,11 @@ export function createHandlers(store: MockStore) {
         const quote = find(String(params.id));
         if (!quote) return notFound(String(params.id));
         if (quote.status !== 'PENDING_REVIEW') return notReviewable(quote);
+        if (quote.awaiting_owner) {
+          return problemResponse('INVALID_STATE', {
+            detail: 'This quote is waiting for the Owner to set the discount',
+          });
+        }
         if (quote.created_by.user_id === actor.user_id) {
           return problemResponse('FORBIDDEN', {
             detail: 'You cannot approve your own quote (four-eyes rule).',
@@ -406,8 +425,49 @@ export function createHandlers(store: MockStore) {
       });
     }),
 
-    http.post('*/v1/quotes/:id/reject', async ({ request, params }) => {
+    http.post('*/v1/quotes/:id/owner-discount', async ({ request, params }) => {
       const actor = authorise(request, OWNER);
+      if (actor instanceof Response) return actor;
+      return idempotent(request, actor, async () => {
+        const body = await readBody(request.clone(), OwnerDiscountRequest);
+        if (body.error) return body.error;
+        const quote = find(String(params.id));
+        if (!quote) return notFound(String(params.id));
+        if (quote.status !== 'PENDING_REVIEW') return notReviewable(quote);
+        if (!quote.awaiting_owner) {
+          return problemResponse('INVALID_STATE', {
+            detail: 'This quote was not sent to the Owner',
+          });
+        }
+        const pct = body.value.discount_pct;
+        const priced = ownerDiscountTotals(quote.evaluation.totals, pct, store.policy);
+        const { rate_per_room_night_inr: _r, discount_inr: _i, ...base } = quote.request;
+        const request2 = { ...base, discount_pct: pct };
+        const hash = termsHash(request2, quote.evaluation.offered_rooms, null);
+        const why = body.value.reason ?? `Owner discount ${pct}%`;
+        const { awaiting_owner: _w, ...rest } = quote;
+        store.quotes.set(quote.quote_id, rest);
+        return HttpResponse.json(
+          transition(rest, 'OFFERED', 'OWNER_DISCOUNTED', actor, why, {
+            request: request2,
+            terms_hash: hash,
+            evaluation: {
+              ...quote.evaluation,
+              decision: quote.evaluation.decision === 'PARTIAL_OFFER' ? 'PARTIAL_OFFER' : 'OFFER',
+              reasons: quote.evaluation.reasons.filter((r) => r !== 'FLOOR_BREACH'),
+              auto_confirm_allowed: false,
+              totals: priced.totals,
+              counter_offers: [],
+              trail: [...quote.evaluation.trail, ...priced.trail],
+            },
+            approval: { approved_by: actor, approved_at: iso(), reason: why, terms_hash: hash },
+          }),
+        );
+      });
+    }),
+
+    http.post('*/v1/quotes/:id/reject', async ({ request, params }) => {
+      const actor = authorise(request, REVIEWER);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), RejectRequest);
@@ -424,7 +484,7 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.post('*/v1/quotes/:id/extend', async ({ request, params }) => {
-      const actor = authorise(request, SALES_OWNER);
+      const actor = authorise(request, BOOKING);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), ExtendRequest);
@@ -453,7 +513,7 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.post('*/v1/quotes/:id/amendments', async ({ request, params }) => {
-      const actor = authorise(request, SALES_OWNER);
+      const actor = authorise(request, BOOKING);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), AmendmentRequest);
@@ -501,7 +561,7 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.post('*/v1/quotes/:id/cancel', async ({ request, params }) => {
-      const actor = authorise(request, SALES_OWNER);
+      const actor = authorise(request, BOOKING);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), CancelRequest);
@@ -529,7 +589,7 @@ export function createHandlers(store: MockStore) {
     // Quote and invoice emails (D-059): the mock records the send; nothing leaves the browser.
     ...(['email-quote', 'email-invoice'] as const).map((verb) =>
       http.post(`*/v1/quotes/:id/${verb}`, async ({ request, params }) => {
-        const actor = authorise(request, SALES_OWNER);
+        const actor = authorise(request, BOOKING);
         if (actor instanceof Response) return actor;
         return idempotent(request, actor, async () => {
           const body = await readBody(request.clone(), EmailRequest);
@@ -568,7 +628,7 @@ export function createHandlers(store: MockStore) {
     ),
 
     http.post('*/v1/quotes/:id/payment', async ({ request, params }) => {
-      const actor = authorise(request, SALES_OWNER);
+      const actor = authorise(request, BOOKING);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const body = await readBody(request.clone(), RecordPaymentRequest);
@@ -621,7 +681,7 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.post('*/v1/imports/:kind/uploads', async ({ request, params }) => {
-      const actor = authorise(request, OWNER);
+      const actor = authorise(request, ADMIN);
       if (actor instanceof Response) return actor;
       return idempotent(request, actor, async () => {
         const kind = ImportKind.safeParse(params.kind);
@@ -653,7 +713,7 @@ export function createHandlers(store: MockStore) {
 
     ...(['validate', 'commit'] as const).map((step) =>
       http.post(`*/v1/imports/:kind/:importId/${step}`, async ({ request, params }) => {
-        const actor = authorise(request, OWNER);
+        const actor = authorise(request, ADMIN);
         if (actor instanceof Response) return actor;
         return idempotent(request, actor, () => {
           const kind = ImportKind.safeParse(params.kind);
@@ -717,13 +777,13 @@ export function createHandlers(store: MockStore) {
     }),
 
     http.get('*/v1/policy', ({ request }) => {
-      const actor = authorise(request, OWNER);
+      const actor = authorise(request, ADMIN);
       if (actor instanceof Response) return actor;
       return HttpResponse.json(store.policy);
     }),
 
     http.put('*/v1/policy', async ({ request }) => {
-      const actor = authorise(request, OWNER);
+      const actor = authorise(request, ADMIN);
       if (actor instanceof Response) return actor;
       const body = await readBody(request, PolicyUpdateRequest);
       if (body.error) return body.error;

@@ -33,7 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/quotes/new',
-    roles: ['Sales', 'Owner'],
+    roles: ['Reception', 'ServiceManager'],
     label: 'New quote',
     group: 'action',
     workPackage: 'T2-03',
@@ -41,11 +41,11 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/review',
-    roles: ['Owner'],
+    roles: ['ServiceManager', 'Owner'],
     label: 'Review queue',
     group: 'work',
     workPackage: 'T2-05',
-    description: 'Floor breaches and unknowns awaiting an Owner decision.',
+    description: 'Floor breaches and unknowns awaiting a Service Manager decision.',
   },
   {
     path: '/availability',
@@ -63,7 +63,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/policy',
-    roles: ['Owner'],
+    roles: ['ServiceManager', 'Owner'],
     label: 'Policy',
     group: 'admin',
     workPackage: 'T2-06',

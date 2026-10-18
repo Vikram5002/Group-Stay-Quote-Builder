@@ -33,8 +33,8 @@ export const EVENT_LABEL: Record<QuoteEventType, string> = {
   QUOTE_DECLINED: 'Quote declined',
   HOLD_ACQUIRED: 'Rooms held',
   HOLD_RELEASED: 'Rooms released',
-  APPROVED: 'Approved by Owner',
-  REJECTED: 'Rejected by Owner',
+  APPROVED: 'Approved by Service Manager',
+  REJECTED: 'Rejected by Service Manager',
   CONFIRMED: 'Confirmed',
   EXTENDED: 'Validity extended',
   AMENDED: 'Amended',
@@ -42,6 +42,8 @@ export const EVENT_LABEL: Record<QuoteEventType, string> = {
   EXPIRED: 'Expired',
   PAYMENT_RECORDED: 'Payment recorded',
   EMAILED: 'PDF emailed',
+  SENT_TO_OWNER: 'Sent to the Owner',
+  OWNER_DISCOUNTED: 'Owner set the discount',
 };
 
 /** A quote still holds rooms and has a countdown while it is in one of these statuses. */

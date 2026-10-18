@@ -65,7 +65,7 @@ export function toUpdate(form: PolicyForm, version: number) {
 export const FIELD_LABEL: Record<string, string> = {
   contribution_floor_inr: 'Package floor',
   total_rooms_units: 'Total rooms',
-  max_sales_discount_pct: 'Max Sales discount',
+  max_sales_discount_pct: 'Max Reception discount',
   hotel_name: 'Hotel name',
   hotel_address: 'Hotel address',
   hotel_phone: 'Hotel phone',
@@ -153,7 +153,11 @@ export function pendingChanges(form: PolicyForm, policy: Policy): string[] {
     }
   };
   price('Full price per room-night', floorRatePreview(before), floorRatePreview(form));
-  price('Lowest price Sales can give alone', lowestRatePreview(before), lowestRatePreview(form));
+  price(
+    'Lowest price Reception can give alone',
+    lowestRatePreview(before),
+    lowestRatePreview(form),
+  );
   return out;
 }
 
@@ -191,7 +195,7 @@ export function floorRatePreview(form: PolicyForm): number | null {
   return Math.ceil(floor / rooms);
 }
 
-/** Lowest rate Sales can give alone: full price less the max Sales discount, rounded up. */
+/** Lowest rate Reception can give alone: full price less the max Reception discount, rounded up. */
 export function lowestRatePreview(form: PolicyForm): number | null {
   const full = floorRatePreview(form);
   const pct = num(form.maxDiscount);

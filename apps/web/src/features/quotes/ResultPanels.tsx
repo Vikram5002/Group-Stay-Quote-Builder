@@ -19,7 +19,7 @@ import { counted } from '../../lib/plural';
 
 const METER_NOTE: Record<LiveMeterState['kind'], string> = {
   start:
-    'Fill in the group, dates and rooms. The price against the Sales limit will appear here and update as you change the discount or rate.',
+    'Fill in the group, dates and rooms. The price against the Reception limit will appear here and update as you change the discount or rate.',
   invalid: 'Enter valid values to see the price check.',
   error: 'The server could not check these values, so no price check is shown.',
   checking: 'Checking with the server…',
@@ -88,7 +88,7 @@ export function LiveMeter({ state }: { state: LiveMeterState }) {
         ) : (
           <ContributionMeter
             label="Contribution after discount"
-            okText="Within the Sales limit"
+            okText="Within the Reception limit"
             belowText="Over the limit: owner review"
             contribution={totals.contribution_inr}
             floor={totals.contribution_floor_inr}
@@ -105,7 +105,7 @@ export function LiveMeter({ state }: { state: LiveMeterState }) {
           <dd className="font-semibold">
             <Money value={beforeDiscount} />
           </dd>
-          <dt>Discount (Sales limit {totals.max_discount_pct}%)</dt>
+          <dt>Discount (Reception limit {totals.max_discount_pct}%)</dt>
           <dd className="font-semibold">
             {totals.discount_pct === null ? 'Unknown' : `${totals.discount_pct}%`}
           </dd>
@@ -141,7 +141,7 @@ const DECISION_VIEW: Record<
     tone: 'info',
     title: (e) => `Partial offer: ${e.offered_rooms} of ${counted(e.requested_rooms, 'room')}`,
   },
-  REVIEW: { tone: 'warning', title: () => 'Owner review required' },
+  REVIEW: { tone: 'warning', title: () => 'Service Manager review required' },
   DECLINE: { tone: 'danger', title: () => 'This request cannot be offered' },
 };
 
@@ -159,7 +159,7 @@ export function DecisionSummary({
    * title, which only says what the engine found when the quote was issued.
    */
   review?: ReviewBanner | null;
-  /** A next step shown in the banner, for example the Owner's link to the review queue. */
+  /** A next step shown in the banner, for example the Service Manager's link to the review queue. */
   reviewAction?: React.ReactNode;
   /** Offered on the builder only. A saved quote cannot be edited, so these are omitted there. */
   onUseRate?: (rate: number) => void;

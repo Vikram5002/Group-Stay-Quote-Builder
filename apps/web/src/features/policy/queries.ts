@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { useApi } from '../../app/ApiProvider';
 import { useAuth } from '../auth/auth';
+import { ADMINS, can } from '../../lib/roles';
 
 export const POLICY_KEY = ['policy'] as const;
 
 /**
- * The property policy where the API allows it. GET /v1/policy is for Owners only, so for other
+ * The property policy where the API allows it. GET /v1/policy is for Service Managers only, so for other
  * roles this stays empty and callers fall back to the server's own checks, never to a guess.
  */
 export function usePolicy() {
@@ -14,6 +15,6 @@ export function usePolicy() {
   return useQuery({
     queryKey: POLICY_KEY,
     queryFn: () => api.getPolicy(),
-    enabled: session?.user.role === 'Owner',
+    enabled: can(ADMINS, session?.user.role),
   });
 }

@@ -34,7 +34,7 @@ beforeEach(() => {
   }
 });
 
-function renderPage(role: Role = 'Sales') {
+function renderPage(role: Role = 'Reception') {
   return render(
     <Providers initialSession={mockSession(role, 'Ravi')} baseUrl={BASE}>
       <RouterProvider router={createTestRouter(['/evidence'])} />

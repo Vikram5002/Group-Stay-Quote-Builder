@@ -39,7 +39,7 @@ beforeEach(() => {
 
 const sales = createApiClient({
   baseUrl: BASE,
-  getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+  getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
 });
 
 const create = (overrides: Partial<QuoteRequest>) =>
@@ -55,7 +55,7 @@ const create = (overrides: Partial<QuoteRequest>) =>
     { idempotencyKey: newIdempotencyKey() },
   );
 
-function renderDashboard(role: Role = 'Sales') {
+function renderDashboard(role: Role = 'Reception') {
   return render(
     <Providers initialSession={mockSession(role, 'Ravi')} baseUrl={BASE}>
       <RouterProvider router={createTestRouter(['/'])} />
@@ -73,7 +73,7 @@ function pipelineCount(label: string): string {
 
 describe('dashboard', () => {
   it('guides a new user when there are no quotes', async () => {
-    renderDashboard('Sales');
+    renderDashboard('Reception');
     expect(await screen.findByText('No quotes yet')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Create the first quote' })).toHaveAttribute(
       'href',
@@ -152,7 +152,7 @@ describe('dashboard', () => {
   it('lists what needs this person now, by role', async () => {
     await create({}); // asha's, offered
     await create({ stay: { check_in: '2026-11-04', nights: 2 }, rate_per_room_night_inr: 1700 });
-    renderDashboard('Owner');
+    renderDashboard('ServiceManager');
     const next = (await screen.findByRole('heading', { name: 'Needs you now' })).closest(
       'section',
     ) as HTMLElement;
@@ -163,10 +163,10 @@ describe('dashboard', () => {
     expect(within(next).queryByText(/of your quotes/)).not.toBeInTheDocument();
   });
 
-  it('points Sales at their own offered quotes, and groups the pipeline', async () => {
+  it('points Reception at their own offered quotes, and groups the pipeline', async () => {
     await create({});
     render(
-      <Providers initialSession={mockSession('Sales', 'Asha')} baseUrl={BASE}>
+      <Providers initialSession={mockSession('Reception', 'Asha')} baseUrl={BASE}>
         <RouterProvider router={createTestRouter(['/'])} />
       </Providers>,
     );

@@ -54,7 +54,7 @@ describe('PKCE and URLs', () => {
 
 describe('roles and claims', () => {
   it('the highest group wins; no group means no role', () => {
-    expect(roleFromGroups(['Sales', 'Owner'])).toBe('Owner');
+    expect(roleFromGroups(['Reception', 'ServiceManager'])).toBe('ServiceManager');
     expect(roleFromGroups(['Viewer'])).toBe('Viewer');
     expect(roleFromGroups(['Admins'])).toBeNull();
     expect(roleFromGroups(undefined)).toBeNull();
@@ -88,11 +88,11 @@ describe('completing sign-in on the callback', () => {
     );
 
   it('exchanges the code with the verifier and builds the session', async () => {
-    fetchImpl.mockResolvedValue(tokenResponse(['Owner']));
+    fetchImpl.mockResolvedValue(tokenResponse(['ServiceManager']));
     const url = new URL(`https://site.example/?code=abc&state=${state()}`);
     const result = await completeSignIn(config, url, fetchImpl);
     expect(result?.returnTo).toBe('/review');
-    expect(result?.session.user).toEqual({ user_id: 'sub-123', role: 'Owner' });
+    expect(result?.session.user).toEqual({ user_id: 'sub-123', role: 'ServiceManager' });
     expect(result?.session.displayName).toBe('owner@hotel.example');
 
     const [endpoint, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
@@ -109,7 +109,7 @@ describe('completing sign-in on the callback', () => {
     fetchImpl.mockResolvedValue(
       new Response(
         JSON.stringify({
-          access_token: jwt({ sub: 'sub-123', 'cognito:groups': ['Sales'], exp }),
+          access_token: jwt({ sub: 'sub-123', 'cognito:groups': ['Reception'], exp }),
         }),
         { status: 200 },
       ),

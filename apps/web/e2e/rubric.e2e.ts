@@ -9,7 +9,7 @@ test.describe('rubric flows', () => {
   test('fixture: 10 rooms, 2 nights, rate 2000 is offered, issued, confirmed and shown as booked', async ({
     page,
   }) => {
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     await buildQuote(page, { organiser: 'Fictional Events Pvt Ltd', rooms: '10', rate: '2000' });
 
     await expect(page.getByText('Ready to offer')).toBeVisible();
@@ -38,7 +38,7 @@ test.describe('rubric flows', () => {
   test('shortage: 12 rooms when 10 are available is a partial offer and never an over-hold', async ({
     page,
   }) => {
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     await buildQuote(page, { organiser: 'Big Group', rooms: '12', rate: '2000' });
 
     await expect(page.getByText('Partial offer: 10 of 12 rooms')).toBeVisible();
@@ -57,21 +57,21 @@ test.describe('rubric flows', () => {
     await expect(page.getByRole('button', { name: 'Issue quote' })).toBeDisabled();
   });
 
-  test('below the floor: review is required, the Owner approves, a different person confirms', async ({
+  test('below the floor: review is required, the Service Manager approves, a different person confirms', async ({
     page,
   }) => {
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     await buildQuote(page, { organiser: 'Discount Group', rate: '1700' });
-    await expect(page.getByText('Owner review required')).toBeVisible();
+    await expect(page.getByText('Service Manager review required')).toBeVisible();
     await expect(page.getByText(/Over the limit: owner review/).first()).toBeVisible();
-    await issueQuote(page, 'Send for Owner review');
+    await issueQuote(page, 'Send for Service Manager review');
 
     await expect(page.getByText(/must approve it before it can be confirmed/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm booking…' })).toHaveCount(0);
     await signOut(page);
 
-    // The creator cannot approve their own quote, even as an Owner.
-    await signIn(page, 'Asha', 'Owner');
+    // The creator cannot approve their own quote, even as a Service Manager.
+    await signIn(page, 'Asha', 'ServiceManager');
     await goTo(page, 'Review queue');
     await expect(page.getByRole('button', { name: 'Approve…' })).toBeDisabled();
     await expect(
@@ -79,7 +79,7 @@ test.describe('rubric flows', () => {
     ).toBeVisible();
     await signOut(page);
 
-    await signIn(page, 'Meera', 'Owner');
+    await signIn(page, 'Meera', 'ServiceManager');
     await goTo(page, 'Review queue');
     await expect(page.getByRole('heading', { level: 2, name: 'Discount Group' })).toBeVisible();
     const comparison = page.getByRole('table', { name: /Requested terms compared/ });
@@ -97,7 +97,7 @@ test.describe('rubric flows', () => {
     await expect(page.getByText('Nothing is waiting for review')).toBeVisible();
     await signOut(page);
 
-    await signIn(page, 'Ravi', 'Sales');
+    await signIn(page, 'Ravi', 'Reception');
     await page.getByRole('link', { name: 'Discount Group' }).first().click();
     await page.getByRole('button', { name: 'Confirm booking…' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Confirm booking' }).click();

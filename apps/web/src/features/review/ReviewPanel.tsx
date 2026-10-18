@@ -14,7 +14,7 @@ import { StatusBadge } from '../quotes/StatusBadge';
 import { TermsComparison } from './TermsComparison';
 import { counted } from '../../lib/plural';
 
-export type ReviewResult = { kind: 'approved' | 'rejected'; quote: Quote };
+export type ReviewResult = { kind: 'approved' | 'rejected' | 'discounted'; quote: Quote };
 
 const REASON_HELP = 'Required. At least 5 characters. It is recorded in the audit trail.';
 const REASON_ERROR = 'Enter at least 5 characters explaining why.';

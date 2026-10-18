@@ -10,7 +10,7 @@ const OFFER_LABEL: Record<CounterOffer['type'], string> = {
 };
 
 /**
- * The requested terms next to each floor-safe alternative, so the Owner can see what a small
+ * The requested terms next to each floor-safe alternative, so the Service Manager can see what a small
  * change would do before deciding. Alternatives are information only; approving applies to the
  * terms as requested.
  */

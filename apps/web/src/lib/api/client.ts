@@ -15,12 +15,14 @@ import type {
   AmendmentRequest,
   ApproveRequest,
   CancelRequest,
+  EmailRequest,
   ExtendRequest,
   ImportKind,
   ImportUploadRequest,
   ListQuotesQuery,
   PolicyUpdateRequest,
   QuoteRequest,
+  RecordPaymentRequest,
   RejectRequest,
 } from '@c32/core';
 import type { z } from 'zod';
@@ -166,6 +168,12 @@ export function createApiClient(options: ApiClientOptions) {
       action(id, 'amendments', body, o),
     cancelQuote: (id: string, body: CancelRequest, o: MutationOptions) =>
       action(id, 'cancel', body, o),
+    emailQuote: (id: string, body: EmailRequest, o: MutationOptions) =>
+      action(id, 'email-quote', body, o),
+    recordPayment: (id: string, body: RecordPaymentRequest, o: MutationOptions) =>
+      action(id, 'payment', body, o),
+    emailInvoice: (id: string, body: EmailRequest, o: MutationOptions) =>
+      action(id, 'email-invoice', body, o),
 
     getAvailability: (query: { room_type: string; from: string; to: string }) =>
       call({ method: 'GET', path: '/v1/availability', schema: AvailabilityResponse, query }),

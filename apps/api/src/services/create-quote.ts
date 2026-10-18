@@ -14,6 +14,7 @@ import { ContentionError, HoldConflictError } from '../data/errors.js';
 import { acquireHolds } from '../data/holds.js';
 import { putEventTx, putNewQuoteTx } from '../data/quotes.js';
 import { loadPolicy, loadStay, refusePastCheckIn } from './inputs.js';
+import type { EmailSender } from '../email/sender.js';
 import { scheduleQuietly, type ExpiryScheduler } from './scheduler.js';
 import { termsHash } from './terms-hash.js';
 
@@ -31,6 +32,8 @@ export interface ServiceDeps {
   newId: () => string;
   /** Per-quote expiry schedules (EventBridge Scheduler in AWS); none locally. */
   scheduler?: ExpiryScheduler;
+  /** Sends quote and invoice PDFs (SES in AWS, an outbox folder locally, D-059). */
+  email?: EmailSender;
 }
 
 const MAX_ATTEMPTS = 4;

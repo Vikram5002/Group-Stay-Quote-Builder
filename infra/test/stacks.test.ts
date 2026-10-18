@@ -213,6 +213,20 @@ describe('API and worker match the Track 1 handoff', () => {
   });
 });
 
+describe('quote and invoice email (D-059)', () => {
+  it('a sender identity, and the API may send only as it', () => {
+    t['api']!.hasResourceProperties('AWS::SES::EmailIdentity', {
+      EmailIdentity: 'forawws@gmail.com',
+    });
+    t['api']!.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: { Variables: Match.objectLike({ SENDER_EMAIL: 'forawws@gmail.com' }) },
+    });
+    const text = JSON.stringify(t['api']!.findResources('AWS::IAM::Policy'));
+    expect(text).toContain('ses:SendRawEmail');
+    expect(text).not.toMatch(/ses:\*|identity\/\*/);
+  });
+});
+
 describe('auth, observability and the deploy role', () => {
   it('Cognito has the three role groups and a PKCE client without a secret', () => {
     for (const name of ['Owner', 'Sales', 'Viewer']) {

@@ -53,6 +53,16 @@ export function GroupStep({
           {...err(errors, 'organiser.reference')}
         />
         <TextField
+          label="Organiser email (optional)"
+          name="organiser.email"
+          type="email"
+          value={form.email}
+          onChange={(e) => patch({ email: e.target.value })}
+          hint="The quote and invoice PDFs are emailed here."
+          {...err(errors, 'organiser.email')}
+        />
+        <div />
+        <TextField
           label="Check-in date"
           name="stay.check_in"
           type="date"

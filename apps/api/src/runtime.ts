@@ -4,6 +4,7 @@ import { monotonicFactory } from 'ulid';
 import type { DataContext } from './data/catalog.js';
 import { createDocClient, dataConfigFromEnv } from './data/client.js';
 import { S3FileStore } from './files/store.js';
+import { sesSenderFromEnv } from './email/sender.js';
 import type { ServiceDeps } from './services/create-quote.js';
 import { schedulerFromEnv } from './services/scheduler.js';
 
@@ -19,11 +20,13 @@ export function depsFromEnv(env: NodeJS.ProcessEnv = process.env): ServiceDeps {
     propertyId: env['PROPERTY_ID'] ?? 'p1',
   };
   const scheduler = schedulerFromEnv(env);
+  const email = sesSenderFromEnv(env);
   return {
     data,
     clock: systemClock,
     newId: monotonicFactory(),
     ...(scheduler ? { scheduler } : {}),
+    ...(email ? { email } : {}),
   };
 }
 

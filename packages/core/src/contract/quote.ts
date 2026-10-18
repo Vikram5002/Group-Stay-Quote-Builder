@@ -55,6 +55,8 @@ export type InclusionInput = z.infer<typeof InclusionInput>;
 export const Organiser = z.strictObject({
   name: NonEmptyText(120),
   reference: NonEmptyText(64).optional(),
+  /** Where the quote and invoice PDFs are emailed (D-059). */
+  email: z.email().max(254).optional(),
 });
 export type Organiser = z.infer<typeof Organiser>;
 
@@ -244,6 +246,23 @@ export const Approval = z.strictObject({
 });
 export type Approval = z.infer<typeof Approval>;
 
+export const Payment = z.strictObject({
+  received_at: Instant,
+  recorded_by: Actor,
+  reference: z.string().trim().max(64).nullable(),
+});
+export type Payment = z.infer<typeof Payment>;
+
+export const SentEmail = z.strictObject({
+  kind: z.enum(['quote', 'invoice']),
+  to: z.email(),
+  sent_at: Instant,
+  sent_by: Actor,
+  /** The provider's message id, for tracing a delivery problem. */
+  message_id: z.string().max(200),
+});
+export type SentEmail = z.infer<typeof SentEmail>;
+
 /** A saved quote resource. */
 export const Quote = z.strictObject({
   quote_id: Ulid,
@@ -261,6 +280,10 @@ export const Quote = z.strictObject({
   approval: Approval.nullable(),
   /** Set when an amendment leaves a confirmed booking below the floor (BR-16). */
   review_required: z.boolean(),
+  /** Recorded by Sales or the Owner once the organiser has paid; unlocks the invoice (D-059). */
+  payment: Payment.nullable().optional(),
+  /** Every quote or invoice PDF emailed to the organiser. */
+  emails: z.array(SentEmail).optional(),
 });
 export type Quote = z.infer<typeof Quote>;
 
@@ -295,6 +318,16 @@ export const AmendmentRequest = z.strictObject({
 export type AmendmentRequest = z.infer<typeof AmendmentRequest>;
 
 export const CancelRequest = z.strictObject({ reason: Reason.optional() });
+
+/** Email a PDF; `to` overrides the organiser's email for this one send. */
+export const EmailRequest = z.strictObject({ to: z.email().max(254).optional() });
+export type EmailRequest = z.infer<typeof EmailRequest>;
+
+export const RecordPaymentRequest = z.strictObject({
+  /** Bank or UPI reference, for example. */
+  reference: z.string().trim().max(64).optional(),
+});
+export type RecordPaymentRequest = z.infer<typeof RecordPaymentRequest>;
 export type CancelRequest = z.infer<typeof CancelRequest>;
 
 export const ListQuotesQuery = z.strictObject({

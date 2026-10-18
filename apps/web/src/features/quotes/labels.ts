@@ -40,6 +40,8 @@ export const EVENT_LABEL: Record<QuoteEventType, string> = {
   AMENDED: 'Amended',
   CANCELLED: 'Cancelled',
   EXPIRED: 'Expired',
+  PAYMENT_RECORDED: 'Payment recorded',
+  EMAILED: 'PDF emailed',
 };
 
 /** A quote still holds rooms and has a countdown while it is in one of these statuses. */

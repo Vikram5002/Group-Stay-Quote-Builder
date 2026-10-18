@@ -344,3 +344,33 @@ describe('quote detail', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+describe('quote and invoice emails (D-059)', () => {
+  it('emails the quote, then after payment the invoice', async () => {
+    const quote = await seed({ organiser: { name: 'Wedding party', email: 'events@example.com' } });
+    const u = userEvent.setup();
+    renderDetail(quote.quote_id);
+
+    await u.click(await screen.findByRole('button', { name: 'Email quote' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByLabelText('Send to')).toHaveValue('events@example.com');
+    await u.click(within(dialog).getByRole('button', { name: 'Send PDF' }));
+    expect(await screen.findByText(/Quote emailed to events@example.com/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Email invoice' })).not.toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: 'Confirm quote' }));
+    expect(
+      await screen.findByText('The invoice can be emailed once the payment is recorded.'),
+    ).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Record payment' }));
+    await u.type(screen.getByLabelText(/Payment reference/), 'UPI 4321');
+    await u.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Record payment' }),
+    );
+    expect(await screen.findByText(/Payment recorded .* \(UPI 4321\)/)).toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: 'Email invoice' }));
+    await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Send PDF' }));
+    expect(await screen.findByText(/Invoice emailed to events@example.com/)).toBeInTheDocument();
+  });
+});

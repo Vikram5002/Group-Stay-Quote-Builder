@@ -2,6 +2,7 @@ import {
   AmendmentRequest,
   ApproveRequest,
   CancelRequest,
+  EmailRequest,
   CONTRACT_VERSION,
   ExtendRequest,
   ImportKind,
@@ -12,6 +13,7 @@ import {
   PolicyUpdateRequest,
   problem,
   QuoteRequest,
+  RecordPaymentRequest,
   RejectRequest,
   stayNights,
 } from '@c32/core';
@@ -521,6 +523,75 @@ export function createHandlers(store: MockStore) {
         return HttpResponse.json(
           transition(quote, 'CANCELLED', 'CANCELLED', actor, body.value.reason),
         );
+      });
+    }),
+
+    // Quote and invoice emails (D-059): the mock records the send; nothing leaves the browser.
+    ...(['email-quote', 'email-invoice'] as const).map((verb) =>
+      http.post(`*/v1/quotes/:id/${verb}`, async ({ request, params }) => {
+        const actor = authorise(request, SALES_OWNER);
+        if (actor instanceof Response) return actor;
+        return idempotent(request, actor, async () => {
+          const body = await readBody(request.clone(), EmailRequest);
+          if (body.error) return body.error;
+          const quote = find(String(params.id));
+          if (!quote) return notFound(String(params.id));
+          const kind = verb === 'email-quote' ? 'quote' : 'invoice';
+          if (kind === 'quote' && quote.status !== 'OFFERED' && quote.status !== 'CONFIRMED') {
+            return problemResponse('INVALID_STATE', {
+              detail: `A ${quote.status} quote cannot be emailed`,
+            });
+          }
+          if (kind === 'invoice' && !quote.payment) {
+            return problemResponse('INVALID_STATE', {
+              detail: 'Record the payment before emailing the invoice',
+            });
+          }
+          const to = body.value.to ?? quote.request.organiser.email;
+          if (!to) {
+            return problemResponse('INVALID_STATE', {
+              detail: 'The organiser has no email address; enter one to send',
+            });
+          }
+          const at = iso();
+          const next = save(quote, {
+            version: quote.version + 1,
+            emails: [
+              ...(quote.emails ?? []),
+              { kind, to, sent_at: at, sent_by: actor, message_id: `mock-${Date.now()}` },
+            ],
+          });
+          store.addEvent(next, 'EMAILED', actor);
+          return HttpResponse.json(next);
+        });
+      }),
+    ),
+
+    http.post('*/v1/quotes/:id/payment', async ({ request, params }) => {
+      const actor = authorise(request, SALES_OWNER);
+      if (actor instanceof Response) return actor;
+      return idempotent(request, actor, async () => {
+        const body = await readBody(request.clone(), RecordPaymentRequest);
+        if (body.error) return body.error;
+        const quote = find(String(params.id));
+        if (!quote) return notFound(String(params.id));
+        if (quote.status !== 'CONFIRMED' || quote.payment) {
+          return problemResponse('INVALID_STATE', {
+            detail: quote.payment
+              ? 'Payment is already recorded'
+              : 'Payment can only be recorded on a confirmed booking',
+          });
+        }
+        const next = save(quote, {
+          version: quote.version + 1,
+          payment: {
+            received_at: iso(),
+            recorded_by: actor,
+            reference: body.value.reference ?? null,
+          },
+        });
+        store.addEvent(next, 'PAYMENT_RECORDED', actor);
+        return HttpResponse.json(next);
       });
     }),
 

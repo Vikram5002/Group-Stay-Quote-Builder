@@ -138,14 +138,14 @@ export function DashboardPage() {
   const canCreate = session?.user.role !== 'Viewer';
 
   const heading = (
-    <div className="flex items-center justify-between gap-6 overflow-hidden rounded-card bg-nav px-6 py-5 text-on-nav shadow-raised md:px-8">
+    <div className="flex items-center justify-between gap-6 overflow-hidden rounded-card bg-surface-muted px-6 py-6 md:px-10">
       <div>
-        <p className="text-xs font-semibold tracking-[0.12em] text-nav-accent uppercase">
+        <p className="inline-flex rounded-full border border-border-strong/40 bg-white px-3 py-1 text-xs font-medium">
           Group stays
         </p>
-        <h1 className="mt-1 text-3xl font-bold">Dashboard</h1>
+        <h1 className="mt-3 text-4xl">Dashboard</h1>
         {session && (
-          <p className="mt-1 text-sm text-on-nav-muted">Welcome back, {session.displayName}.</p>
+          <p className="mt-1 text-ink-muted">Welcome back, {session.displayName}.</p>
         )}
       </div>
       <HotelScene className="hidden h-24 w-auto shrink-0 sm:block" />
@@ -199,7 +199,7 @@ export function DashboardPage() {
               canCreate ? (
                 <Link
                   to="/quotes/new"
-                  className="inline-flex min-h-11 items-center rounded-control bg-brand px-4 text-sm font-semibold text-on-brand"
+                  className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-on-brand"
                 >
                   Create the first quote
                 </Link>
@@ -368,7 +368,7 @@ export function DashboardPage() {
           {canCreate && (
             <Link
               to="/quotes/new"
-              className="inline-flex min-h-11 items-center rounded-control bg-brand px-4 text-sm font-semibold text-on-brand"
+              className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-on-brand"
             >
               New quote
             </Link>

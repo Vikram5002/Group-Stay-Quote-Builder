@@ -16,6 +16,7 @@ import { putEventTx, putNewQuoteTx } from '../data/quotes.js';
 import { loadPolicy, loadStay, refusePastCheckIn } from './inputs.js';
 import type { EmailSender } from '../email/sender.js';
 import { scheduleQuietly, type ExpiryScheduler } from './scheduler.js';
+import { ServiceError } from './errors.js';
 import { termsHash } from './terms-hash.js';
 
 /**
@@ -42,7 +43,7 @@ const RETRYABLE = new Set(['INSUFFICIENT', 'NO_INVENTORY_DATA', 'UNKNOWN_AVAILAB
 /** The stored request keeps one canonical stay form: check-in and nights. */
 function storedRequest(r: ResolvedQuoteRequest): Quote['request'] {
   // `lines` is the engine's working view of stay + additional_lines; it is not stored.
-  const { lines: _lines, ...rest } = r;
+  const { lines: _lines, send_to_owner: _toOwner, ...rest } = r;
   return { ...rest, stay: { check_in: r.stay.check_in, nights: r.stay.nights } };
 }
 
@@ -52,6 +53,10 @@ export async function createQuote(
   actor: Actor,
 ): Promise<Quote> {
   const { data } = deps;
+  const toOwner = request.send_to_owner === true;
+  if (toOwner && actor.role !== 'ServiceManager') {
+    throw new ServiceError('FORBIDDEN', 'Only the Service Manager can send a quote to the Owner');
+  }
   const quoteId = deps.newId();
   const policy = await loadPolicy(data);
   refusePastCheckIn(request, policy, deps.clock.now());
@@ -65,7 +70,8 @@ export async function createQuote(
     const quote: Quote = {
       quote_id: quoteId,
       property_id: data.propertyId,
-      status: INITIAL_STATUS[evaluation.decision],
+      // Sent to the Owner (D-062): it waits for the Owner's discount, holding the rooms.
+      status: toOwner && !declined ? 'PENDING_REVIEW' : INITIAL_STATUS[evaluation.decision],
       version: 1,
       request: storedRequest(request),
       evaluation,
@@ -77,6 +83,7 @@ export async function createQuote(
       updated_at: validity.issued_at,
       approval: null,
       review_required: false,
+      ...(toOwner && !declined ? { awaiting_owner: true } : {}),
     };
     const event: QuoteEvent = {
       event_id: deps.newId(),
@@ -90,6 +97,7 @@ export async function createQuote(
         decision: evaluation.decision,
         offered_rooms: evaluation.offered_rooms,
         reasons: evaluation.reasons,
+        ...(quote.awaiting_owner ? { awaiting_owner: true } : {}),
       },
       reason: null,
     };

@@ -9,7 +9,7 @@ import { evidenceFromDir } from './services/exports.js';
 import { corsOriginsFromEnv, depsFromEnv } from './runtime.js';
 
 /**
- * Local API: DynamoDB Local, dev authentication (`x-dev-user: sales-1:Sales`) and a local folder
+ * Local API: DynamoDB Local, dev authentication (`x-dev-user: sales-1:Reception`) and a local folder
  * (.local-files) standing in for the S3 documents bucket.
  * Start the database with `npm run db:up -w @c32/api`, seed it with `npm run seed -w @c32/api`.
  */

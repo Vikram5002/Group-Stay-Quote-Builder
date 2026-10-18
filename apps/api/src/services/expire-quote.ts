@@ -12,7 +12,7 @@ import type { ServiceDeps } from './create-quote.js';
  * times from anywhere: only one call changes anything.
  */
 
-export const SYSTEM_ACTOR: Actor = { user_id: 'system:expiry', role: 'Owner' };
+export const SYSTEM_ACTOR: Actor = { user_id: 'system:expiry', role: 'ServiceManager' };
 
 export type ExpireResult =
   | { expired: true; quote: Quote }

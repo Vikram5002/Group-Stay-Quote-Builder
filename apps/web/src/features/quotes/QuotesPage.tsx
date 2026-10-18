@@ -161,7 +161,7 @@ export function QuotesPage() {
         {session?.user.role !== 'Viewer' && (
           <Link
             to="/quotes/new"
-            className="inline-flex min-h-11 items-center rounded-control bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-hover"
+            className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-on-brand hover:bg-brand-hover"
           >
             New quote
           </Link>

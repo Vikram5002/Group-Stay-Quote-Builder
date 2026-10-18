@@ -5,12 +5,12 @@ type Variant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'on-nav';
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-brand text-on-brand hover:bg-brand-hover border-transparent shadow-sm hover:shadow-md active:translate-y-px',
-  secondary: 'bg-surface text-ink border-border-strong hover:bg-surface-muted',
+    'bg-brand text-on-brand hover:bg-brand-hover border-transparent active:translate-y-px',
+  secondary: 'bg-surface text-ink border-border hover:border-ink',
   danger: 'bg-danger text-on-brand border-transparent hover:opacity-90',
   ghost: 'bg-transparent text-brand border-transparent hover:bg-brand-soft',
-  /** On the dark navigation rail. */
-  'on-nav': 'bg-transparent text-on-nav border-white/35 hover:bg-white/10',
+  /** On the navigation rail. */
+  'on-nav': 'bg-surface text-on-nav border-border hover:border-ink',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -34,7 +34,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex min-h-11 items-center justify-center gap-2 rounded-control border px-4 text-sm font-semibold transition-colors',
+        'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 text-sm font-medium transition-colors',
         'disabled:cursor-not-allowed disabled:opacity-60',
         variants[variant],
         className,

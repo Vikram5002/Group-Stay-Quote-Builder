@@ -236,7 +236,7 @@ function NightDetail({ cell, roomType, today }: { cell: Cell; roomType: string; 
         <Link
           to="/quotes/new"
           state={start}
-          className="mt-4 inline-flex min-h-11 items-center rounded-control bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-hover"
+          className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-on-brand hover:bg-brand-hover"
         >
           Start a quote from this night
         </Link>

@@ -8,6 +8,7 @@ import {
   Alert,
   Button,
   Card,
+  Dialog,
   ProblemAlert,
   SegmentedControl,
   Spinner,
@@ -16,9 +17,10 @@ import {
   useToast,
 } from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
+import { counted } from '../../lib/plural';
 import { usePolicy } from '../policy/queries';
 import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
-import { initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
+import { friendlyIssue, initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
 import type { QuoteForm } from './form';
 import { CompareOptions } from './CompareOptions';
 import { clearDraft, copyOption, isBlank, loadDraft, saveDraft } from './draft';
@@ -31,7 +33,7 @@ import {
   TotalsTable,
   ValidUntil,
 } from './ResultPanels';
-import { GroupStep, PricingStep, RoomsStep } from './steps';
+import { fieldLabel, GroupStep, PricingStep, ReviewDetails, RoomsStep } from './steps';
 import { liveMeterState, usePreview } from './usePreview';
 
 const LAST = STEPS.length - 1;
@@ -218,12 +220,31 @@ export function QuoteBuilderPage() {
     goTo(PRICING_STEP);
   }
 
+  const [attempts, setAttempts] = useState(0);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (attempts > 0) summaryRef.current?.focus();
+  }, [attempts]);
+
   function next() {
     if (stepErrors(step, issues).length > 0) {
       setShowErrors(true);
+      setAttempts((n) => n + 1);
       return;
     }
     goTo(step + 1);
+  }
+
+  const [discarding, setDiscarding] = useState(false);
+  function startOver() {
+    clearDraft();
+    setOptions([initialForm]);
+    setActive(0);
+    setTouched(new Set());
+    setShowErrors(false);
+    setDiscarding(false);
+    goTo(0);
+    headingRef.current?.focus();
   }
 
   const visibleErrors = showErrors
@@ -237,6 +258,20 @@ export function QuoteBuilderPage() {
   const canIssue =
     request !== null && !stale && evaluation !== undefined && evaluation.decision !== 'DECLINE';
   const issueError = issue.error instanceof ApiError ? issue.error : null;
+  // Why the issue button is not available yet, said next to it.
+  const issueBlocked = canIssue
+    ? null
+    : previewError
+      ? 'The price check failed. Try it again above.'
+      : !evaluation || stale
+        ? 'Waiting for the price check…'
+        : evaluation.decision === 'DECLINE'
+          ? 'This request cannot be offered. Change the dates, rooms or room type.'
+          : 'Some details need attention in the steps before.';
+  // One line per field, in the order of the form.
+  const summary = showErrors
+    ? stepErrors(step, issues).filter((i, n, all) => all.findIndex((j) => j.path === i.path) === n)
+    : [];
 
   if (offer) {
     const name = offer.form.organiser.trim() || 'an unnamed group';
@@ -286,15 +321,68 @@ export function QuoteBuilderPage() {
         What you entered is kept as a draft in this tab. Choose New quote to resume it or start
         over.
       </LeaveGuard>
-      <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold focus:outline-none">
-        New quote
-      </h1>
-      <p className="mt-1 text-ink-muted">
-        Step {step + 1} of {STEPS.length}: {STEPS[step]?.label}
-      </p>
-      <div className="mt-4">
-        <Stepper steps={STEPS} current={step} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold focus:outline-none">
+            New quote
+          </h1>
+          <p className="mt-1 text-ink-muted">
+            Step {step + 1} of {STEPS.length}: {STEPS[step]?.label}
+          </p>
+        </div>
+        {!options.every(isBlank) && (
+          <Button variant="ghost" onClick={() => setDiscarding(true)}>
+            Start over
+          </Button>
+        )}
       </div>
+      <Dialog
+        open={discarding}
+        title="Start over?"
+        onClose={() => setDiscarding(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDiscarding(false)}>
+              Keep editing
+            </Button>
+            <Button variant="danger" onClick={startOver}>
+              Clear everything
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm">
+          This clears every field{comparing ? ' in both options' : ''} and the saved draft. Nothing
+          was issued, so no rooms are held.
+        </p>
+      </Dialog>
+      <div className="mt-4">
+        {/* Finished steps can be opened again from here. */}
+        <Stepper steps={STEPS} current={step} onSelect={goTo} />
+      </div>
+      {summary.length > 0 && (
+        <div ref={summaryRef} tabIndex={-1} className="mt-4 focus:outline-none">
+          <Alert tone="danger" title={`Check ${counted(summary.length, 'field')} to continue`}>
+            <ul className="list-disc pl-5">
+              {summary.map((i) => (
+                <li key={i.path}>
+                  <button
+                    type="button"
+                    className="text-left font-semibold text-danger underline"
+                    onClick={() =>
+                      document
+                        .querySelector<HTMLElement>(`[name="${i.path}"], [name^="${i.path}."]`)
+                        ?.focus()
+                    }
+                  >
+                    {`${fieldLabel(i.path)}: ${friendlyIssue(i)}`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </Alert>
+        </div>
+      )}
       {comparing && (
         <div className="mt-4 flex flex-wrap items-end gap-4 rounded-card border border-border bg-surface p-4">
           <SegmentedControl
@@ -331,7 +419,15 @@ export function QuoteBuilderPage() {
             />
           )}
           {step === 1 && <RoomsStep form={form} patch={patch} errors={visibleErrors} />}
-          {step === 2 && <PricingStep form={form} patch={patch} errors={visibleErrors} />}
+          {step === 2 && (
+            <PricingStep
+              form={form}
+              patch={patch}
+              errors={visibleErrors}
+              request={request}
+              totals={preview?.evaluation.totals}
+            />
+          )}
 
           {step === LAST && comparing && (
             <CompareOptions
@@ -352,6 +448,12 @@ export function QuoteBuilderPage() {
 
           {step === LAST && !comparing && (
             <>
+              <ReviewDetails
+                form={form}
+                request={request}
+                totals={evaluation?.totals}
+                onEdit={goTo}
+              />
               {previewError instanceof ApiError && (
                 <Alert
                   tone="danger"
@@ -429,7 +531,8 @@ export function QuoteBuilderPage() {
             </>
           )}
 
-          <div className="flex flex-wrap justify-between gap-3">
+          {/* On a phone the step buttons stay in reach at the bottom of the screen. */}
+          <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-canvas px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
             <Button variant="secondary" disabled={step === 0} onClick={() => goTo(step - 1)}>
               Back
             </Button>
@@ -440,9 +543,21 @@ export function QuoteBuilderPage() {
                 Choose an option above to issue it.
               </p>
             ) : (
-              <Button loading={issue.isPending} disabled={!canIssue} onClick={() => issue.mutate()}>
-                {evaluation?.decision === 'REVIEW' ? 'Send for Owner review' : 'Issue quote'}
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                {issueBlocked && (
+                  <p id="issue-blocked" className="text-sm text-ink-muted">
+                    {issueBlocked}
+                  </p>
+                )}
+                <Button
+                  loading={issue.isPending}
+                  disabled={!canIssue}
+                  onClick={() => issue.mutate()}
+                  {...(issueBlocked ? { 'aria-describedby': 'issue-blocked' } : {})}
+                >
+                  {evaluation?.decision === 'REVIEW' ? 'Send for Owner review' : 'Issue quote'}
+                </Button>
+              </div>
             )}
           </div>
         </form>

@@ -35,6 +35,8 @@ Mock mode is the default for `npm run dev`. Set `VITE_API_MODE=api` and `VITE_AP
 - Validation uses the same Zod schema as the server (`QuoteRequest` from `@c32/core`), so the two cannot drift. Messages are plain language.
 - A live contribution meter with a labelled floor marker sits beside the form. When only the rate changes it updates at once using the shared `price()` function and the server's last cost per room-night, marked as an estimate until the server confirms. Anything else waits for the server.
 - The review step shows the decision, reasons, partial-offer card, floor-safe alternatives (for example "Use rate 1800"), totals, the arithmetic trail and the hold expiry in IST.
+- Each step helps as it is filled in: the check-out date under Nights, the rooms free on every night of the stay (and when a request becomes a partial offer), the full price and the Sales limit beside the discount with the price it gives, and one-click common inclusions (breakfast, lunch, dinner, parking).
+- Next with problems lists them above the form, focused, each linked to its field. Finished steps can be opened again from the stepper; the last step repeats the details with an Edit link per part, and says why Issue is unavailable when it is. Start over clears the form and the draft after a confirm.
 - Issuing is never optimistic and carries one idempotency key per request, so a double click replays the same quote.
 - Unknown values show as `Unknown`, never zero.
 

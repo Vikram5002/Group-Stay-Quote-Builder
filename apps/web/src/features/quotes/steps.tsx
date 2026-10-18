@@ -1,5 +1,7 @@
-import { INCLUSION_BASES } from '@c32/core';
-import type { Policy } from '@c32/core';
+import { useQuery } from '@tanstack/react-query';
+import { addDays, INCLUSION_BASES, stayNights } from '@c32/core';
+import type { InventoryNight, Policy, QuoteRequest, QuoteTotals } from '@c32/core';
+import { useApi } from '../../app/ApiProvider';
 import {
   Alert,
   Button,
@@ -9,9 +11,12 @@ import {
   SelectField,
   TextField,
 } from '../../components';
-import { newInclusion, ROOM_TYPES } from './form';
-import type { DiscountKind, InclusionBasisValue, InclusionForm, QuoteForm } from './form';
+import { formatDate, formatDateShort, formatInr, formatStay } from '../../lib/format';
 import { counted } from '../../lib/plural';
+import { newInclusion, ROOM_TYPES, STEPS } from './form';
+import type { DiscountKind, InclusionBasisValue, InclusionForm, QuoteForm } from './form';
+import { AVAILABILITY_KEY } from './queries';
+import { describePricing } from './pricingText';
 
 interface StepProps {
   form: QuoteForm;
@@ -25,6 +30,17 @@ interface StepProps {
 
 const err = (errors: Record<string, string>, path: string) =>
   errors[path] ? { error: errors[path] } : {};
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The check-out date for a check-in and a number of nights, or null while either is unfinished. */
+export function checkOutDate(checkIn: string, nights: string): string | null {
+  const n = Number(nights);
+  if (!ISO_DATE.test(checkIn) || nights.trim() === '' || !Number.isInteger(n) || n < 1 || n > 28) {
+    return null;
+  }
+  return addDays(checkIn, n);
+}
 
 export function GroupStep({
   form,
@@ -41,6 +57,7 @@ export function GroupStep({
   /** For the numbers in the too-late warning, when this role can read the policy. */
   policy?: Policy | undefined;
 }) {
+  const checkOut = checkOutDate(form.checkIn, form.nights);
   return (
     <Card title="Group and dates">
       <div className="grid gap-4 md:grid-cols-2">
@@ -107,7 +124,7 @@ export function GroupStep({
           required
           value={form.nights}
           onChange={(e) => patch({ nights: e.target.value })}
-          hint="1 to 28 nights."
+          hint={checkOut ? `1 to 28 nights. Check-out ${formatDate(checkOut)}.` : '1 to 28 nights.'}
           {...err(errors, 'stay.nights')}
         />
       </div>
@@ -122,6 +139,75 @@ export function GroupStep({
         </div>
       )}
     </Card>
+  );
+}
+
+/** What the calendar says about these nights, in one line, before the engine prices them. */
+export function availabilityLine(
+  nights: readonly string[],
+  rows: readonly InventoryNight[],
+  roomType: string,
+  rooms: number | null,
+): { tone: 'info' | 'warning'; text: string } {
+  const byDate = new Map(rows.map((r) => [r.date, r] as const));
+  const missing = nights.filter((d) => !byDate.has(d));
+  if (missing.length > 0) {
+    return {
+      tone: 'warning',
+      text: `${roomType} rooms are not on sale on ${missing.map(formatDateShort).join(', ')}, so they cannot be held.`,
+    };
+  }
+  const unknown = nights.filter((d) => byDate.get(d)?.available_units === null);
+  if (unknown.length > 0) {
+    return {
+      tone: 'warning',
+      text: `Availability is not known on ${unknown.map(formatDateShort).join(', ')}, so no rooms can be held until it is. The quote goes to an Owner.`,
+    };
+  }
+  const free = Math.min(...nights.map((d) => byDate.get(d)?.available_units ?? 0));
+  if (free === 0) {
+    const full = nights.filter((d) => byDate.get(d)?.available_units === 0);
+    return {
+      tone: 'warning',
+      text: `No ${roomType} rooms are free on ${full.map(formatDateShort).join(', ')}.`,
+    };
+  }
+  const line = `Up to ${counted(free, `${roomType} room`)} free on every night of this stay.`;
+  return rooms !== null && rooms > free
+    ? { tone: 'warning', text: `${line} Asking for ${rooms} gives a partial offer of ${free}.` }
+    : { tone: 'info', text: line };
+}
+
+function AvailabilityHint({ form }: { form: QuoteForm }) {
+  const api = useApi();
+  const checkOut = checkOutDate(form.checkIn, form.nights);
+  const nights = checkOut ? stayNights(form.checkIn, Number(form.nights)) : [];
+  const last = nights[nights.length - 1];
+  const query = useQuery({
+    queryKey: [...AVAILABILITY_KEY, form.roomType, form.checkIn, last],
+    queryFn: () =>
+      api.getAvailability({ room_type: form.roomType, from: form.checkIn, to: last as string }),
+    enabled: last !== undefined,
+  });
+  if (!last || query.isError) return null;
+  if (query.isPending) {
+    return <p className="text-sm text-ink-muted">Checking free rooms for these nights…</p>;
+  }
+  const label = ROOM_TYPES.find((t) => t.code === form.roomType)?.label ?? form.roomType;
+  const rooms = Number(form.rooms);
+  const line = availabilityLine(
+    nights,
+    query.data.nights,
+    label,
+    form.rooms.trim() !== '' && Number.isInteger(rooms) ? rooms : null,
+  );
+  return (
+    <p
+      className={line.tone === 'warning' ? 'text-sm font-semibold text-warning' : 'text-sm'}
+      role="status"
+    >
+      {line.text} The price check confirms it.
+    </p>
   );
 }
 
@@ -156,6 +242,9 @@ export function RoomsStep({ form, patch, errors }: StepProps) {
           hint="If fewer are available, you will see a partial offer."
           {...err(errors, 'rooms')}
         />
+      </div>
+      <div className="mt-4">
+        <AvailabilityHint form={form} />
       </div>
     </Card>
   );
@@ -252,17 +341,48 @@ function InclusionRow({
   );
 }
 
+/** Common extras, added with the usual basis; the cost is still typed in. */
+const PRESETS: ReadonlyArray<{ name: string; basis: InclusionBasisValue }> = [
+  { name: 'Breakfast', basis: 'per_guest_night' },
+  { name: 'Lunch', basis: 'per_guest_night' },
+  { name: 'Dinner', basis: 'per_guest_night' },
+  { name: 'Parking', basis: 'per_room_night' },
+];
+
 const DISCOUNT_KINDS = [
   { value: 'pct', label: '%' },
   { value: 'inr', label: '₹ per room-night' },
 ] as const;
 
-export function PricingStep({ form, patch, errors }: StepProps) {
+export function PricingStep({
+  form,
+  patch,
+  errors,
+  request,
+  totals,
+}: StepProps & {
+  /** The request when the form is valid, to show the price it gives. */
+  request: QuoteRequest | null;
+  /** The last price check, for the full price and the Sales limit. */
+  totals: QuoteTotals | undefined;
+}) {
   const update = (id: string, changes: Partial<InclusionForm>) =>
     patch({ inclusions: form.inclusions.map((i) => (i.id === id ? { ...i, ...changes } : i)) });
+  const add = (preset?: { name: string; basis: InclusionBasisValue }) =>
+    patch({ inclusions: [...form.inclusions, { ...newInclusion(), ...preset }] });
+  const added = new Set(form.inclusions.map((i) => i.name.trim().toLowerCase()));
   return (
     <div className="flex flex-col gap-6">
       <Card title="Pricing">
+        {totals && (
+          <p className="mb-4 text-sm">
+            Full price {formatInr(totals.floor_rate_per_room_night_inr)} per room-night. Sales can
+            give up to {totals.max_discount_pct}% off
+            {totals.min_rate_per_room_night_inr !== null &&
+              ` (down to ${formatInr(totals.min_rate_per_room_night_inr)})`}{' '}
+            alone; a lower price goes to an Owner.
+          </p>
+        )}
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-3">
             <SegmentedControl<DiscountKind>
@@ -300,6 +420,11 @@ export function PricingStep({ form, patch, errors }: StepProps) {
             hint="Optional. Replaces the discount, for example to cover a bundled extra."
             {...err(errors, 'rate_per_room_night_inr')}
           />
+          {request && totals && (
+            <p className="text-sm font-semibold md:col-span-2">
+              Price: {describePricing(request, totals).text}
+            </p>
+          )}
           <TextField
             label="Guests per room"
             name="guests_per_room_units"
@@ -317,14 +442,25 @@ export function PricingStep({ form, patch, errors }: StepProps) {
       <Card
         title="Inclusions"
         actions={
-          <Button
-            variant="secondary"
-            onClick={() => patch({ inclusions: [...form.inclusions, newInclusion()] })}
-          >
+          <Button variant="secondary" onClick={() => add()}>
             Add inclusion
           </Button>
         }
       >
+        <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="Quick add">
+          <span className="text-sm text-ink-muted">Quick add:</span>
+          {PRESETS.filter((p) => !added.has(p.name.toLowerCase())).map((p) => (
+            <Button
+              key={p.name}
+              variant="ghost"
+              className="border border-border"
+              aria-label={`Add ${p.name.toLowerCase()}`}
+              onClick={() => add(p)}
+            >
+              + {p.name}
+            </Button>
+          ))}
+        </div>
         {form.inclusions.length === 0 ? (
           <p className="text-sm text-ink-muted">
             No inclusions. Add breakfast or other costed extras if the group needs them.
@@ -348,4 +484,112 @@ export function PricingStep({ form, patch, errors }: StepProps) {
       </Card>
     </div>
   );
+}
+
+/** The details entered, as the client will read them, each with a way back to its step. */
+export function ReviewDetails({
+  form,
+  request,
+  totals,
+  onEdit,
+}: {
+  form: QuoteForm;
+  request: QuoteRequest | null;
+  totals: QuoteTotals | undefined;
+  onEdit: (step: number) => void;
+}) {
+  const checkOut = checkOutDate(form.checkIn, form.nights);
+  const roomType = ROOM_TYPES.find((t) => t.code === form.roomType)?.label ?? form.roomType;
+  const contact = [form.contactName, form.email, form.phone].map((v) => v.trim()).filter(Boolean);
+  const edit = (step: number) => (
+    <Button
+      variant="ghost"
+      className="min-h-0 px-2 py-1 text-xs"
+      aria-label={`Edit ${STEPS[step]?.label.toLowerCase()}`}
+      onClick={() => onEdit(step)}
+    >
+      Edit
+    </Button>
+  );
+  const row = (label: string, value: React.ReactNode, step?: number) => (
+    <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border py-2 last:border-0">
+      <dt className="w-32 text-ink-muted">{label}</dt>
+      <dd className="flex flex-1 items-start justify-between gap-2">
+        <span>{value}</span>
+        {step !== undefined && edit(step)}
+      </dd>
+    </div>
+  );
+  return (
+    <Card title="Check the details">
+      <dl className="text-sm">
+        {row(
+          'Group',
+          <>
+            {form.organiser.trim()}
+            {form.reference.trim() && (
+              <span className="block text-ink-muted">Ref {form.reference.trim()}</span>
+            )}
+            {contact.length > 0 && (
+              <span className="block text-ink-muted">{contact.join(' · ')}</span>
+            )}
+          </>,
+          0,
+        )}
+        {row(
+          'Stay',
+          checkOut
+            ? `${formatStay(form.checkIn, checkOut)} (${counted(Number(form.nights), 'night')})`
+            : form.checkIn,
+          0,
+        )}
+        {row('Rooms', counted(Number(form.rooms), `${roomType} room`), 1)}
+        {row(
+          'Price',
+          request && totals ? describePricing(request, totals).text : 'Waiting for the price check',
+          2,
+        )}
+        {row(
+          'Inclusions',
+          form.inclusions.length === 0
+            ? 'None'
+            : form.inclusions.map((i) => i.name.trim() || 'Unnamed').join(', '),
+          2,
+        )}
+      </dl>
+    </Card>
+  );
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  'organiser.name': 'Organiser name',
+  'organiser.reference': 'Reference',
+  'organiser.contact_name': 'Contact person',
+  'organiser.email': 'Email',
+  'organiser.phone': 'Phone',
+  stay: 'Stay',
+  'stay.check_in': 'Check-in date',
+  'stay.nights': 'Nights',
+  room_type: 'Room type',
+  rooms: 'Rooms',
+  discount_pct: 'Discount',
+  discount_inr: 'Discount',
+  rate_per_room_night_inr: 'Fixed rate',
+  guests_per_room_units: 'Guests per room',
+};
+const INCLUSION_FIELDS: Record<string, string> = {
+  name: 'name',
+  basis: 'basis',
+  unit_cost_inr: 'cost',
+  price_inr: 'extra price',
+};
+
+/** The field a request path belongs to, in the words on screen. */
+export function fieldLabel(path: string): string {
+  const inclusion = /^inclusions\.(\d+)\.(\w+)/.exec(path);
+  if (inclusion) {
+    const field = INCLUSION_FIELDS[inclusion[2] as string] ?? 'details';
+    return `Inclusion ${Number(inclusion[1]) + 1} ${field}`;
+  }
+  return FIELD_LABELS[path] ?? path;
 }

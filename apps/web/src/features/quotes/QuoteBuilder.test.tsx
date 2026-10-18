@@ -366,12 +366,19 @@ describe('quote builder: the live meter names the decision', () => {
     renderBuilder();
     await fillGroup(u);
     await next(u);
+    expect(
+      await screen.findByText(/No Standard rooms are free on Sun 01 Nov, Mon 02 Nov\./),
+    ).toBeInTheDocument();
     await u.clear(screen.getByLabelText(/^Rooms/));
     await u.type(screen.getByLabelText(/^Rooms/), '5');
     await next(u);
     await next(u);
 
     expect(await screen.findByText('This request cannot be offered')).toBeInTheDocument();
+    // The issue button says why it cannot be used.
+    expect(screen.getByRole('button', { name: 'Issue quote' })).toHaveAccessibleDescription(
+      'This request cannot be offered. Change the dates, rooms or room type.',
+    );
     await waitFor(() =>
       expect(within(meter()).getByText('Cannot offer: no rooms available')).toBeInTheDocument(),
     );
@@ -384,6 +391,9 @@ describe('quote builder: the live meter names the decision', () => {
     await u.type(screen.getByLabelText(/Organiser name/), 'Winter Group');
     await u.type(screen.getByLabelText(/Check-in date/), '2026-12-20');
     await next(u);
+    expect(
+      await screen.findByText(/Standard rooms are not on sale on Sun 20 Dec, Mon 21 Dec/),
+    ).toBeInTheDocument();
     await next(u);
     await next(u);
 
@@ -394,6 +404,114 @@ describe('quote builder: the live meter names the decision', () => {
       ).toBeInTheDocument(),
     );
     expect(within(meter()).queryByText(/review required/)).not.toBeInTheDocument();
+  });
+});
+
+describe('quote builder: help while filling it in', () => {
+  it('shows the check-out date and the rooms free on every night', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    expect(screen.getByText('1 to 28 nights. Check-out Tue 03 Nov 2026.')).toBeInTheDocument();
+    await u.clear(screen.getByLabelText(/^Nights/));
+    await u.type(screen.getByLabelText(/^Nights/), '3');
+    expect(screen.getByText('1 to 28 nights. Check-out Wed 04 Nov 2026.')).toBeInTheDocument();
+    await u.clear(screen.getByLabelText(/^Nights/));
+    await u.type(screen.getByLabelText(/^Nights/), '2');
+    await next(u);
+
+    expect(
+      await screen.findByText(/^Up to 10 Standard rooms free on every night of this stay\./),
+    ).toBeInTheDocument();
+    await u.clear(screen.getByLabelText(/^Rooms/));
+    await u.type(screen.getByLabelText(/^Rooms/), '12');
+    expect(screen.getByText(/Asking for 12 gives a partial offer of 10\./)).toBeInTheDocument();
+  });
+
+  it('shows the full price, the Sales limit and the price a discount gives', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    expect(
+      await screen.findByText(
+        'Full price ₹2,000 per room-night. Sales can give up to 10% off (down to ₹1,800) alone; a lower price goes to an Owner.',
+      ),
+    ).toBeInTheDocument();
+    const discount = screen.getByLabelText('Discount off full price (%)');
+    await u.clear(discount);
+    await u.type(discount, '10');
+    expect(
+      await screen.findByText('Price: ₹2,000 full price, 10% off = ₹1,800 per room-night'),
+    ).toBeInTheDocument();
+  });
+
+  it('adds a common inclusion in one click', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await next(u);
+    await next(u);
+    await u.click(screen.getByRole('button', { name: 'Add breakfast' }));
+    expect(screen.getByLabelText(/Inclusion 1 name/)).toHaveValue('Breakfast');
+    expect(screen.getByLabelText('Charged')).toHaveValue('per_guest_night');
+    // Not offered twice.
+    expect(screen.queryByRole('button', { name: 'Add breakfast' })).not.toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Add parking' }));
+    expect(screen.getByLabelText(/Inclusion 2 name/)).toHaveValue('Parking');
+  });
+
+  it('lists what to fix above the form, and each item goes to its field', async () => {
+    const u = user();
+    renderBuilder();
+    await next(u);
+    const summary = screen.getByRole('alert');
+    expect(within(summary).getByText('Check 2 fields to continue')).toBeInTheDocument();
+    expect(summary.parentElement).toHaveFocus();
+    await u.click(within(summary).getByRole('button', { name: 'Organiser name: Enter a name' }));
+    expect(screen.getByLabelText(/Organiser name/)).toHaveFocus();
+
+    await fillGroup(u);
+    expect(screen.queryByText(/to continue$/)).not.toBeInTheDocument();
+  });
+
+  it('checks the details on the last step, with a way back to each part', async () => {
+    const u = user();
+    renderBuilder();
+    await toReview(u, { rooms: '8' });
+    const details = (await screen.findByRole('heading', { name: 'Check the details' })).closest(
+      'section',
+    ) as HTMLElement;
+    expect(within(details).getByText('Fictional Events Pvt Ltd')).toBeInTheDocument();
+    expect(
+      within(details).getByText('Sun 01 Nov 2026 to Tue 03 Nov 2026 (2 nights)'),
+    ).toBeInTheDocument();
+    expect(within(details).getByText('8 Standard rooms')).toBeInTheDocument();
+
+    await u.click(within(details).getByRole('button', { name: 'Edit rooms and type' }));
+    expect(await screen.findByRole('heading', { name: 'Rooms and type' })).toBeInTheDocument();
+    // The stepper opens a finished step too.
+    await u.click(screen.getByRole('button', { name: /Group and dates/ }));
+    expect(await screen.findByRole('heading', { name: 'Group and dates' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Fictional Events Pvt Ltd');
+  });
+
+  it('starts over after a confirm, clearing the form and the draft', async () => {
+    const u = user();
+    renderBuilder();
+    await fillGroup(u);
+    await u.click(screen.getByRole('button', { name: 'Start over' }));
+    await u.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('Fictional Events Pvt Ltd');
+
+    await u.click(screen.getByRole('button', { name: 'Start over' }));
+    await u.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Clear everything' }),
+    );
+    expect(screen.getByLabelText(/Organiser name/)).toHaveValue('');
+    expect(sessionStorage.getItem('c32.quote-draft')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Start over' })).not.toBeInTheDocument();
   });
 });
 

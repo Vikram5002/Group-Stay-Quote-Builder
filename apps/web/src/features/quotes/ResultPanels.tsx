@@ -12,6 +12,7 @@ import {
 } from '../../components';
 import { formatInr, formatIst } from '../../lib/format';
 import { meterStatus } from './meterStatus';
+import { clientTotal } from './pricingText';
 import type { ReviewBanner } from './reviewState';
 import type { LiveMeterState } from './usePreview';
 import { counted } from '../../lib/plural';
@@ -223,10 +224,14 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+const TOTALS_GRID = 'grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm';
+
+/** The totals in two parts: what the client pays, then the hotel's own check (never sent out). */
 export function TotalsTable({ totals }: { totals: QuoteTotals }) {
   return (
     <Card title="Totals">
-      <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-sm">
+      <h3 className="mb-2 text-sm font-semibold">What the client pays</h3>
+      <dl className={TOTALS_GRID}>
         <Row label="Room-nights">
           <Count value={totals.room_nights} />
         </Row>
@@ -250,6 +255,14 @@ export function TotalsTable({ totals }: { totals: QuoteTotals }) {
         <Row label="Inclusions revenue">
           <Money value={totals.inclusions_revenue_inr} />
         </Row>
+        <Row label="Total for the client">
+          <Money value={clientTotal(totals)} />
+        </Row>
+      </dl>
+      <h3 className="mt-5 mb-2 border-t border-border pt-4 text-sm font-semibold">
+        Hotel check (internal, not on the quotation)
+      </h3>
+      <dl className={TOTALS_GRID}>
         <Row label="Variable cost">
           <Money value={totals.variable_cost_inr} />
         </Row>

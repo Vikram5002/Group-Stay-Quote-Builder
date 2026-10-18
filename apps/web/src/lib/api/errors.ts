@@ -18,7 +18,7 @@ const FRIENDLY: Readonly<Record<ErrorCode, Omit<FriendlyError, 'title'>>> = {
   },
   FORBIDDEN: {
     message: 'Your role cannot do this.',
-    nextStep: 'Ask an Owner to do it, or check you are signed in with the right role.',
+    nextStep: 'Ask a Service Manager to do it, or check you are signed in with the right role.',
     action: 'none',
   },
   NOT_FOUND: {
@@ -28,7 +28,7 @@ const FRIENDLY: Readonly<Record<ErrorCode, Omit<FriendlyError, 'title'>>> = {
   },
   APPROVAL_REQUIRED: {
     message: 'This quote is below the contribution floor, so it cannot be confirmed yet.',
-    nextStep: 'Send it to an Owner for approval.',
+    nextStep: 'Send it to a Service Manager for approval.',
     action: 'none',
   },
   HOLD_CONFLICT: {

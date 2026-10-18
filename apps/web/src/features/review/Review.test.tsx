@@ -51,11 +51,11 @@ const belowFloor = (overrides: Partial<QuoteRequest> = {}): QuoteRequest => ({
 });
 
 const seed = (overrides: Partial<QuoteRequest> = {}, creator = 'asha'): Promise<Quote> =>
-  clientFor(creator, 'Sales').createQuote(belowFloor(overrides), {
+  clientFor(creator, 'Reception').createQuote(belowFloor(overrides), {
     idempotencyKey: newIdempotencyKey(),
   });
 
-function renderQueue(role: Role = 'Owner', name = 'Meera', path = '/review') {
+function renderQueue(role: Role = 'ServiceManager', name = 'Meera', path = '/review') {
   return render(
     <Providers initialSession={mockSession(role, name)} baseUrl={BASE}>
       <RouterProvider router={createTestRouter([path])} />
@@ -64,13 +64,13 @@ function renderQueue(role: Role = 'Owner', name = 'Meera', path = '/review') {
 }
 
 describe('review queue', () => {
-  it('guides the Owner when nothing is waiting', async () => {
+  it('guides the Service Manager when nothing is waiting', async () => {
     renderQueue();
     expect(await screen.findByText('Nothing is waiting for review')).toBeInTheDocument();
   });
 
-  it('is for Owners only', () => {
-    renderQueue('Sales', 'Ravi');
+  it('is for Service Managers only', () => {
+    renderQueue('Reception', 'Ravi');
     expect(screen.getByRole('heading', { level: 1, name: 'Not allowed' })).toBeInTheDocument();
   });
 
@@ -124,7 +124,7 @@ describe('review queue', () => {
 });
 
 describe('approving and rejecting', () => {
-  it('approves with a required reason, bound to the terms, and Sales can then confirm', async () => {
+  it('approves with a required reason, bound to the terms, and Reception can then confirm', async () => {
     const quote = await seed();
     const u = userEvent.setup();
     renderQueue();
@@ -155,7 +155,7 @@ describe('approving and rejecting', () => {
     expect(saved?.approval?.terms_hash).toBe(saved?.terms_hash);
     expect(await screen.findByText('Nothing is waiting for review')).toBeInTheDocument();
 
-    const confirmed = await clientFor('asha', 'Sales').confirmQuote(quote.quote_id, {
+    const confirmed = await clientFor('asha', 'Reception').confirmQuote(quote.quote_id, {
       idempotencyKey: newIdempotencyKey(),
     });
     expect(confirmed.status).toBe('CONFIRMED');
@@ -164,7 +164,7 @@ describe('approving and rejecting', () => {
   it('blocks approving your own quote but allows rejecting it', async () => {
     const quote = await seed({}, 'asha');
     const u = userEvent.setup();
-    renderQueue('Owner', 'Asha');
+    renderQueue('ServiceManager', 'Asha');
 
     const approve = await screen.findByRole('button', { name: 'Approve…' });
     expect(approve).toBeDisabled();
@@ -227,15 +227,15 @@ describe('approving and rejecting', () => {
       organiser: { name: 'Chosen Group' },
       stay: { check_in: '2026-11-07', nights: 2 },
     });
-    renderQueue('Owner', 'Meera', `/review?quote=${target.quote_id}`);
+    renderQueue('ServiceManager', 'Meera', `/review?quote=${target.quote_id}`);
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Chosen Group' }),
     ).toBeInTheDocument();
   });
 
-  it('is reachable from a pending quote for an Owner', async () => {
+  it('is reachable from a pending quote for a Service Manager', async () => {
     const quote = await seed();
-    renderQueue('Owner', 'Meera', `/quotes/${quote.quote_id}`);
+    renderQueue('ServiceManager', 'Meera', `/quotes/${quote.quote_id}`);
     const link = await screen.findByRole('link', { name: 'Review this quote' });
     expect(link).toHaveAttribute('href', `/review?quote=${quote.quote_id}`);
   });
@@ -246,14 +246,14 @@ describe('approving and rejecting', () => {
       organiser: { name: 'Gone Group' },
       stay: { check_in: '2026-11-04', nights: 2 },
     });
-    await clientFor('asha', 'Sales').cancelQuote(
+    await clientFor('asha', 'Reception').cancelQuote(
       gone.quote_id,
       {},
       {
         idempotencyKey: newIdempotencyKey(),
       },
     );
-    renderQueue('Owner', 'Meera', `/review?quote=${gone.quote_id}`);
+    renderQueue('ServiceManager', 'Meera', `/review?quote=${gone.quote_id}`);
     expect(
       await screen.findByText('That quote is no longer waiting for review'),
     ).toBeInTheDocument();
@@ -291,5 +291,46 @@ describe('approving and rejecting', () => {
     const { container } = renderQueue();
     await screen.findByRole('button', { name: 'Approve…' });
     await waitFor(async () => expect(await axe(container)).toHaveNoViolations());
+  });
+});
+
+describe('owner discount (D-062)', () => {
+  const sendToOwner = () =>
+    clientFor('meera', 'ServiceManager').createQuote(
+      {
+        organiser: { name: 'Owner Group' },
+        stay: { check_in: '2026-11-01', nights: 2 },
+        room_type: 'standard',
+        rooms: 10,
+        send_to_owner: true,
+      },
+      { idempotencyKey: newIdempotencyKey() },
+    );
+
+  it('the Owner sees only quotes sent to them, sets any discount, and the quote is issued', async () => {
+    const sent = await sendToOwner();
+    await seed({ organiser: { name: 'Normal Review' } });
+    expect(sent).toMatchObject({ status: 'PENDING_REVIEW', awaiting_owner: true });
+
+    const user = userEvent.setup();
+    renderQueue('Owner', 'Vikram');
+    expect(await screen.findByRole('heading', { level: 2, name: 'Owner Group' })).toBeVisible();
+    expect(screen.queryByText('Normal Review')).not.toBeInTheDocument();
+
+    const pct = screen.getByLabelText('Discount (%)');
+    await user.clear(pct);
+    await user.type(pct, '30');
+    await user.click(screen.getByRole('button', { name: 'Apply discount and issue quote' }));
+    expect(await screen.findByText('Discount applied')).toBeInTheDocument();
+
+    const saved = store.quotes.get(sent.quote_id);
+    expect(saved).toMatchObject({ status: 'OFFERED', request: { discount_pct: 30 } });
+    expect(saved?.approval?.approved_by.role).toBe('Owner');
+  });
+
+  it('the Service Manager queue leaves out quotes waiting for the Owner', async () => {
+    await sendToOwner();
+    renderQueue('ServiceManager', 'Lahari');
+    expect(await screen.findByText('Nothing is waiting for review')).toBeInTheDocument();
   });
 });

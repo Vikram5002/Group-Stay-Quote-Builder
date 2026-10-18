@@ -49,7 +49,7 @@ beforeEach(async () => {
 function create(user: string, over: Partial<QuoteRequest>) {
   const client = createApiClient({
     baseUrl: BASE,
-    getToken: () => makeMockToken({ user_id: user, role: 'Sales' }),
+    getToken: () => makeMockToken({ user_id: user, role: 'Reception' }),
   });
   return client.createQuote(
     {
@@ -64,7 +64,7 @@ function create(user: string, over: Partial<QuoteRequest>) {
   );
 }
 
-function renderPage(path = '/quotes', role: Role = 'Sales') {
+function renderPage(path = '/quotes', role: Role = 'Reception') {
   return render(
     <Providers initialSession={mockSession(role, 'Ravi')} baseUrl={BASE}>
       <RouterProvider router={createTestRouter([path])} />

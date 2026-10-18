@@ -33,8 +33,9 @@ import { clientTotal, describePricing } from './pricingText';
 import { quotationFileName, quotationPdf, quotationText } from './quotation';
 import type { RequoteState } from './QuoteBuilderPage';
 import { useQuoteAction } from './queries';
+import { BOOKING, BUILDERS, can } from '../../lib/roles';
 
-const WRITE_ROLES: readonly Role[] = ['Sales', 'Owner'];
+const WRITE_ROLES: readonly Role[] = BOOKING;
 const HOUR_MS = 3_600_000;
 const QUICK_HOURS = [12, 24, 48, 72];
 
@@ -262,7 +263,7 @@ export function QuoteActions({
       onSuccess: (saved) =>
         done(
           saved.review_required
-            ? `Booking reduced to ${counted(saved.evaluation.offered_rooms, 'room')}. It is now below the floor, so an Owner is asked to review it.`
+            ? `Booking reduced to ${counted(saved.evaluation.offered_rooms, 'room')}. It is now below the floor, so a Service Manager is asked to review it.`
             : `Booking reduced to ${counted(saved.evaluation.offered_rooms, 'room')}.`,
         ),
     });
@@ -345,7 +346,7 @@ export function QuoteActions({
           Copy summary
         </Button>
         {/* An expired quote offers this in its own warning, at the top of the page. */}
-        {canWrite && quote.status !== 'EXPIRED' && (
+        {can(BUILDERS, role) && quote.status !== 'EXPIRED' && (
           <Button variant="ghost" onClick={onRequote}>
             {requoteLabel}
           </Button>
@@ -505,7 +506,7 @@ export function QuoteActions({
           <ProblemAlert error={amend.error} title="Could not reduce the rooms" />
           <p className="text-sm">
             The booking has {counted(current, 'room')}. The rooms you remove are released at once.
-            If the smaller booking falls below the floor, an Owner is asked to review it.
+            If the smaller booking falls below the floor, a Service Manager is asked to review it.
           </p>
           <TextField
             label="Rooms to keep"

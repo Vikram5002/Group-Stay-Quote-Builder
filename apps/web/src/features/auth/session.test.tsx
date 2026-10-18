@@ -12,7 +12,7 @@ function Probe() {
       <p>
         {session ? `Signed in as ${session.displayName}` : `Signed out (${String(signedOutBy)})`}
       </p>
-      <button type="button" onClick={() => signInMock('Sales', 'Asha')}>
+      <button type="button" onClick={() => signInMock('Reception', 'Asha')}>
         Sign in
       </button>
       <button type="button" onClick={() => signOut('manual')}>
@@ -59,7 +59,7 @@ describe('one session for every tab', () => {
   });
 
   it('signing out in another tab signs this tab out too', () => {
-    localStorage.setItem(KEY, JSON.stringify(mockSession('Sales', 'Asha')));
+    localStorage.setItem(KEY, JSON.stringify(mockSession('Reception', 'Asha')));
     openTab();
     expect(screen.getByText('Signed in as Asha')).toBeInTheDocument();
 
@@ -69,14 +69,14 @@ describe('one session for every tab', () => {
 
   it('signing in in another tab is picked up here', () => {
     openTab();
-    otherTabWrites(mockSession('Owner', 'Meera'));
+    otherTabWrites(mockSession('ServiceManager', 'Meera'));
     expect(screen.getByText('Signed in as Meera')).toBeInTheDocument();
   });
 
   it('an expired session is not restored, and is removed', () => {
     localStorage.setItem(
       KEY,
-      JSON.stringify({ ...mockSession('Sales', 'Asha'), expiresAt: Date.now() - 1000 }),
+      JSON.stringify({ ...mockSession('Reception', 'Asha'), expiresAt: Date.now() - 1000 }),
     );
     openTab();
     expect(screen.getByText('Signed out (null)')).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe('one session for every tab', () => {
     vi.useFakeTimers();
     localStorage.setItem(
       KEY,
-      JSON.stringify({ ...mockSession('Sales', 'Asha'), expiresAt: Date.now() + 60_000 }),
+      JSON.stringify({ ...mockSession('Reception', 'Asha'), expiresAt: Date.now() + 60_000 }),
     );
     openTab();
     expect(screen.getByText('Signed in as Asha')).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('one session for every tab', () => {
   });
 
   it('a sign-out here clears the shared session', () => {
-    localStorage.setItem(KEY, JSON.stringify(mockSession('Sales', 'Asha')));
+    localStorage.setItem(KEY, JSON.stringify(mockSession('Reception', 'Asha')));
     openTab();
     act(() => screen.getByRole('button', { name: 'Sign out' }).click());
     expect(localStorage.getItem(KEY)).toBeNull();

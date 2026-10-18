@@ -25,6 +25,7 @@ import { useNow, useQuoteList } from '../quotes/queries';
 import { clientTotal } from '../quotes/pricingText';
 import type { BackState } from '../quotes/QuoteDetailPage';
 import { StatusBadge } from '../quotes/StatusBadge';
+import { BUILDERS, can } from '../../lib/roles';
 
 const BACK: BackState = { from: { to: '/', label: 'Dashboard' } };
 
@@ -64,7 +65,7 @@ interface NextStep {
   tone: 'brand' | 'info' | 'warning' | 'danger';
 }
 
-/** What needs this person now, by role: reviews for an Owner, their own open quotes, ending holds. */
+/** What needs this person now, by role: reviews for a Service Manager, their own open quotes, ending holds. */
 function nextSteps(
   quotes: readonly Quote[],
   userId: string,
@@ -73,9 +74,20 @@ function nextSteps(
 ): NextStep[] {
   const steps: NextStep[] = [];
   if (role === 'Owner') {
-    // An Owner cannot approve a quote they created (four-eyes), so those are not counted.
+    const sent = quotes.filter((q) => q.status === 'PENDING_REVIEW' && q.awaiting_owner).length;
+    if (sent > 0) {
+      steps.push({
+        to: '/review',
+        text: `${counted(sent, 'quote')} ${plural(sent, 'is', 'are')} waiting for your discount`,
+        icon: 'review',
+        tone: 'brand',
+      });
+    }
+  }
+  if (role === 'ServiceManager') {
+    // A Service Manager cannot approve a quote they created (four-eyes), so those are not counted.
     const reviews = quotes.filter(
-      (q) => q.status === 'PENDING_REVIEW' && q.created_by.user_id !== userId,
+      (q) => q.status === 'PENDING_REVIEW' && !q.awaiting_owner && q.created_by.user_id !== userId,
     ).length;
     if (reviews > 0) {
       steps.push({
@@ -86,7 +98,7 @@ function nextSteps(
       });
     }
   }
-  if (role === 'Sales' || role === 'Owner') {
+  if (role === 'Reception' || role === 'ServiceManager') {
     const mine = quotes.filter((q) => q.created_by.user_id === userId);
     const offered = mine.filter((q) => q.status === 'OFFERED').length;
     if (offered > 0) {
@@ -101,7 +113,7 @@ function nextSteps(
     if (pending > 0) {
       steps.push({
         to: '/quotes?status=PENDING_REVIEW&mine=1',
-        text: `${pending} of your quotes ${plural(pending, 'is', 'are')} waiting for an Owner`,
+        text: `${pending} of your quotes ${plural(pending, 'is', 'are')} waiting for a Service Manager`,
         icon: 'clock',
         tone: 'warning',
       });
@@ -339,7 +351,7 @@ export function DashboardPage() {
   const { session } = useAuth();
   const list = useQuoteList();
   const now = useNow();
-  const canCreate = session?.user.role !== 'Viewer';
+  const canCreate = can(BUILDERS, session?.user.role);
 
   const hero = (summary?: ReactNode, actions?: ReactNode, chips?: ReactNode) => (
     <div className="relative isolate overflow-hidden rounded-[1.75rem] border border-border bg-surface px-6 py-7 shadow-card md:px-9 md:py-8">

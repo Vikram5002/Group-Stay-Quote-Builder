@@ -99,7 +99,7 @@ export function estimateTotals(
   const { totals } = price({
     rooms: evaluation.offered_rooms,
     nights: flatNights(stay.check_in, stay.nights, rate, costPerRoomNight),
-    // The server's full price and Sales limit, as a one-room policy so the estimate matches.
+    // The server's full price and Reception limit, as a one-room policy so the estimate matches.
     floor: {
       contribution_floor_inr: full,
       total_rooms_units: 1,

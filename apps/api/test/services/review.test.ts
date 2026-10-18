@@ -12,7 +12,7 @@ import { termsHash } from '../../src/services/terms-hash.js';
 import { hasDb, night, readLedger } from '../data/local-db.js';
 import { owner, request, sales, serviceHarness } from './harness.js';
 
-const owner2 = { user_id: 'owner-2', role: 'Owner' as const };
+const owner2 = { user_id: 'owner-2', role: 'ServiceManager' as const };
 const codeOf = (p: Promise<unknown>) =>
   p.then(
     () => 'ok',
@@ -92,13 +92,15 @@ describe.skipIf(!hasDb)('owner review: approve and reject (DynamoDB Local)', () 
     expect((await getHoldLines(ctx, q.quote_id)).map((l) => l.state)).toEqual(['held', 'held']);
   });
 
-  it('only an Owner can approve or reject, and only a PENDING_REVIEW quote', async () => {
+  it('only a Service Manager can approve or reject, and only a PENDING_REVIEW quote', async () => {
     const { deps } = await setup();
     const q = await createQuote(deps, belowFloor(), sales);
-    expect(await codeOf(approveQuote(deps, q.quote_id, sales, 'Sales approving'))).toBe(
+    expect(await codeOf(approveQuote(deps, q.quote_id, sales, 'Reception approving'))).toBe(
       'FORBIDDEN',
     );
-    expect(await codeOf(rejectQuote(deps, q.quote_id, sales, 'Sales rejecting'))).toBe('FORBIDDEN');
+    expect(await codeOf(rejectQuote(deps, q.quote_id, sales, 'Reception rejecting'))).toBe(
+      'FORBIDDEN',
+    );
 
     await approveQuote(deps, q.quote_id, owner, 'First approval');
     expect(await codeOf(approveQuote(deps, q.quote_id, owner2, 'Second approval'))).toBe(

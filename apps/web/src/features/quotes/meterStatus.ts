@@ -37,8 +37,8 @@ export function meterStatus(evaluation: Evaluation, totals: QuoteTotals): MeterS
   if (evaluation.offered_rooms < evaluation.requested_rooms) {
     return {
       tone: 'info',
-      label: `Within the Sales limit: partial offer of ${counted(evaluation.offered_rooms, 'room')}`,
+      label: `Within the Reception limit: partial offer of ${counted(evaluation.offered_rooms, 'room')}`,
     };
   }
-  return { tone: 'success', label: 'Within the Sales limit' };
+  return { tone: 'success', label: 'Within the Reception limit' };
 }

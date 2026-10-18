@@ -9,7 +9,7 @@ import { RouteErrorPage } from './RouteErrorPage';
 import { createTestRouter, routes } from './router';
 import { NAV_ITEMS } from './routes';
 
-function renderAt(path: string, role: Role | null = 'Owner') {
+function renderAt(path: string, role: Role | null = 'ServiceManager') {
   return render(
     <Providers initialSession={role ? mockSession(role, 'Meera') : null}>
       <RouterProvider router={createTestRouter([path])} />
@@ -18,10 +18,13 @@ function renderAt(path: string, role: Role | null = 'Owner') {
 }
 
 describe('app shell and routing', () => {
-  it.each(NAV_ITEMS)('renders the $label screen at $path for an Owner', ({ path, label }) => {
-    renderAt(path);
-    expect(screen.getByRole('heading', { level: 1, name: label })).toBeInTheDocument();
-  });
+  it.each(NAV_ITEMS)(
+    'renders the $label screen at $path for a Service Manager',
+    ({ path, label }) => {
+      renderAt(path);
+      expect(screen.getByRole('heading', { level: 1, name: label })).toBeInTheDocument();
+    },
+  );
 
   it('shows the design system gallery', () => {
     renderAt('/design-system');
@@ -50,7 +53,7 @@ describe('app shell and routing', () => {
   });
 
   it('groups the menu, with New quote as the main action and project pages set apart', () => {
-    renderAt('/', 'Owner');
+    renderAt('/', 'ServiceManager');
     const menu = screen.getByRole('navigation', { name: 'Primary' });
     const labels = within(menu)
       .getAllByRole('link')
@@ -171,8 +174,8 @@ describe('sign-in and roles', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
   });
 
-  it('hides Owner-only screens from the menu for Sales', () => {
-    renderAt('/', 'Sales');
+  it('hides Service Manager-only screens from the menu for Reception', () => {
+    renderAt('/', 'Reception');
     expect(screen.getByRole('link', { name: 'New quote' })).toBeInTheDocument();
     for (const name of ['Review queue', 'Policy']) {
       expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
@@ -185,10 +188,10 @@ describe('sign-in and roles', () => {
     expect(screen.getByRole('link', { name: 'Evidence' })).toBeInTheDocument();
   });
 
-  it('explains when a role opens an Owner-only address directly', () => {
-    renderAt('/policy', 'Sales');
+  it('explains when a role opens a Service Manager-only address directly', () => {
+    renderAt('/policy', 'Reception');
     expect(screen.getByRole('heading', { level: 1, name: 'Not allowed' })).toBeInTheDocument();
-    expect(screen.getByText(/This screen is for Owner/)).toBeInTheDocument();
+    expect(screen.getByText(/This screen is for Service Manager/)).toBeInTheDocument();
   });
 });
 

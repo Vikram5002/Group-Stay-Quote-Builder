@@ -57,7 +57,8 @@ export function PublicChecks() {
       </p>
       {!canRun && (
         <p className="mt-2 text-sm text-ink-muted">
-          Your role cannot create previews. Sign in as Sales or Owner to run the checks.
+          Your role cannot create previews. Sign in as Reception or Service Manager to run the
+          checks.
         </p>
       )}
       {error && (

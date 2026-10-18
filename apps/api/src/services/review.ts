@@ -1,11 +1,20 @@
 import { TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { isExpired, type Actor, type Quote, type QuoteEvent } from '@c32/core';
+import {
+  isExpired,
+  ownerDiscountTotals,
+  validateQuoteRequest,
+  type Actor,
+  type Quote,
+  type QuoteEvent,
+} from '@c32/core';
 import { TransactionConditionError } from '../data/errors.js';
 import { releaseHolds } from '../data/holds.js';
 import { getQuote, putEventTx, replaceQuoteTx } from '../data/quotes.js';
 import type { ServiceDeps } from './create-quote.js';
 import { ServiceError } from './errors.js';
 import { expireQuote } from './expire-quote.js';
+import { loadPolicy } from './inputs.js';
+import { termsHash } from './terms-hash.js';
 
 /**
  * The owner's review queue (FR-11, BR-11, BR-12, US-06).
@@ -15,7 +24,7 @@ import { expireQuote } from './expire-quote.js';
  *          so any later change to rooms, dates, rate or inclusions invalidates it (T17).
  * reject:  PENDING_REVIEW -> REJECTED and the holds go back to inventory.
  *
- * Four-eyes: the approver must be an Owner (route) and must not be the quote's creator (here).
+ * Four-eyes: the approver must be a Service Manager (route) and must not be the quote's creator (here).
  */
 
 async function openForReview(deps: ServiceDeps, quoteId: string): Promise<Quote> {
@@ -62,10 +71,17 @@ export async function approveQuote(
   actor: Actor,
   reason: string,
 ): Promise<Quote> {
-  if (actor.role !== 'Owner') throw new ServiceError('FORBIDDEN', 'Only an Owner can approve');
+  if (actor.role !== 'ServiceManager')
+    throw new ServiceError('FORBIDDEN', 'Only a Service Manager can approve');
   const quote = await openForReview(deps, quoteId);
   if (quote.created_by.user_id === actor.user_id) {
     throw new ServiceError('FORBIDDEN', 'Four-eyes rule: you cannot approve a quote you created');
+  }
+  if (quote.awaiting_owner) {
+    throw new ServiceError(
+      'INVALID_STATE',
+      'This quote is waiting for the Owner to set the discount',
+    );
   }
   if (quote.evaluation.reasons.includes('UNKNOWN_AVAILABILITY')) {
     throw new ServiceError(
@@ -114,7 +130,8 @@ export async function rejectQuote(
   actor: Actor,
   reason: string,
 ): Promise<Quote> {
-  if (actor.role !== 'Owner') throw new ServiceError('FORBIDDEN', 'Only an Owner can reject');
+  if (actor.role !== 'ServiceManager')
+    throw new ServiceError('FORBIDDEN', 'Only a Service Manager can reject');
   const quote = await openForReview(deps, quoteId);
 
   const at = new Date(deps.clock.now()).toISOString();
@@ -139,5 +156,88 @@ export async function rejectQuote(
       await deps.data.doc.send(new TransactWriteCommand({ TransactItems: writes }));
     }
   });
+  return next;
+}
+
+/**
+ * The Owner's discount (D-062): a quote the Service Manager sent to the Owner is re-priced at the
+ * Owner's percent (any amount) and issued as OFFERED, with the Owner's approval bound to the new
+ * terms so it can be confirmed. Holds are unchanged: the rooms do not change.
+ */
+export async function ownerDiscount(
+  deps: ServiceDeps,
+  quoteId: string,
+  actor: Actor,
+  discountPct: number,
+  reason: string | null,
+): Promise<Quote> {
+  if (actor.role !== 'Owner')
+    throw new ServiceError('FORBIDDEN', 'Only the Owner sets this discount');
+  const quote = await openForReview(deps, quoteId);
+  if (!quote.awaiting_owner) {
+    throw new ServiceError('INVALID_STATE', 'This quote was not sent to the Owner');
+  }
+  const policy = await loadPolicy(deps.data);
+  const priced = ownerDiscountTotals(quote.evaluation.totals, discountPct, policy);
+  const { rate_per_room_night_inr: _rate, discount_inr: _inr, ...base } = quote.request;
+  const request = { ...base, discount_pct: discountPct };
+  const resolved = validateQuoteRequest(request);
+  if (!resolved.ok) throw new Error(`Stored request for ${quoteId} no longer validates`);
+
+  const evaluation = {
+    ...quote.evaluation,
+    decision:
+      quote.evaluation.decision === 'PARTIAL_OFFER'
+        ? ('PARTIAL_OFFER' as const)
+        : ('OFFER' as const),
+    reasons: quote.evaluation.reasons.filter((r) => r !== 'FLOOR_BREACH'),
+    auto_confirm_allowed: false,
+    totals: priced.totals,
+    counter_offers: [],
+    trail: [...quote.evaluation.trail, ...priced.trail],
+  };
+  const hash = termsHash(resolved.value, evaluation);
+  const at = new Date(deps.clock.now()).toISOString();
+  const why = reason ?? `Owner discount ${discountPct}%`;
+  const { awaiting_owner: _waiting, ...rest } = quote;
+  const next: Quote = {
+    ...rest,
+    status: 'OFFERED',
+    version: quote.version + 1,
+    updated_at: at,
+    request,
+    evaluation,
+    terms_hash: hash,
+    approval: { approved_by: actor, approved_at: at, reason: why, terms_hash: hash },
+  };
+  const event: QuoteEvent = {
+    event_id: deps.newId(),
+    quote_id: quoteId,
+    type: 'OWNER_DISCOUNTED',
+    actor,
+    at,
+    before: { status: quote.status, version: quote.version },
+    after: {
+      status: 'OFFERED',
+      version: next.version,
+      discount_pct: discountPct,
+      room_revenue_inr: priced.totals.room_revenue_inr,
+      terms_hash: hash,
+    },
+    reason: why,
+  };
+  await commit(deps, quoteId, () =>
+    deps.data.doc.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          replaceQuoteTx(deps.data, next, quote.version, 'PENDING_REVIEW', {
+            condition: 'valid_until > :now',
+            values: { ':now': at },
+          }),
+          putEventTx(deps.data, event),
+        ],
+      }),
+    ),
+  );
   return next;
 }

@@ -6,7 +6,7 @@ import { Section } from './Section';
 const FAQS = [
   {
     q: 'What happens if I offer a discount that is too low?',
-    a: "StayQuote compares the booking's contribution with your minimum. If it falls short, the quote goes to an Owner for approval, and the person who made the quote cannot approve it themselves.",
+    a: "StayQuote compares the booking's contribution with your minimum. If it falls short, the quote goes to a Service Manager for approval, and the person who made the quote cannot approve it themselves.",
   },
   {
     q: 'Will it let me promise rooms I do not have?',
@@ -22,7 +22,7 @@ const FAQS = [
   },
   {
     q: 'Who can do what?',
-    a: 'Sales builds, issues, confirms and cancels quotes. Owners approve or reject quotes below the minimum, set the policy and import rooms and rates. Viewers can see everything but change nothing.',
+    a: 'Reception builds, issues, confirms and cancels quotes. Service Managers approve or reject quotes below the minimum, set the policy and import rooms and rates. Viewers can see everything but change nothing.',
   },
   {
     q: 'Is the data on this page real?',

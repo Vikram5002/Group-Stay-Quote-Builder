@@ -12,6 +12,7 @@ import { useAuth } from '../auth/auth';
 import { REASON_LABEL } from '../quotes/labels';
 import { QUOTES_KEY, useNow } from '../quotes/queries';
 import type { BackState } from '../quotes/QuoteDetailPage';
+import { OwnerDiscountPanel } from './OwnerDiscountPanel';
 import { ReviewPanel } from './ReviewPanel';
 import type { ReviewResult } from './ReviewPanel';
 
@@ -57,12 +58,16 @@ export function ReviewQueuePage() {
     queryFn: () => api.listQuotes({ status: 'PENDING_REVIEW', limit: '100' }),
   });
 
+  // The Owner sees the quotes sent for a discount; the Service Manager the rest (D-062).
+  const isOwner = session?.user.role === 'Owner';
   const heading = (
     <h1 className="text-[1.875rem] leading-tight font-semibold md:text-[2.125rem]">Review queue</h1>
   );
   const intro = (
     <p className="mt-1 text-ink-muted">
-      Floor breaches and unknowns waiting for an Owner decision.
+      {isOwner
+        ? 'Quotes the Service Manager sent you to set the discount.'
+        : 'Floor breaches and unknowns waiting for a Service Manager decision.'}
     </p>
   );
 
@@ -70,7 +75,13 @@ export function ReviewQueuePage() {
     <div className="mt-4">
       <Alert
         tone="success"
-        title={result.kind === 'approved' ? 'Quote approved' : 'Quote rejected'}
+        title={
+          result.kind === 'discounted'
+            ? 'Discount applied'
+            : result.kind === 'approved'
+              ? 'Quote approved'
+              : 'Quote rejected'
+        }
         action={
           <Link
             to={`/quotes/${result.quote.quote_id}`}
@@ -81,9 +92,11 @@ export function ReviewQueuePage() {
           </Link>
         }
       >
-        {result.kind === 'approved'
-          ? 'It is now offered, and Sales can confirm it. The approval is tied to the exact terms you saw.'
-          : 'The held rooms were released.'}
+        {result.kind === 'discounted'
+          ? 'The quote is issued at your price, and it can now be confirmed.'
+          : result.kind === 'approved'
+            ? 'It is now offered, and Reception can confirm it. The approval is tied to the exact terms you saw.'
+            : 'The held rooms were released.'}
       </Alert>
     </div>
   );
@@ -123,7 +136,9 @@ export function ReviewQueuePage() {
     );
   }
 
-  const items = [...list.data.items].sort(SORTERS[sort] ?? SORTERS.urgent);
+  const items = list.data.items
+    .filter((q) => Boolean(q.awaiting_owner) === isOwner)
+    .sort(SORTERS[sort] ?? SORTERS.urgent);
 
   if (items.length === 0) {
     return (
@@ -133,8 +148,8 @@ export function ReviewQueuePage() {
         {resultAlert}
         <div className="mt-6">
           <EmptyState title="Nothing is waiting for review">
-            Quotes below the contribution floor, or with an unknown value, appear here for an Owner
-            to decide.
+            Quotes below the contribution floor, or with an unknown value, appear here for a Service
+            Manager to decide.
           </EmptyState>
         </div>
       </div>
@@ -254,16 +269,28 @@ export function ReviewQueuePage() {
         </div>
 
         <div aria-label="Selected quote" ref={panelRef}>
-          <ReviewPanel
-            key={selected.quote_id}
-            quote={selected}
-            currentUserId={session?.user.user_id ?? ''}
-            onDone={(done) => {
-              setResult(done);
-              select({ quote: '' });
-              void list.refetch();
-            }}
-          />
+          {selected.awaiting_owner ? (
+            <OwnerDiscountPanel
+              key={selected.quote_id}
+              quote={selected}
+              onDone={(saved) => {
+                setResult({ kind: 'discounted', quote: saved });
+                select({ quote: '' });
+                void list.refetch();
+              }}
+            />
+          ) : (
+            <ReviewPanel
+              key={selected.quote_id}
+              quote={selected}
+              currentUserId={session?.user.user_id ?? ''}
+              onDone={(done) => {
+                setResult(done);
+                select({ quote: '' });
+                void list.refetch();
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -42,7 +42,7 @@ beforeEach(() => {
 
 const sales = createApiClient({
   baseUrl: BASE,
-  getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+  getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
 });
 
 const create = (overrides: Partial<QuoteRequest> = {}) =>
@@ -229,9 +229,9 @@ describe('availability calendar', () => {
     expect(screen.getByText(/^2 nights sold out\./)).toBeInTheDocument();
   });
 
-  it('starts a quote from a night for Sales, with the date and room type filled in', async () => {
+  it('starts a quote from a night for Reception, with the date and room type filled in', async () => {
     const u = userEvent.setup();
-    renderPage('Sales');
+    renderPage('Reception');
     await u.click(await night(/0?2 Nov/));
     await u.click(await screen.findByRole('link', { name: 'Start a quote from this night' }));
     await screen.findByRole('heading', { level: 1, name: 'New quote' });
@@ -244,7 +244,7 @@ describe('availability calendar', () => {
   it('says when a started quote replaces an unfinished draft', async () => {
     saveDraft({ form: { ...initialForm, organiser: 'Draft Group' }, step: 0 });
     const u = userEvent.setup();
-    renderPage('Sales');
+    renderPage('Reception');
     await u.click(await night(/0?2 Nov/));
     await u.click(await screen.findByRole('link', { name: 'Start a quote from this night' }));
     expect(

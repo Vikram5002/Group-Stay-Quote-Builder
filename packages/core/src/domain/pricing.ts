@@ -14,7 +14,7 @@ import { counted } from './plural.js';
  *   variable_cost_inr  = sum over nights of rooms x variable cost
  *   contribution_inr   = room revenue + extras revenue - variable cost - extras cost
  *   floor_rate         = ceil(package floor / total rooms)       (D-056; full price, cost included)
- *   minimum_rate       = floor_rate less the max Sales discount  (D-057)
+ *   minimum_rate       = floor_rate less the max Reception discount  (D-057)
  *   floor              = minimum_rate x room_nights - variable cost
  *   floor_ok           = contribution >= floor                    (equal passes)
  *   shortfall_inr      = max(0, floor - contribution)
@@ -167,7 +167,7 @@ export function completeTotals(base: TotalsBase, floorPolicy: FloorPolicy): Quot
   const listRevenue = rate * roomNights;
 
   // Minimum flat room rate that meets the floor (BR-20: rounded up, never down): the lowest rate
-  // Sales may give, plus whatever bundled inclusions cost beyond what they bring in, per
+  // Reception may give, plus whatever bundled inclusions cost beyond what they bring in, per
   // room-night. The variable cost is already inside the floor rate, so it is not needed here.
   const minRate =
     base.inclusions_cost_inr === null || base.inclusions_revenue_inr === null || roomNights === 0
@@ -274,11 +274,11 @@ export function explainFloor(floor: FloorPolicy, t: QuoteTotals, hasExtras: bool
   );
   if (t.discount_pct !== null) {
     trail.push(
-      `${t.room_nights} x ${t.floor_rate_per_room_night_inr} = ${t.list_revenue_inr} full revenue; discount ${t.discount_pct}% (Sales limit ${t.max_discount_pct}%)`,
+      `${t.room_nights} x ${t.floor_rate_per_room_night_inr} = ${t.list_revenue_inr} full revenue; discount ${t.discount_pct}% (Reception limit ${t.max_discount_pct}%)`,
     );
   }
   trail.push(
-    `lowest Sales rate ${t.floor_rate_per_room_night_inr} less ${t.max_discount_pct}% = ${lowest}, so at least ${t.min_room_revenue_inr} room revenue`,
+    `lowest Reception rate ${t.floor_rate_per_room_night_inr} less ${t.max_discount_pct}% = ${lowest}, so at least ${t.min_room_revenue_inr} room revenue`,
   );
 
   if (t.contribution_inr === null || t.contribution_floor_inr === null) {
@@ -301,7 +301,7 @@ export function explainFloor(floor: FloorPolicy, t: QuoteTotals, hasExtras: bool
     trail.push(
       hasExtras
         ? `minimum safe rate ceil((${lowest} x ${t.room_nights} + ${t.inclusions_cost_inr} - ${t.inclusions_revenue_inr}) / ${t.room_nights}) = ${t.min_rate_per_room_night_inr}`
-        : `minimum safe rate = lowest Sales rate ${t.min_rate_per_room_night_inr}`,
+        : `minimum safe rate = lowest Reception rate ${t.min_rate_per_room_night_inr}`,
     );
   }
   return trail;

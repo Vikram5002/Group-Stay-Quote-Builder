@@ -167,7 +167,7 @@ describe('purity', () => {
   });
 });
 
-describe('Sales discount off the full price (D-057)', () => {
+describe('Reception discount off the full price (D-057)', () => {
   it('5% off: rate 1900, within the 10% limit, a clean OFFER', () => {
     const { evaluation: e } = run({ rate_per_room_night_inr: undefined, discount_pct: 5 });
     expect(e.decision).toBe('OFFER');
@@ -219,7 +219,7 @@ describe('Sales discount off the full price (D-057)', () => {
   });
 });
 
-describe('Sales discount in rupees off the full price', () => {
+describe('Reception discount in rupees off the full price', () => {
   const base = { rate_per_room_night_inr: undefined };
 
   it('200 off 2000 is a rate of 1800: the 10% limit, still a clean OFFER', () => {

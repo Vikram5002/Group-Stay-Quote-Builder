@@ -15,7 +15,11 @@ export async function openApp(page: Page, path = '/sign-in') {
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 }
 
-export async function signIn(page: Page, name: string, role: 'Sales' | 'Owner' | 'Viewer') {
+export async function signIn(
+  page: Page,
+  name: string,
+  role: 'Reception' | 'ServiceManager' | 'Viewer',
+) {
   await page.getByLabel('Your name').fill(name);
   await page.getByLabel('Role').selectOption(role);
   await page.getByRole('button', { name: 'Sign in' }).click();
@@ -87,7 +91,10 @@ export async function buildQuote(page: Page, input: QuoteInput) {
   await page.getByRole('button', { name: 'Next' }).click();
 }
 
-export async function issueQuote(page: Page, buttonName: 'Issue quote' | 'Send for Owner review') {
+export async function issueQuote(
+  page: Page,
+  buttonName: 'Issue quote' | 'Send for Service Manager review',
+) {
   const button = page.getByRole('button', { name: buttonName });
   await expect(button).toBeEnabled();
   await button.click();

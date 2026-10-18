@@ -39,7 +39,7 @@ describe('meter status for each decision', () => {
     });
   });
 
-  it('REVIEW over the Sales limit', () => {
+  it('REVIEW over the Reception limit', () => {
     expect(meterStatus(evaluation('REVIEW', ['FLOOR_BREACH']), totals(14000)).label).toBe(
       'Over the limit: owner review',
     );
@@ -58,16 +58,16 @@ describe('meter status for each decision', () => {
   it('PARTIAL_OFFER and OFFER', () => {
     expect(
       meterStatus(evaluation('PARTIAL_OFFER', ['PARTIAL_AVAILABILITY'], 8), totals(24000)).label,
-    ).toBe('Within the Sales limit: partial offer of 8 rooms');
+    ).toBe('Within the Reception limit: partial offer of 8 rooms');
     expect(meterStatus(evaluation('OFFER', []), totals(24000))).toEqual({
       tone: 'success',
-      label: 'Within the Sales limit',
+      label: 'Within the Reception limit',
     });
   });
 
   it('follows an estimated rate across the floor in either direction', () => {
     expect(meterStatus(evaluation('REVIEW', ['FLOOR_BREACH']), totals(24000)).label).toBe(
-      'Within the Sales limit',
+      'Within the Reception limit',
     );
     expect(meterStatus(evaluation('OFFER', []), totals(14000)).label).toBe(
       'Over the limit: owner review',

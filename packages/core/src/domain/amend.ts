@@ -1,5 +1,5 @@
 import type { QuoteTotals } from '../contract/quote.js';
-import { floorPasses, type FloorPolicy } from './floor.js';
+import { discountedRate, floorPasses, floorRate, type FloorPolicy } from './floor.js';
 import { completeTotals } from './pricing.js';
 import { counted } from './plural.js';
 
@@ -75,5 +75,37 @@ export function amendTotals(
       : `< ${next.contribution_floor_inr} floor, shortfall ${next.shortfall_inr}: owner review`;
     trail.push(`remaining contribution ${next.contribution_inr} ${verdict}`);
   }
+  return { totals: next, floor_ok: floorOk, trail };
+}
+
+/**
+ * The Owner's discount (D-062): every room-night is re-priced at the floor rate less the Owner's
+ * percent, with no Reception limit. Costs and inclusions stay as quoted; the floor is reported,
+ * not enforced, because the Owner decides.
+ */
+export function ownerDiscountTotals(
+  totals: QuoteTotals,
+  discountPct: number,
+  floorPolicy: FloorPolicy,
+): AmendedTotals {
+  const rate = discountedRate(floorPolicy, discountPct);
+  const next = completeTotals(
+    {
+      room_nights: totals.room_nights,
+      room_revenue_inr: rate * totals.room_nights,
+      inclusions_revenue_inr: totals.inclusions_revenue_inr,
+      variable_cost_inr: totals.variable_cost_inr,
+      inclusions_cost_inr: totals.inclusions_cost_inr,
+    },
+    floorPolicy,
+  );
+  const floorOk =
+    next.contribution_inr === null || next.contribution_floor_inr === null
+      ? null
+      : floorPasses(next.contribution_inr, next.contribution_floor_inr);
+  const trail = [
+    `owner discount ${discountPct}% off the full price ${floorRate(floorPolicy)} = rate ${rate}: ${totals.room_nights} x ${rate} = ${next.room_revenue_inr} room revenue`,
+    `contribution ${next.contribution_inr ?? 'unknown'}${floorOk === false ? `, below the ${next.contribution_floor_inr} floor (owner's decision)` : ''}`,
+  ];
   return { totals: next, floor_ok: floorOk, trail };
 }

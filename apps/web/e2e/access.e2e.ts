@@ -7,7 +7,7 @@ test.describe('keyboard and sign-in', () => {
   });
 
   test('the skip link is the first tab stop and moves focus to the content', async ({ page }) => {
-    await signIn(page, 'Meera', 'Owner');
+    await signIn(page, 'Meera', 'ServiceManager');
     // A fresh load, so keyboard focus starts at the top of the document.
     await page.reload();
     await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
@@ -21,7 +21,7 @@ test.describe('keyboard and sign-in', () => {
 
   test('each screen sets a meaningful tab title', async ({ page }) => {
     await expect(page).toHaveTitle(/Sign in/);
-    await signIn(page, 'Meera', 'Owner');
+    await signIn(page, 'Meera', 'ServiceManager');
     await expect(page).toHaveTitle(/^Dashboard/);
     await goTo(page, 'Review queue');
     await expect(page).toHaveTitle(/^Review queue/);
@@ -30,7 +30,7 @@ test.describe('keyboard and sign-in', () => {
   test('the wizard can be submitted from the keyboard and explains what is missing', async ({
     page,
   }) => {
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     await goTo(page, 'New quote');
     await page.getByLabel('Organiser name').focus();
     await page.keyboard.press('Enter');
@@ -44,7 +44,7 @@ test.describe('keyboard and sign-in', () => {
   test('a dialog traps focus and closes with Escape, returning focus to its opener', async ({
     page,
   }) => {
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     await buildQuote(page, { organiser: 'Focus Group', rate: '2000' });
     await issueQuote(page, 'Issue quote');
     const opener = page.getByRole('button', { name: 'Extend validity' });
@@ -59,7 +59,7 @@ test.describe('keyboard and sign-in', () => {
     await expect(opener).toBeFocused();
   });
 
-  test('a viewer sees no write actions and Owner screens explain why they are closed', async ({
+  test('a viewer sees no write actions and Service Manager screens explain why they are closed', async ({
     page,
   }) => {
     await signIn(page, 'Vik', 'Viewer');
@@ -76,7 +76,7 @@ test.describe('accessibility (axe, WCAG 2.1 A and AA)', () => {
     await openApp(page);
     await expectNoA11yViolations(page, 'sign-in');
 
-    await signIn(page, 'Asha', 'Owner');
+    await signIn(page, 'Asha', 'ServiceManager');
     await expectNoA11yViolations(page, 'dashboard (empty)');
 
     // Build real content: one quote that needs review, so detail and review screens are full.
@@ -92,9 +92,9 @@ test.describe('accessibility (axe, WCAG 2.1 A and AA)', () => {
     await expectNoA11yViolations(page, 'quote builder, step 3 with an inclusion');
     await page.getByRole('button', { name: 'Remove inclusion 1' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
-    await expect(page.getByText('Owner review required')).toBeVisible();
+    await expect(page.getByText('Service Manager review required')).toBeVisible();
     await expectNoA11yViolations(page, 'quote builder, review step');
-    await issueQuote(page, 'Send for Owner review');
+    await issueQuote(page, 'Send for Service Manager review');
 
     await expect(page.getByRole('heading', { name: 'Audit timeline' })).toBeVisible();
     await expectNoA11yViolations(page, 'quote detail');

@@ -2,7 +2,7 @@ import { flatNights, price } from '@c32/core';
 
 /**
  * The case fixture (data/fixtures/fixture.json): 10 standard rooms, variable cost 800 a room-night
- * and a package floor of 20000, a floor rate of 20000 / 10 rooms = 2000 a room-night (D-056). Sales
+ * and a package floor of 20000, a floor rate of 20000 / 10 rooms = 2000 a room-night (D-056). Reception
  * may give up to 10% off that (D-057), so the lowest rate without owner review is 1800. All
  * landing-page figures come from the product's own pricing function, never from typed-in numbers.
  */

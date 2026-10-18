@@ -21,6 +21,7 @@ import { useAuth } from '../auth/auth';
 import { FilePreview } from './FilePreview';
 import { ReportView } from './ReportView';
 import { ExportsCard } from './ExportsCard';
+import { ADMINS, can } from '../../lib/roles';
 
 interface Picked {
   name: string;
@@ -32,7 +33,7 @@ interface Picked {
 export function ImportsPage() {
   const api = useApi();
   const { session } = useAuth();
-  const isOwner = session?.user.role === 'Owner';
+  const isOwner = can(ADMINS, session?.user.role);
 
   const [kind, setKind] = useState<ImportKind>('inventory');
   const [picked, setPicked] = useState<Picked | null>(null);
@@ -259,8 +260,8 @@ export function ImportsPage() {
             )}
           </Card>
         ) : (
-          <Alert tone="info" title="Imports are for Owners">
-            You can download exports below. Ask an Owner to import inventory or rates.
+          <Alert tone="info" title="Imports are for Service Managers">
+            You can download exports below. Ask a Service Manager to import inventory or rates.
           </Alert>
         )}
 

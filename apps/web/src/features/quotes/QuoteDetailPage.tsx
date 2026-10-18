@@ -27,6 +27,7 @@ import { shortReference } from './quotation';
 import { ArithmeticTrail, DecisionSummary, TotalsTable } from './ResultPanels';
 import { reviewBadge, reviewBanner, reviewState } from './reviewState';
 import { StatusBadge } from './StatusBadge';
+import { ADMINS, BUILDERS, can } from '../../lib/roles';
 
 /** Where the quote was opened from, so "back" goes there (a filtered list, the review queue). */
 export interface BackState {
@@ -230,7 +231,7 @@ function Summary({ quote, showVersion }: { quote: Quote; showVersion: boolean })
         )}
         {request.note_for_owner && (
           <>
-            <dt className="text-ink-muted">Note for the Owner</dt>
+            <dt className="text-ink-muted">Note for the Service Manager</dt>
             <dd className="whitespace-pre-line">{request.note_for_owner}</dd>
           </>
         )}
@@ -260,7 +261,8 @@ function Detail({ quote: q }: { quote: Quote }) {
   const audit = useQuoteAudit(q.quote_id);
   const requote = useRequote(q);
   const role = session?.user.role;
-  const canWrite = role === 'Sales' || role === 'Owner';
+  // Re-quoting builds a new quote, so it is for the builders only (D-062).
+  const canWrite = can(BUILDERS, role);
   const back = (location.state as BackState | null)?.from ?? { to: '/quotes', label: 'All quotes' };
 
   const review = reviewState(q);
@@ -308,7 +310,7 @@ function Detail({ quote: q }: { quote: Quote }) {
       {/* On a phone the request comes first; on a wide screen it sits beside the result. */}
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_22rem] lg:grid-rows-[auto_1fr]">
         <div className="lg:col-start-2 lg:row-start-1">
-          <Summary quote={q} showVersion={role === 'Owner'} />
+          <Summary quote={q} showVersion={can(ADMINS, role)} />
         </div>
         <div className="flex flex-col gap-6 lg:col-start-1 lg:row-span-2 lg:row-start-1">
           <Countdown quote={q} />
@@ -320,12 +322,13 @@ function Detail({ quote: q }: { quote: Quote }) {
             }
             review={reviewBanner(q, review)}
             reviewAction={
-              role === 'Owner' && q.status === 'PENDING_REVIEW' ? (
+              q.status === 'PENDING_REVIEW' &&
+              (q.awaiting_owner ? role === 'Owner' : role === 'ServiceManager') ? (
                 <Link
                   to={`/review?quote=${q.quote_id}`}
                   className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
                 >
-                  Review this quote
+                  {q.awaiting_owner ? 'Set the discount' : 'Review this quote'}
                 </Link>
               ) : undefined
             }

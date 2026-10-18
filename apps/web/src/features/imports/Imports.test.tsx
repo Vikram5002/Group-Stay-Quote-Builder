@@ -36,7 +36,7 @@ beforeEach(() => {
   store.ratePlan.length = 0;
 });
 
-function renderPage(role: Role = 'Owner') {
+function renderPage(role: Role = 'ServiceManager') {
   return render(
     <Providers initialSession={mockSession(role, 'Meera')} baseUrl={BASE}>
       <RouterProvider router={createTestRouter(['/imports'])} />
@@ -363,9 +363,9 @@ describe('importing a file', () => {
 });
 
 describe('who can import', () => {
-  it('shows Sales and Viewers the exports only', () => {
-    renderPage('Sales');
-    expect(screen.getByText('Imports are for Owners')).toBeInTheDocument();
+  it('shows Reception and Viewers the exports only', () => {
+    renderPage('Reception');
+    expect(screen.getByText('Imports are for Service Managers')).toBeInTheDocument();
     expect(screen.queryByLabelText(/File \(CSV or JSON\)/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Export' })).toBeInTheDocument();
   });
@@ -375,7 +375,7 @@ describe('exports', () => {
   it('gives a download link for quotes that works, with unknown values left empty', async () => {
     const sales = createApiClient({
       baseUrl: BASE,
-      getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+      getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
     });
     store.inventory.push(
       {
@@ -438,7 +438,7 @@ describe('exports', () => {
 
   it('exports JSON and the evidence bundle', async () => {
     const u = userEvent.setup();
-    renderPage('Sales');
+    renderPage('Reception');
     await u.selectOptions(screen.getByLabelText('Format'), 'json');
     await u.click(screen.getByRole('button', { name: 'Get quotes download link' }));
     expect(await screen.findByRole('link', { name: 'Download quotes (json)' })).toHaveAttribute(

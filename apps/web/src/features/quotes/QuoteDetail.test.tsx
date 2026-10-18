@@ -52,12 +52,12 @@ const request = (overrides: Partial<QuoteRequest> = {}): QuoteRequest => ({
 function seed(overrides: Partial<QuoteRequest> = {}, creator = 'asha'): Promise<Quote> {
   const client = createApiClient({
     baseUrl: BASE,
-    getToken: () => makeMockToken({ user_id: creator, role: 'Sales' }),
+    getToken: () => makeMockToken({ user_id: creator, role: 'Reception' }),
   });
   return client.createQuote(request(overrides), { idempotencyKey: newIdempotencyKey() });
 }
 
-function renderDetail(id: string, role: Role = 'Sales', name = 'Ravi') {
+function renderDetail(id: string, role: Role = 'Reception', name = 'Ravi') {
   return render(
     <Providers initialSession={mockSession(role, name)} baseUrl={BASE}>
       <RouterProvider router={createTestRouter([`/quotes/${id}`])} />
@@ -150,11 +150,11 @@ describe('quote detail', () => {
     expect(await screen.findByText(/Rooms are now held until/)).toBeInTheDocument();
   });
 
-  it("limits extra hours to the policy's validity window for an Owner", async () => {
+  it("limits extra hours to the policy's validity window for a Service Manager", async () => {
     store.policy = { ...store.policy, validity_hours: 24 };
     const quote = await seed();
     const u = userEvent.setup();
-    renderDetail(quote.quote_id, 'Owner', 'Meera');
+    renderDetail(quote.quote_id, 'ServiceManager', 'Meera');
 
     await u.click(await screen.findByRole('button', { name: 'Extend validity…' }));
     const dialog = screen.getByRole('dialog');
@@ -182,7 +182,7 @@ describe('quote detail', () => {
     store.policy = { ...store.policy, validity_hours: 24 };
     const quote = await seed();
     const u = userEvent.setup();
-    // Sales cannot read the policy, so the server is the one that refuses.
+    // Reception cannot read the policy, so the server is the one that refuses.
     renderDetail(quote.quote_id);
 
     await u.click(await screen.findByRole('button', { name: 'Extend validity…' }));
@@ -250,22 +250,22 @@ describe('quote detail', () => {
     expect(screen.getByRole('button', { name: 'Download quotation (PDF)' })).toBeInTheDocument();
   });
 
-  it('shows that an Owner must approve a pending-review quote', async () => {
+  it('shows that a Service Manager must approve a pending-review quote', async () => {
     const quote = await seed({ rate_per_room_night_inr: 1700 });
     renderDetail(quote.quote_id);
     expect(
-      await screen.findByText(/An Owner who did not create this quote must approve it/),
+      await screen.findByText(/A Service Manager who did not create this quote must approve it/),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Confirm booking…' })).not.toBeInTheDocument();
     expect(screen.getAllByText('Pending review').length).toBeGreaterThan(0);
     // Said once, in the decision banner, not again above the actions.
-    expect(screen.getAllByText('Owner review required')).toHaveLength(1);
+    expect(screen.getAllByText('Service Manager review required')).toHaveLength(1);
     expect(screen.queryByRole('link', { name: 'Review this quote' })).not.toBeInTheDocument();
   });
 
-  it('gives an Owner a link from a pending quote to the review queue', async () => {
+  it('gives a Service Manager a link from a pending quote to the review queue', async () => {
     const quote = await seed({ rate_per_room_night_inr: 1700 });
-    renderDetail(quote.quote_id, 'Owner', 'Meera');
+    renderDetail(quote.quote_id, 'ServiceManager', 'Meera');
     expect(await screen.findByRole('link', { name: 'Review this quote' })).toHaveAttribute(
       'href',
       `/review?quote=${quote.quote_id}`,
@@ -275,7 +275,7 @@ describe('quote detail', () => {
   describe('review state follows the quote, not the original evaluation', () => {
     const ownerClient = createApiClient({
       baseUrl: BASE,
-      getToken: () => makeMockToken({ user_id: 'meera', role: 'Owner' }),
+      getToken: () => makeMockToken({ user_id: 'meera', role: 'ServiceManager' }),
     });
     const approve = (id: string) =>
       ownerClient.approveQuote(
@@ -291,7 +291,7 @@ describe('quote detail', () => {
       const quote = await seed({ rate_per_room_night_inr: 1700 });
       renderDetail(quote.quote_id);
       expect(within(await header()).getByText('Needs review')).toBeInTheDocument();
-      expect(screen.getByText('Owner review required')).toBeInTheDocument();
+      expect(screen.getByText('Service Manager review required')).toBeInTheDocument();
     });
 
     it('an approved quote shows who approved it, when and why', async () => {
@@ -301,7 +301,7 @@ describe('quote detail', () => {
 
       expect(within(await header()).getByText('Approved')).toBeInTheDocument();
       expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
-      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.queryByText('Service Manager review required')).not.toBeInTheDocument();
       expect(screen.getByText('Approved below the floor')).toBeInTheDocument();
       expect(
         screen.getByText(/^Approved by meera on 20 Oct 2026.*: Repeat client, strategic account$/),
@@ -320,7 +320,7 @@ describe('quote detail', () => {
 
       await waitFor(() => expect(store.quotes.get(quote.quote_id)?.status).toBe('CONFIRMED'));
       expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
-      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
+      expect(screen.queryByText('Service Manager review required')).not.toBeInTheDocument();
       expect(screen.getByText(/^Approved by meera on/)).toBeInTheDocument();
     });
 
@@ -328,14 +328,14 @@ describe('quote detail', () => {
       const quote = await seed({ rate_per_room_night_inr: 1700 });
       const client = createApiClient({
         baseUrl: BASE,
-        getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+        getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
       });
       await client.cancelQuote(quote.quote_id, {}, { idempotencyKey: newIdempotencyKey() });
       renderDetail(quote.quote_id);
 
       expect(within(await header()).queryByText('Needs review')).not.toBeInTheDocument();
-      expect(screen.queryByText('Owner review required')).not.toBeInTheDocument();
-      expect(screen.getByText('Closed before an Owner decided')).toBeInTheDocument();
+      expect(screen.queryByText('Service Manager review required')).not.toBeInTheDocument();
+      expect(screen.getByText('Closed before a Service Manager decided')).toBeInTheDocument();
     });
   });
 
@@ -437,7 +437,7 @@ describe('quote detail', () => {
     const quote = await seed();
     const client = createApiClient({
       baseUrl: BASE,
-      getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+      getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
     });
     await client.confirmQuote(quote.quote_id, { idempotencyKey: newIdempotencyKey() });
     const u = userEvent.setup();

@@ -27,6 +27,7 @@ import type { BackState } from './QuoteDetailPage';
 import { QUOTES_KEY, useNow } from './queries';
 import { reviewBadge, reviewState } from './reviewState';
 import { StatusBadge } from './StatusBadge';
+import { BUILDERS, can } from '../../lib/roles';
 
 const SORTS = {
   newest: 'Newest first',
@@ -158,7 +159,7 @@ export function QuotesPage() {
               : `${counted(quotes.length, 'quote')}${filtered ? ' match' : ''}${list.hasNextPage ? ', more to load' : ''}`}
           </p>
         </div>
-        {session?.user.role !== 'Viewer' && (
+        {can(BUILDERS, session?.user.role) && (
           <Link
             to="/quotes/new"
             className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-medium text-on-brand hover:bg-brand-hover"

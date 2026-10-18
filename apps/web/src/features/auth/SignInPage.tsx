@@ -18,15 +18,17 @@ import { useAuth } from './auth';
 import type { SignInState } from './RequireAuth';
 
 const ROLE_HELP: Record<Role, string> = {
-  Sales: 'Creates quotes, confirms, extends and cancels.',
-  Owner: 'Everything Sales can do, plus approvals, imports and policy.',
+  Reception: 'Creates quotes, confirms, extends and cancels.',
+  ServiceManager:
+    'Everything Reception can do, plus approvals, imports, policy and sending quotes to the Owner.',
+  Owner: 'Sets any discount on quotes sent by the Service Manager; bookings, imports and policy.',
   Viewer: 'Read-only access to quotes, availability and evidence.',
 };
 
 const POINTS: ReadonlyArray<{ icon: IconName; text: string }> = [
   { icon: 'trending', text: 'See the contribution on every group quote before you send it.' },
   { icon: 'clock', text: 'Rooms are held with a clear expiry, so nothing is double-booked.' },
-  { icon: 'review', text: 'Quotes below the floor go to an Owner for a second look.' },
+  { icon: 'review', text: 'Quotes below the floor go to a Service Manager for a second look.' },
 ];
 
 /** The sign-in layout: the brand side with the hotel on wide screens, the form beside it. */
@@ -96,7 +98,7 @@ export function SignInPage() {
     </Alert>
   ) : null;
   const [name, setName] = useState('');
-  const [role, setRole] = useState<Role>('Sales');
+  const [role, setRole] = useState<Role>('Reception');
   const [error, setError] = useState<string | undefined>();
 
   useEffect(() => {

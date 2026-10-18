@@ -162,7 +162,7 @@ export function availabilityLine(
   if (unknown.length > 0) {
     return {
       tone: 'warning',
-      text: `Availability is not known on ${unknown.map(formatDateShort).join(', ')}, so no rooms can be held until it is. The quote goes to an Owner.`,
+      text: `Availability is not known on ${unknown.map(formatDateShort).join(', ')}, so no rooms can be held until it is. The quote goes to a Service Manager.`,
     };
   }
   const free = Math.min(...nights.map((d) => byDate.get(d)?.available_units ?? 0));
@@ -381,7 +381,7 @@ function InclusionRow({
           <CheckboxField
             label="Cost is not known yet"
             name={path('unit_cost_inr')}
-            hint="The quote will need Owner review. It is never treated as zero."
+            hint="The quote will need Service Manager review. It is never treated as zero."
             checked={inclusion.costUnknown}
             onChange={(e) => onChange({ costUnknown: e.target.checked })}
           />
@@ -436,7 +436,7 @@ export function PricingStep({
 }: StepProps & {
   /** The request when the form is valid, to show the price it gives. */
   request: QuoteRequest | null;
-  /** The last price check, for the full price and the Sales limit. */
+  /** The last price check, for the full price and the Reception limit. */
   totals: QuoteTotals | undefined;
 }) {
   const update = (id: string, changes: Partial<InclusionForm>) =>
@@ -449,11 +449,11 @@ export function PricingStep({
       <Card title="Pricing">
         {totals && (
           <p className="mb-4 text-sm">
-            Full price {formatInr(totals.floor_rate_per_room_night_inr)} per room-night. Sales can
-            give up to {totals.max_discount_pct}% off
+            Full price {formatInr(totals.floor_rate_per_room_night_inr)} per room-night. Reception
+            can give up to {totals.max_discount_pct}% off
             {totals.min_rate_per_room_night_inr !== null &&
               ` (down to ${formatInr(totals.min_rate_per_room_night_inr)})`}{' '}
-            alone; a lower price goes to an Owner.
+            alone; a lower price goes to a Service Manager.
           </p>
         )}
         <div className="grid gap-4 md:grid-cols-2">
@@ -478,7 +478,7 @@ export function PricingStep({
               {...(form.discountKind === 'pct' ? { max: 100 } : {})}
               value={form.discount}
               onChange={(e) => patch({ discount: e.target.value, rate: '' })}
-              hint="Up to the owner's limit Sales can confirm alone; more goes to the owner."
+              hint="Up to the owner's limit Reception can confirm alone; more goes to the owner."
               {...err(errors, form.discountKind === 'pct' ? 'discount_pct' : 'discount_inr')}
             />
           </div>

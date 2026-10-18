@@ -25,8 +25,8 @@ export const fixture = mapC32Fixture(
 );
 
 export const ISSUED = '2026-10-17T10:00:00+05:30';
-export const sales: Actor = { user_id: 'sales-1', role: 'Sales' };
-export const owner: Actor = { user_id: 'owner-1', role: 'Owner' };
+export const sales: Actor = { user_id: 'sales-1', role: 'Reception' };
+export const owner: Actor = { user_id: 'owner-1', role: 'ServiceManager' };
 
 export async function serviceHarness(inventory: InventoryNight[] = fixture.inventory) {
   const { ctx, drop } = await createTestTable();

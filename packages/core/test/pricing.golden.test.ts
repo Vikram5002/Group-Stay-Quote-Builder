@@ -1,6 +1,6 @@
 /**
  * Golden pricing tests from the blueprint catalogue (section 14.2), under D-056 and D-057: full
- * price (floor rate) = package floor 20000 / 10 rooms = 2000 per room-night, cost included; Sales
+ * price (floor rate) = package floor 20000 / 10 rooms = 2000 per room-night, cost included; Reception
  * may give up to 10% off, so the lowest rate is 1800. Fixture: rate 2000, cost 800.
  */
 import { describe, expect, it } from 'vitest';
@@ -68,7 +68,7 @@ describe('T01 fixture: 10 rooms x 2 nights x 2000', () => {
   });
 });
 
-describe('T03 to T05 rate sweep around the lowest Sales rate 1800 (BR-06)', () => {
+describe('T03 to T05 rate sweep around the lowest Reception rate 1800 (BR-06)', () => {
   it('T03 rate 1800 (10% off): exactly the lowest allowed rate passes', () => {
     const r = price(atRate(1800));
     expect(r.totals).toMatchObject({
@@ -94,7 +94,7 @@ describe('T03 to T05 rate sweep around the lowest Sales rate 1800 (BR-06)', () =
     expect(r.floor_ok).toBe(false);
   });
 
-  it('T05 rate 1500 (25% off): over the Sales limit, shortfall 6000', () => {
+  it('T05 rate 1500 (25% off): over the Reception limit, shortfall 6000', () => {
     const r = price(atRate(1500));
     expect(r.totals).toMatchObject({
       room_revenue_inr: 30000,
@@ -107,13 +107,13 @@ describe('T03 to T05 rate sweep around the lowest Sales rate 1800 (BR-06)', () =
     expect(r.floor_ok).toBe(false);
   });
 
-  it('the minimum safe rate is the lowest Sales rate whatever the quoted rate', () => {
+  it('the minimum safe rate is the lowest Reception rate whatever the quoted rate', () => {
     for (const rate of [1, 1500, 1799, 2000, 50000]) {
       expect(price(atRate(rate)).totals.min_rate_per_room_night_inr).toBe(1800);
     }
   });
 
-  it('the owner can widen or narrow the Sales limit', () => {
+  it('the owner can widen or narrow the Reception limit', () => {
     const at = (pct: number) => ({ ...DEFAULT_POLICY, max_sales_discount_pct: pct });
     expect(price({ ...atRate(1700), floor: at(15) }).floor_ok).toBe(true); // 2000 - 15%
     expect(price({ ...atRate(1900), floor: at(0) }).floor_ok).toBe(false); // no discount allowed

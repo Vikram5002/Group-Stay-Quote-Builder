@@ -30,7 +30,7 @@ beforeEach(() => {
   store.policy = { ...DEFAULT_POLICY, version: 1 };
 });
 
-function renderPage(role: Role = 'Owner') {
+function renderPage(role: Role = 'ServiceManager') {
   const router = createTestRouter(['/policy']);
   const view = render(
     <Providers initialSession={mockSession(role, 'Meera')} baseUrl={BASE}>
@@ -54,8 +54,8 @@ async function setValue(
 }
 
 describe('policy screen', () => {
-  it('is for Owners only', () => {
-    renderPage('Sales');
+  it('is for Service Managers only', () => {
+    renderPage('Reception');
     expect(screen.getByRole('heading', { level: 1, name: 'Not allowed' })).toBeInTheDocument();
   });
 
@@ -72,13 +72,13 @@ describe('policy screen', () => {
     const u = userEvent.setup();
     renderPage();
     expect(await screen.findByText(/How long rooms stay held .* Now 3 days\./)).toBeInTheDocument();
-    await setValue(u, /Max Sales discount/, '15');
+    await setValue(u, /Max Reception discount/, '15');
     const before = screen
       .getByRole('heading', { name: 'Before you save' })
       .closest('section') as HTMLElement;
-    expect(within(before).getByText('Max Sales discount: 10 to 15')).toBeInTheDocument();
+    expect(within(before).getByText('Max Reception discount: 10 to 15')).toBeInTheDocument();
     expect(
-      within(before).getByText('Lowest price Sales can give alone: ₹1,800 to ₹1,700'),
+      within(before).getByText('Lowest price Reception can give alone: ₹1,800 to ₹1,700'),
     ).toBeInTheDocument();
     await setValue(u, /Quote validity/, '30');
     expect(screen.getByText(/How long rooms stay held .* Now 1 day 6 hours\./)).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe('policy screen', () => {
 
     const sales = createApiClient({
       baseUrl: BASE,
-      getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+      getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
     });
     const { valid_until } = await sales.previewQuote({
       organiser: { name: 'Fictional Events Pvt Ltd' },

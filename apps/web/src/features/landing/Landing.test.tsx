@@ -25,7 +25,7 @@ describe('landing page as the front door', () => {
   });
 
   it('is not shown to a signed-in person, who gets the dashboard', () => {
-    renderAt('/', 'Owner');
+    renderAt('/', 'ServiceManager');
     expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1, name: h1 })).not.toBeInTheDocument();
   });
@@ -153,7 +153,7 @@ describe('quote calculator', () => {
     const user = userEvent.setup();
     renderAt('/');
     await user.click(screen.getByRole('button', { name: '15% discount' }));
-    expect(within(banner()).getByText('Owner review required')).toBeInTheDocument();
+    expect(within(banner()).getByText('Service Manager review required')).toBeInTheDocument();
     expect(screen.getByText('Contribution is below the contribution floor.')).toBeInTheDocument();
     expect(screen.getByText(/Below floor: review required/)).toBeInTheDocument();
 
@@ -183,7 +183,7 @@ describe('quote calculator', () => {
     const user = userEvent.setup();
     renderAt('/');
     await user.click(screen.getByRole('button', { name: 'Breakfast cost unknown' }));
-    expect(within(banner()).getByText('Owner review required')).toBeInTheDocument();
+    expect(within(banner()).getByText('Service Manager review required')).toBeInTheDocument();
     expect(
       screen.getByText('A cost is unknown, so the margin cannot be checked.'),
     ).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe('quote calculator', () => {
     const rate = screen.getByLabelText('Rate per room per night');
     fireEvent.change(rate, { target: { value: '1000' } });
     expect(rate).toHaveValue('1000');
-    expect(within(banner()).getByText('Owner review required')).toBeInTheDocument();
+    expect(within(banner()).getByText('Service Manager review required')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'The sample booking' })).toHaveAttribute(
       'aria-pressed',
       'false',

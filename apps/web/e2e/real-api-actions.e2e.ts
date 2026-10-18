@@ -30,7 +30,7 @@ test.describe('real API actions (fresh database)', () => {
     });
 
     await openApp(page);
-    await signIn(page, 'Meera', 'Owner');
+    await signIn(page, 'Meera', 'ServiceManager');
 
     // Policy: the real API starts at version 0, so the first save is version 1.
     await goTo(page, 'Policy');
@@ -82,7 +82,7 @@ test.describe('real API actions (fresh database)', () => {
 
     // Extend and cancel a real quote (the fixture: 10 rooms at 2000 meets the floor).
     await signOut(page);
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     await buildQuote(page, { organiser: 'Actions Group', rooms: '10', rate: '2000' });
     await issueQuote(page, 'Issue quote');
     await expect(page.getByRole('heading', { name: 'Audit timeline' })).toBeVisible();

@@ -52,14 +52,14 @@ const quote: Quote = {
   terms_hash: '0'.repeat(64),
   issued_at: '2026-10-18T04:30:00.000Z',
   valid_until: '2026-10-21T04:30:00.000Z',
-  created_by: { user_id: 'sales-1', role: 'Sales' },
+  created_by: { user_id: 'sales-1', role: 'Reception' },
   created_at: '2026-10-18T04:30:00.000Z',
   updated_at: '2026-10-18T04:30:00.000Z',
   approval: null,
   review_required: false,
   payment: {
     received_at: '2026-10-19T06:00:00.000Z',
-    recorded_by: { user_id: 'owner-1', role: 'Owner' },
+    recorded_by: { user_id: 'owner-1', role: 'ServiceManager' },
     reference: 'UPI 4321',
   },
 };

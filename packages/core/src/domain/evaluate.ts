@@ -116,7 +116,7 @@ function assess(request: ResolvedQuoteRequest, ctx: EvaluationContext): Evaluati
     stay.nights,
     request.room_type,
     ctx.ratePlan,
-    // Sales gives a discount off the floor rate (D-057), in % or ₹; otherwise a rate or the plan.
+    // Reception gives a discount off the floor rate (D-057), in % or ₹; otherwise a rate or the plan.
     overrideRate(request, policy),
   );
   const extras = plan.final === null ? extrasFor(request, plan.offered_rooms, policy) : NO_EXTRAS;
@@ -182,7 +182,7 @@ export function evaluate(request: ResolvedQuoteRequest, ctx: EvaluationContext):
   };
 }
 
-/** The rate every night is priced at: a Sales discount, an explicit rate, or the plan. */
+/** The rate every night is priced at: a Reception discount, an explicit rate, or the plan. */
 function overrideRate(request: ResolvedQuoteRequest, policy: Policy): number | undefined {
   if (request.discount_pct !== undefined) return discountedRate(policy, request.discount_pct);
   if (request.discount_inr !== undefined) return amountOffRate(policy, request.discount_inr);

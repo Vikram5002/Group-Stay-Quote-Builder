@@ -19,7 +19,7 @@ test.describe('landing page', () => {
       .first()
       .click();
     await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     expect(problems).toEqual([]);
   });
 
@@ -55,7 +55,7 @@ test.describe('landing page', () => {
   }) => {
     await openApp(page, '/');
     await page.getByRole('button', { name: '15% discount' }).click();
-    const banner = page.locator('[role=status]', { hasText: 'Owner review required' });
+    const banner = page.locator('[role=status]', { hasText: 'Service Manager review required' });
     await expect(banner).toBeVisible();
     await expect(page.getByText('Contribution is below the contribution floor.')).toBeVisible();
 

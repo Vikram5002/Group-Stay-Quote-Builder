@@ -145,7 +145,7 @@ export const QuoteRequest = z.strictObject({
    * discount_pct, discount_inr or a rate.
    */
   discount_inr: UnitInr.optional(),
-  /** Why Sales offers these terms, for the Owner who reviews them. Not a commercial term. */
+  /** Why Reception offers these terms, for the Service Manager who reviews them. Not a commercial term. */
   note_for_owner: NonEmptyText(500).optional(),
   /** Overrides the policy default for per-guest inclusions. */
   guests_per_room_units: z.int().min(1).max(LIMITS.MAX_GUESTS_PER_ROOM).optional(),
@@ -155,6 +155,11 @@ export const QuoteRequest = z.strictObject({
    * nights (D-058). Same room type, pricing and inclusions; held all together or not at all.
    */
   additional_lines: z.array(StayLine).max(LIMITS.MAX_EXTRA_LINES).optional(),
+  /**
+   * Service Manager only: send the quote to the Owner with no discount; the Owner sets the
+   * discount and issues it (D-062). Not stored in the request; the quote carries the flag.
+   */
+  send_to_owner: z.boolean().optional(),
 });
 export type QuoteRequest = z.infer<typeof QuoteRequest>;
 
@@ -182,9 +187,9 @@ export const QuoteTotals = z.strictObject({
   list_revenue_inr: Inr,
   /** Discount off the full price in percent, display only; null when revenue is unknown. */
   discount_pct: Pct.nullable(),
-  /** The owner's limit for Sales, from the policy. */
+  /** The owner's limit for Reception, from the policy. */
   max_discount_pct: Pct,
-  /** Lowest room revenue Sales may agree to alone: minimum safe rate x room-nights. */
+  /** Lowest room revenue Reception may agree to alone: minimum safe rate x room-nights. */
   min_room_revenue_inr: Inr,
   floor_headroom_inr: Inr.nullable(),
   shortfall_inr: Inr.nullable(),
@@ -295,7 +300,9 @@ export const Quote = z.strictObject({
   approval: Approval.nullable(),
   /** Set when an amendment leaves a confirmed booking below the floor (BR-16). */
   review_required: z.boolean(),
-  /** Recorded by Sales or the Owner once the organiser has paid; unlocks the invoice (D-059). */
+  /** True while the quote waits for the Owner to set the discount (D-062). */
+  awaiting_owner: z.boolean().optional(),
+  /** Recorded by Reception or the Service Manager once the organiser has paid; unlocks the invoice (D-059). */
   payment: Payment.nullable().optional(),
   /** Every quote or invoice PDF emailed to the organiser. */
   emails: z.array(SentEmail).optional(),
@@ -316,6 +323,13 @@ const Reason = NonEmptyText(500);
 
 export const ApproveRequest = z.strictObject({ reason: Reason.min(5) });
 export type ApproveRequest = z.infer<typeof ApproveRequest>;
+
+/** The Owner's discount on a quote sent to them (D-062): any whole percent, no limit. */
+export const OwnerDiscountRequest = z.strictObject({
+  discount_pct: z.int().min(0).max(100),
+  reason: Reason.optional(),
+});
+export type OwnerDiscountRequest = z.infer<typeof OwnerDiscountRequest>;
 
 export const RejectRequest = z.strictObject({ reason: Reason.min(5) });
 export type RejectRequest = z.infer<typeof RejectRequest>;

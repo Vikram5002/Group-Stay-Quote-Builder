@@ -192,6 +192,8 @@ export const QUOTE_EVENT_TYPES = [
   'AMENDED',
   'CANCELLED',
   'EXPIRED',
+  'PAYMENT_RECORDED',
+  'EMAILED',
 ] as const;
 export const QuoteEventType = z.enum(QUOTE_EVENT_TYPES);
 export type QuoteEventType = z.infer<typeof QuoteEventType>;

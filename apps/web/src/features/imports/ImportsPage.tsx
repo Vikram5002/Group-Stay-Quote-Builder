@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import type { DragEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { IMPORT_KINDS } from '@c32/core';
 import type { ImportKind, ImportReport } from '@c32/core';
 import { useApi } from '../../app/ApiProvider';
 import { Alert, Button, Card, ProblemAlert, SelectField, TextField } from '../../components';
 import { newIdempotencyKey } from '../../lib/api';
+import { cn } from '../../lib/cn';
 import {
   fileFormat,
   MAX_IMPORT_BYTES,
@@ -40,6 +42,9 @@ export function ImportsPage() {
   const [report, setReport] = useState<ImportReport | null>(null);
   const [failure, setFailure] = useState<{ title: string; error: unknown } | null>(null);
   const commitKey = useRef(newIdempotencyKey());
+  // A new key empties the file field, to start again after an import.
+  const [inputKey, setInputKey] = useState(0);
+  const [dragging, setDragging] = useState(false);
 
   function resetResult() {
     setReport(null);
@@ -47,8 +52,7 @@ export function ImportsPage() {
     setFailure(null);
   }
 
-  async function onFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  async function onFile(file: File | undefined) {
     resetResult();
     setPicked(null);
     setFileError(undefined);
@@ -124,6 +128,19 @@ export function ImportsPage() {
     }
   }
 
+  function onDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragging(false);
+    void onFile(event.dataTransfer.files[0]);
+  }
+
+  function startAgain() {
+    resetResult();
+    setPicked(null);
+    setFileError(undefined);
+    setInputKey((k) => k + 1);
+  }
+
   const columns = IMPORT_COLUMNS[kind];
   const canCheck = picked?.parsed.ok === true && busy === null;
   // Why the chosen file cannot be checked, shown under the file field itself.
@@ -153,14 +170,33 @@ export function ImportsPage() {
                   </option>
                 ))}
               </SelectField>
-              <TextField
-                label="File (CSV or JSON)"
-                type="file"
-                accept=".csv,.json,text/csv,application/json"
-                onChange={(e) => void onFile(e)}
-                hint="Leave a cell empty if the value is unknown. It is imported as unknown, never as zero."
-                {...(fileProblem ? { error: fileProblem } : {})}
-              />
+              {/* The field also takes a file dropped anywhere on this area. */}
+              <div
+                data-testid="drop-zone"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={onDrop}
+                className={cn(
+                  'rounded-card border-2 border-dashed p-3',
+                  dragging ? 'border-brand bg-brand-soft' : 'border-border',
+                )}
+              >
+                <TextField
+                  key={inputKey}
+                  label="File (CSV or JSON)"
+                  type="file"
+                  accept=".csv,.json,text/csv,application/json"
+                  onChange={(e) => void onFile(e.target.files?.[0])}
+                  hint="Choose a file or drop it here. Leave a cell empty if the value is unknown: it is imported as unknown, never as zero."
+                  {...(fileProblem ? { error: fileProblem } : {})}
+                />
+                {picked && !fileProblem && (
+                  <p className="mt-2 text-sm font-semibold">Chosen: {picked.name}</p>
+                )}
+              </div>
             </div>
             <p className="mt-3 text-sm">
               <a
@@ -202,6 +238,18 @@ export function ImportsPage() {
             {report && (
               <div className="mt-4">
                 <ReportView report={report} busy={busy !== null} onCommit={() => void commit()} />
+              </div>
+            )}
+            {report && (report.status === 'COMMITTED' || report.status === 'UNCHANGED') && (
+              <div className="mt-4 flex flex-wrap items-center gap-4">
+                <Link to="/availability" className="font-semibold text-brand underline">
+                  {kind === 'inventory'
+                    ? 'See the rooms on the availability calendar'
+                    : 'See the nights on the availability calendar'}
+                </Link>
+                <Button variant="secondary" onClick={startAgain}>
+                  Import another file
+                </Button>
               </div>
             )}
           </Card>

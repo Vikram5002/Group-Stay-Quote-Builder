@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { ImportReport, ImportRowIssue } from '@c32/core';
-import { Alert, Badge, Button, DataTable } from '../../components';
+import { Alert, Badge, Button, CheckboxField, DataTable } from '../../components';
 import { counted, plural } from '../../lib/plural';
 
 const HEADLINE: Record<
@@ -51,20 +52,32 @@ export function ReportView({
     : HEADLINE[report.status];
   const errors = report.issues.filter((i) => i.severity === 'error').length;
   const warnings = report.issues.length - errors;
+  const [errorsOnly, setErrorsOnly] = useState(false);
+  const shown =
+    errorsOnly && errors > 0 ? report.issues.filter((i) => i.severity === 'error') : report.issues;
 
   return (
     <section aria-label="Check result" className="flex flex-col gap-4">
       <Alert tone={head.tone} title={head.title}>
         {counted(report.rows_total, 'row')} read: {report.rows_accepted} accepted,{' '}
         {report.rows_rejected} rejected. {counted(errors, 'error')}, {counted(warnings, 'warning')}.
-        <span className="mt-1 block text-xs">
-          File fingerprint: {report.content_sha256.slice(0, 12)}
-        </span>
+        <details className="mt-1 text-xs">
+          <summary className="cursor-pointer">Technical details</summary>
+          File fingerprint (SHA-256): {report.content_sha256.slice(0, 12)}. The same file always has
+          the same fingerprint.
+        </details>
       </Alert>
 
+      {errors > 0 && warnings > 0 && (
+        <CheckboxField
+          label={`Show errors only (${counted(errors, 'error')})`}
+          checked={errorsOnly}
+          onChange={(e) => setErrorsOnly(e.target.checked)}
+        />
+      )}
       <DataTable
         caption="Problems found, by row"
-        rows={sortIssues(report.issues)}
+        rows={sortIssues(shown)}
         rowKey={(i) => `${i.row}-${i.field}-${i.code}-${i.severity}`}
         empty={<p className="text-sm text-ink-muted">No problems found.</p>}
         columns={[

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { RouterProvider } from 'react-router-dom';
@@ -145,6 +145,38 @@ describe('importing a file', () => {
     await u.click(screen.getByRole('button', { name: 'Import 1 row' }));
     expect(await screen.findByText('Imported')).toBeInTheDocument();
     expect(store.inventory.map((r) => [r.date, r.total_units])).toEqual([['2026-11-01', 10]]);
+  });
+
+  it('can show only the errors when there are warnings too', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    const lines = ['date,room_type,rooms', '2026-11-01,standard,', '2026-11-02,standard,ten'];
+    await pick(u, csv(`${lines.join('\n')}\n`));
+    await u.click(screen.getByRole('button', { name: 'Check file' }));
+    const table = await screen.findByRole('table', { name: 'Problems found, by row' });
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
+    await u.click(screen.getByLabelText('Show errors only (1 error)'));
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0] as HTMLElement).getByText('Error')).toBeInTheDocument();
+  });
+
+  it('takes a dropped file, and offers the next steps after importing', async () => {
+    const u = userEvent.setup();
+    renderPage();
+    fireEvent.drop(screen.getByTestId('drop-zone'), { dataTransfer: { files: [csv(GOOD)] } });
+    expect(await screen.findByText('Chosen: inventory.csv')).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Check file' }));
+    await u.click(await screen.findByRole('button', { name: 'Import 2 rows' }));
+    expect(await screen.findByText('Imported')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'See the rooms on the availability calendar' }),
+    ).toHaveAttribute('href', '/availability');
+
+    await u.click(screen.getByRole('button', { name: 'Import another file' }));
+    expect(screen.queryByText('Imported')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Chosen:/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check file' })).toBeDisabled();
   });
 
   it('rejects a room type the property does not sell, and shows the bad value', async () => {

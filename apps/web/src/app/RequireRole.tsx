@@ -33,7 +33,8 @@ export function RequireRole({
           }
         >
           This screen is for {roles.map((r) => ROLE_LABEL[r]).join(' or ')}. You are signed in as{' '}
-          {session ? ROLE_LABEL[session.user.role] : 'nobody'}. Ask a Service Manager, or sign in with a different role.
+          {session ? ROLE_LABEL[session.user.role] : 'nobody'}. Ask a Service Manager, or sign in
+          with a different role.
         </EmptyState>
       </div>
     </div>

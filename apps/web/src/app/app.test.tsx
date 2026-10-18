@@ -66,13 +66,8 @@ describe('app shell and routing', () => {
       'Availability',
       'Imports and exports',
       'Policy',
-      'Evidence',
-      'Experiment log',
-      'Design system',
     ]);
-    expect(within(menu).getByText('About this project').closest('details')).not.toHaveAttribute(
-      'open',
-    );
+    expect(within(menu).queryByText('About this project')).not.toBeInTheDocument();
   });
 
   it('opens and closes the menu on small screens', async () => {
@@ -185,7 +180,7 @@ describe('sign-in and roles', () => {
   it('hides write screens from the menu for Viewer', () => {
     renderAt('/', 'Viewer');
     expect(screen.queryByRole('link', { name: 'New quote' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Evidence' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Quotes' })).toBeInTheDocument();
   });
 
   it('explains when a role opens a Service Manager-only address directly', () => {

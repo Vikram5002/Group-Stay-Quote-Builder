@@ -56,10 +56,15 @@ export async function signOut(page: Page) {
 export async function goTo(page: Page, menuName: string, heading = menuName) {
   await openMenu(page);
   const menu = page.getByRole('navigation', { name: 'Primary' });
-  // Project pages (Evidence, Experiment log, Design system) sit in a closed section.
-  const link = menu.getByRole('link', { name: menuName }).first();
-  if (!(await link.isVisible())) await menu.getByText('About this project').click();
-  await link.click();
+  // Project pages (Evidence, Experiment log, Design system) are not in the menu; open them by URL.
+  const PROJECT: Record<string, string> = {
+    Evidence: '/evidence',
+    'Experiment log': '/experiments',
+    'Design system': '/design-system',
+  };
+  const path = PROJECT[menuName];
+  if (path) await page.goto(path);
+  else await menu.getByRole('link', { name: menuName }).first().click();
   await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
 }
 

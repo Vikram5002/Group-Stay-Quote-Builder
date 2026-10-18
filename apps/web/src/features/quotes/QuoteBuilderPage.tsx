@@ -274,7 +274,7 @@ export function QuoteBuilderPage() {
       : !evaluation || stale
         ? 'Waiting for the price check…'
         : evaluation.decision === 'DECLINE'
-          ? 'This request cannot be offered. Change the dates, rooms or room type.'
+          ? 'Nothing can be offered for this request. Change the dates, rooms or room type.'
           : 'Some details need attention in the steps before.';
   // One line per field, in the order of the form.
   const summary = showErrors

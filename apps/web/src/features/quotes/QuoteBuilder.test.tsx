@@ -377,7 +377,7 @@ describe('quote builder: the live meter names the decision', () => {
     expect(await screen.findByText('This request cannot be offered')).toBeInTheDocument();
     // The issue button says why it cannot be used.
     expect(screen.getByRole('button', { name: 'Issue quote' })).toHaveAccessibleDescription(
-      'This request cannot be offered. Change the dates, rooms or room type.',
+      'Nothing can be offered for this request. Change the dates, rooms or room type.',
     );
     await waitFor(() =>
       expect(within(meter()).getByText('Cannot offer: no rooms available')).toBeInTheDocument(),

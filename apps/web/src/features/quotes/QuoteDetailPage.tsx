@@ -95,7 +95,7 @@ function CopyId({ quote }: { quote: Quote }) {
       <Button
         variant="ghost"
         className="min-h-0 px-2 py-1 text-xs"
-        aria-label="Copy the full quote id"
+        title="Copy the full quote id"
         onClick={() => {
           void navigator.clipboard
             ?.writeText(quote.quote_id)

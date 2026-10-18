@@ -132,7 +132,7 @@ describe('quote detail', () => {
 
     await u.click(await screen.findByRole('button', { name: 'Extend validity…' }));
     const hours = screen.getByLabelText('Extra hours');
-    await u.click(screen.getByRole('button', { name: '48 hours' }));
+    await u.click(screen.getByRole('radio', { name: '48 hours' }));
     expect(hours).toHaveValue(48);
     expect(screen.getByText(/; after this, until/)).toBeInTheDocument();
     await u.clear(hours);
@@ -372,7 +372,7 @@ describe('quote detail', () => {
 
     // The short reference is shown; the full id can be copied for support.
     expect(screen.getByText(quote.quote_id.slice(-8))).toBeInTheDocument();
-    await u.click(screen.getByRole('button', { name: 'Copy the full quote id' }));
+    await u.click(screen.getByRole('button', { name: 'Copy id' }));
     expect(await navigator.clipboard.readText()).toBe(quote.quote_id);
     click.mockRestore();
   });

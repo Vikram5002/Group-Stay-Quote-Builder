@@ -16,6 +16,7 @@ import {
   Button,
   Dialog,
   ProblemAlert,
+  SegmentedControl,
   TextAreaField,
   TextField,
   useToast,
@@ -392,18 +393,18 @@ export function QuoteActions({
             </Alert>
           ) : (
             <>
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Quick choices">
-                {QUICK_HOURS.filter((h) => h <= hoursLimit).map((h) => (
-                  <Button
-                    key={h}
-                    variant={String(h) === hours ? 'primary' : 'secondary'}
-                    aria-pressed={String(h) === hours}
-                    onClick={() => setHours(String(h))}
-                  >
-                    {counted(h, 'hour')}
-                  </Button>
-                ))}
-              </div>
+              {/* One radio group, so the choices are a single stop for the keyboard. */}
+              {QUICK_HOURS.some((h) => h <= hoursLimit) && (
+                <SegmentedControl
+                  legend="Quick choice"
+                  value={hours}
+                  options={QUICK_HOURS.filter((h) => h <= hoursLimit).map((h) => ({
+                    value: String(h),
+                    label: counted(h, 'hour'),
+                  }))}
+                  onChange={setHours}
+                />
+              )}
               <TextField
                 label="Extra hours"
                 type="number"

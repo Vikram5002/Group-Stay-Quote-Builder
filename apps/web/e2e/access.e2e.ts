@@ -34,8 +34,10 @@ test.describe('keyboard and sign-in', () => {
     await goTo(page, 'New quote');
     await page.getByLabel('Organiser name').focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByText('Enter a name')).toBeVisible();
-    await expect(page.getByText('Enter a valid date')).toBeVisible();
+    // Each field says what is wrong, and a summary above the form lists them.
+    await expect(page.locator('form').getByText('Enter a name')).toBeVisible();
+    await expect(page.locator('form').getByText('Enter a valid date')).toBeVisible();
+    await expect(page.getByText('Check 2 fields to continue')).toBeVisible();
     await expect(page.getByLabel('Organiser name')).toHaveAttribute('aria-invalid', 'true');
   });
 

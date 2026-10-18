@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { devAuthenticate } from './auth.js';
+import { LocalEmailSender } from './email/sender.js';
 import { LocalFileStore, localFilesRouter } from './files/store.js';
 import { log } from './log.js';
 import { evidenceFromDir } from './services/exports.js';
@@ -26,7 +27,8 @@ const files = new LocalFileStore(
 );
 
 createApp({
-  deps: depsFromEnv(env),
+  // Emails land in .local-files/outbox as .eml files instead of being sent.
+  deps: { ...depsFromEnv(env), email: new LocalEmailSender(files, 'quotes@localhost') },
   files: { files, evidence: evidenceFromDir(join(repo, 'evidence')) },
   register: (app) => app.use('/local-files', localFilesRouter(files)),
   authenticate: devAuthenticate,

@@ -8,6 +8,7 @@ import {
 } from './data/errors.js';
 import { IdempotencyConflictError } from './data/idempotency.js';
 import { InvalidCursorError } from './data/quotes.js';
+import { EmailNotSentError } from './email/sender.js';
 import { ServiceError } from './services/errors.js';
 
 /** Request input that failed validation; carries the field-level issues for the 422 body. */
@@ -29,6 +30,7 @@ export interface KnownError {
  * details stay in the logs.
  */
 export function knownError(err: unknown): KnownError | null {
+  if (err instanceof EmailNotSentError) return { code: 'INVALID_STATE', detail: err.message };
   if (err instanceof ValidationFailure) {
     return { code: 'VALIDATION_FAILED', detail: err.message, errors: err.issues };
   }

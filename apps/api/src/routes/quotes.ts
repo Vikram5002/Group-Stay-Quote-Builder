@@ -2,8 +2,10 @@ import {
   AmendmentRequest,
   ApproveRequest,
   CancelRequest,
+  EmailRequest,
   ExtendRequest,
   ListQuotesQuery,
+  RecordPaymentRequest,
   RejectRequest,
   Ulid,
   parseWith,
@@ -16,6 +18,7 @@ import { getEvents, getQuote, listQuotes } from '../data/quotes.js';
 import { ValidationFailure } from '../errors.js';
 import { amendQuote, cancelQuote, extendQuote } from '../services/changes.js';
 import { confirmQuote } from '../services/confirm-quote.js';
+import { emailDocument, recordPayment } from '../services/documents.js';
 import { createQuote } from '../services/create-quote.js';
 import { ServiceError } from '../services/errors.js';
 import { previewQuote } from '../services/preview-quote.js';
@@ -30,10 +33,14 @@ function reasonBody(req: Request, schema: typeof ApproveRequest | typeof RejectR
   return b.value.reason;
 }
 
-function body<S extends typeof AmendmentRequest | typeof CancelRequest | typeof ExtendRequest>(
-  req: Request,
-  schema: S,
-) {
+function body<
+  S extends
+    | typeof AmendmentRequest
+    | typeof CancelRequest
+    | typeof EmailRequest
+    | typeof ExtendRequest
+    | typeof RecordPaymentRequest,
+>(req: Request, schema: S) {
   const b = parseWith(schema, req.body ?? {});
   if (!b.ok) throw new ValidationFailure(b.issues);
   return b.value as ReturnType<S['parse']>;
@@ -124,5 +131,37 @@ export const quoteHandlers: Handlers = {
   cancelQuote: async ({ req, deps, actor }) => ({
     status: 200,
     body: await cancelQuote(deps, quoteId(req), actor, body(req, CancelRequest).reason ?? null),
+  }),
+
+  emailQuote: async ({ req, deps, actor }) => ({
+    status: 200,
+    body: await emailDocument(
+      deps,
+      quoteId(req),
+      actor,
+      'quote',
+      body(req, EmailRequest).to ?? null,
+    ),
+  }),
+
+  recordPayment: async ({ req, deps, actor }) => ({
+    status: 200,
+    body: await recordPayment(
+      deps,
+      quoteId(req),
+      actor,
+      body(req, RecordPaymentRequest).reference ?? null,
+    ),
+  }),
+
+  emailInvoice: async ({ req, deps, actor }) => ({
+    status: 200,
+    body: await emailDocument(
+      deps,
+      quoteId(req),
+      actor,
+      'invoice',
+      body(req, EmailRequest).to ?? null,
+    ),
   }),
 };

@@ -10,7 +10,7 @@ export interface AuthStackProps extends StackProps {
 }
 
 /**
- * AuthStack (blueprint 7.2, FR-09): a Cognito user pool with the Sales, Owner and Viewer groups
+ * AuthStack (blueprint 7.2, FR-09): a Cognito user pool with the Reception, Service Manager and Viewer groups
  * (the API reads them from the cognito:groups claim), a browser app client using the
  * authorization-code flow with PKCE (no client secret), and the hosted sign-in domain.
  * Users are created by an admin; there is no self sign-up for a staff tool.
@@ -43,8 +43,9 @@ export class AuthStack extends Stack {
 
     for (const [name, precedence] of [
       ['Owner', 1],
-      ['Sales', 2],
-      ['Viewer', 3],
+      ['ServiceManager', 2],
+      ['Reception', 3],
+      ['Viewer', 4],
     ] as const) {
       new cognito.CfnUserPoolGroup(this, `Group${name}`, {
         userPoolId: this.userPool.userPoolId,

@@ -66,7 +66,7 @@ describe('problem+json builder', () => {
     expect(problemSlug('APPROVAL_REQUIRED')).toBe('approval-required');
     expect(problem('APPROVAL_REQUIRED')).toEqual({
       type: 'https://c32.example/problems/approval-required',
-      title: 'Owner approval required',
+      title: 'Service Manager approval required',
       status: 409,
       code: 'APPROVAL_REQUIRED',
     });

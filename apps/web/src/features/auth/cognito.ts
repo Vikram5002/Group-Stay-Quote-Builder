@@ -17,7 +17,7 @@ export interface CognitoConfig {
 }
 
 const PKCE_KEY = 'c32.pkce';
-const ROLE_ORDER: readonly Role[] = ['Owner', 'Sales', 'Viewer'];
+const ROLE_ORDER: readonly Role[] = ['Owner', 'ServiceManager', 'Reception', 'Viewer'];
 
 export function cognitoConfig(): CognitoConfig | null {
   if (import.meta.env.VITE_AUTH_MODE !== 'cognito') return null;
@@ -127,7 +127,7 @@ export async function completeSignIn(
   const role = roleFromGroups(access['cognito:groups']);
   if (!role) {
     throw new CognitoSignInError(
-      'Your account has no role yet. Ask the owner to add you to Sales, Owner or Viewer.',
+      'Your account has no role yet. Ask the owner to add you to Owner, ServiceManager, Reception or Viewer.',
     );
   }
   const id = tokens.id_token ? jwtClaims(tokens.id_token) : {};

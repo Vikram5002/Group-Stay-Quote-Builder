@@ -8,7 +8,7 @@ import { ServiceError } from './errors.js';
 import { loadPolicy } from './inputs.js';
 
 /**
- * Quote and invoice documents (D-059). Sales or the Owner email the quote PDF; once the
+ * Quote and invoice documents (D-059). Reception or the Service Manager email the quote PDF; once the
  * organiser has paid, either records the payment, and only then can the invoice be emailed.
  * Every send and every payment is a version-checked write with its own audit event.
  */

@@ -19,7 +19,7 @@ export interface ComparedOption {
 const DECISION: Record<Evaluation['decision'], { tone: Tone; label: string }> = {
   OFFER: { tone: 'success', label: 'Ready to offer' },
   PARTIAL_OFFER: { tone: 'info', label: 'Partial offer' },
-  REVIEW: { tone: 'warning', label: 'Owner review required' },
+  REVIEW: { tone: 'warning', label: 'Service Manager review required' },
   DECLINE: { tone: 'danger', label: 'Cannot be offered' },
 };
 
@@ -27,7 +27,7 @@ const roomTypeLabel = (code: string) =>
   PROPERTY_ROOM_TYPES.find((t) => t.code === code)?.label ?? code;
 
 /**
- * Two versions of a quote side by side, each priced by the server with no rooms held. Sales
+ * Two versions of a quote side by side, each priced by the server with no rooms held. Reception
  * chooses one; only that one is issued, so the hotel never holds rooms twice for one group.
  */
 export function CompareOptions({

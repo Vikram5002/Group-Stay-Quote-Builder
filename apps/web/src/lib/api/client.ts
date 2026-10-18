@@ -14,6 +14,7 @@ import {
 import type {
   AmendmentRequest,
   ApproveRequest,
+  OwnerDiscountRequest,
   CancelRequest,
   EmailRequest,
   ExtendRequest,
@@ -160,6 +161,8 @@ export function createApiClient(options: ApiClientOptions) {
     confirmQuote: (id: string, o: MutationOptions) => action(id, 'confirm', undefined, o),
     approveQuote: (id: string, body: ApproveRequest, o: MutationOptions) =>
       action(id, 'approve', body, o),
+    ownerDiscount: (id: string, body: OwnerDiscountRequest, o: MutationOptions) =>
+      action(id, 'owner-discount', body, o),
     rejectQuote: (id: string, body: RejectRequest, o: MutationOptions) =>
       action(id, 'reject', body, o),
     extendQuote: (id: string, body: ExtendRequest, o: MutationOptions) =>

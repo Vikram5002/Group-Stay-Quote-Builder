@@ -41,13 +41,19 @@ export async function confirmQuote(
     throw new ServiceError('QUOTE_EXPIRED', `Quote expired at ${quote.valid_until}`);
   }
   if (quote.status === 'PENDING_REVIEW') {
-    throw new ServiceError('APPROVAL_REQUIRED', 'Owner approval is required before confirming');
+    throw new ServiceError(
+      'APPROVAL_REQUIRED',
+      'Service Manager approval is required before confirming',
+    );
   }
   if (quote.status !== 'OFFERED') {
     throw new ServiceError('INVALID_STATE', `Cannot confirm a ${quote.status} quote`);
   }
   if (needsApproval(quote)) {
-    throw new ServiceError('APPROVAL_REQUIRED', 'Owner approval is required before confirming');
+    throw new ServiceError(
+      'APPROVAL_REQUIRED',
+      'Service Manager approval is required before confirming',
+    );
   }
 
   const at = new Date(nowMs).toISOString();

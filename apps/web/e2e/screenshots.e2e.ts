@@ -47,7 +47,7 @@ test.describe('evidence screenshots', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
     await shot(page, '01-sign-in');
 
-    await signIn(page, 'Asha', 'Sales');
+    await signIn(page, 'Asha', 'Reception');
     await shot(page, '02-dashboard-empty');
 
     // The fixture: 10 rooms, 2 nights, rate 2000 (revenue 40000, contribution 24000).
@@ -63,10 +63,10 @@ test.describe('evidence screenshots', () => {
 
     // Below the floor: needs review.
     await buildQuote(page, { organiser: 'Discount Group', rooms: '10', rate: '1700' });
-    await expect(page.getByText('Owner review required')).toBeVisible();
+    await expect(page.getByText('Service Manager review required')).toBeVisible();
     await expect(page.getByText('Confirmed by the server.')).toBeVisible();
     await shot(page, '05-quote-builder-below-floor');
-    await issueQuote(page, 'Send for Owner review');
+    await issueQuote(page, 'Send for Service Manager review');
     await expect(page.getByRole('heading', { name: 'Audit timeline' })).toBeVisible();
     await shot(page, '06-quote-detail-pending-review');
 
@@ -80,7 +80,7 @@ test.describe('evidence screenshots', () => {
     await shot(page, '08-availability-calendar');
     await signOut(page);
 
-    await signIn(page, 'Meera', 'Owner');
+    await signIn(page, 'Meera', 'ServiceManager');
     await goTo(page, 'Review queue');
     await expect(page.getByRole('heading', { level: 2, name: 'Discount Group' })).toBeVisible();
     await shot(page, '09-review-queue');

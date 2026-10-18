@@ -3,15 +3,17 @@ import type { Tone } from '../../components';
 import { formatIst } from '../../lib/format';
 
 /**
- * Where a saved quote stands on Owner review, from its current status, approval and
+ * Where a saved quote stands on Service Manager review, from its current status, approval and
  * review_required flag. The evaluation's decision only says what the engine found when the quote
  * was issued, so it cannot say whether review is still needed.
  */
 export type ReviewState =
-  /** The engine found nothing that needs an Owner. */
+  /** The engine found nothing that needs a Service Manager. */
   | { kind: 'none' }
-  /** Waiting for an Owner (PENDING_REVIEW). */
+  /** Waiting for a Service Manager (PENDING_REVIEW). */
   | { kind: 'pending' }
+  /** Sent by the Service Manager for the Owner to set the discount (D-062). */
+  | { kind: 'owner' }
   /** Approved, and the approval still matches the terms (BR-11). */
   | { kind: 'approved'; approval: Approval }
   /** Approved for terms that have since changed, so the approval no longer applies. */
@@ -24,7 +26,8 @@ export type ReviewState =
 
 export function reviewState(quote: Quote): ReviewState {
   if (quote.review_required) return { kind: 'amended' };
-  if (quote.status === 'PENDING_REVIEW') return { kind: 'pending' };
+  if (quote.status === 'PENDING_REVIEW')
+    return { kind: quote.awaiting_owner ? 'owner' : 'pending' };
   if (quote.approval) {
     return quote.approval.terms_hash === quote.terms_hash
       ? { kind: 'approved', approval: quote.approval }
@@ -40,6 +43,8 @@ export function reviewBadge(state: ReviewState): { tone: Tone; label: string } |
   switch (state.kind) {
     case 'pending':
       return { tone: 'warning', label: 'Needs review' };
+    case 'owner':
+      return { tone: 'info', label: 'With the Owner' };
     case 'approved':
       return { tone: 'success', label: 'Approved' };
     case 'outdated':
@@ -64,15 +69,28 @@ export function reviewBanner(quote: Quote, state = reviewState(quote)): ReviewBa
     case 'pending':
       return {
         tone: 'warning',
-        title: 'Owner review required',
-        note: 'An Owner who did not create this quote must approve it before it can be confirmed.',
+        title: 'Service Manager review required',
+        note: 'A Service Manager who did not create this quote must approve it before it can be confirmed.',
+      };
+    case 'owner':
+      return {
+        tone: 'info',
+        title: 'Waiting for the Owner',
+        note: 'The Service Manager sent this quote to the Owner, who sets the discount and issues it. The rooms stay held meanwhile.',
       };
     case 'approved':
+      if (state.approval.approved_by.role === 'Owner') {
+        return {
+          tone: 'success',
+          title: 'Price set by the Owner',
+          note: approvalLine(state.approval),
+        };
+      }
       return {
         tone: 'success',
         title: quote.evaluation.reasons.includes('FLOOR_BREACH')
           ? 'Approved below the floor'
-          : 'Approved by an Owner',
+          : 'Approved by a Service Manager',
         note: approvalLine(state.approval),
       };
     case 'outdated':
@@ -90,9 +108,9 @@ export function reviewBanner(quote: Quote, state = reviewState(quote)): ReviewBa
           : {}),
       };
     case 'rejected':
-      return { tone: 'danger', title: 'Rejected by an Owner' };
+      return { tone: 'danger', title: 'Rejected by a Service Manager' };
     case 'closed':
-      return { tone: 'info', title: 'Closed before an Owner decided' };
+      return { tone: 'info', title: 'Closed before a Service Manager decided' };
     default:
       return null;
   }

@@ -27,6 +27,7 @@ import type { BackState } from '../quotes/QuoteDetailPage';
 import { useQuoteList } from '../quotes/queries';
 import { StatusBadge } from '../quotes/StatusBadge';
 import { counted } from '../../lib/plural';
+import { BUILDERS, can } from '../../lib/roles';
 
 /** The page opens on today and the 13 nights after it, so current holds are in view. */
 const DEFAULT_NIGHTS = 14;
@@ -170,8 +171,7 @@ function NightDetail({ cell, roomType, today }: { cell: Cell; roomType: string; 
   const { session } = useAuth();
   const heading = `Night of ${dayLabel(cell.date)}`;
   const label = ROOM_TYPES.find((t) => t.code === roomType)?.label ?? roomType;
-  const canQuote =
-    (session?.user.role === 'Sales' || session?.user.role === 'Owner') && cell.date >= today;
+  const canQuote = can(BUILDERS, session?.user.role) && cell.date >= today;
   const start: RequoteState = {
     prefill: { ...initialForm, checkIn: cell.date, roomType },
     message: `Check-in ${formatDate(cell.date)} and ${label} rooms filled in from the calendar.`,
@@ -262,7 +262,7 @@ function rangeError(from: string, to: string): string | undefined {
 export function AvailabilityPage() {
   const api = useApi();
   const [roomType, setRoomType] = useState<string>(ROOM_TYPES[0].code);
-  // Today in the property time zone: the policy's for an Owner, else the documented default (IST).
+  // Today in the property time zone: the policy's for a Service Manager, else the documented default (IST).
   const policy = usePolicy();
   const today = localDate(Date.now(), policy.data?.timezone ?? DEFAULT_POLICY.timezone);
   // Null until the person picks a date, so the default follows the zone once the policy loads.

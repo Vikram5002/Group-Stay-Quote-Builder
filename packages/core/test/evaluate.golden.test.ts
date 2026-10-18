@@ -138,7 +138,7 @@ describe('T10 night 1 has 10 available, night 2 has 8; request 12', () => {
     expect(e.totals.contribution_floor_inr).toBe(16000);
   });
 
-  it('a partial offer over the Sales discount limit goes to REVIEW (D-019)', () => {
+  it('a partial offer over the Reception discount limit goes to REVIEW (D-019)', () => {
     const { evaluation: e } = run({ rooms: 12, rate_per_room_night_inr: 1700 }, ctx({ inventory }));
     expect(e).toMatchObject({
       decision: 'REVIEW',
@@ -211,7 +211,7 @@ describe('T05 public check 3: a discount below the floor needs review', () => {
     expect(e.totals).toMatchObject({ contribution_inr: 14000, shortfall_inr: 6000 });
   });
 
-  it('rate at the lowest Sales rate (1800, 10% off) is a clean OFFER; 1799 is not', () => {
+  it('rate at the lowest Reception rate (1800, 10% off) is a clean OFFER; 1799 is not', () => {
     expect(run({ rate_per_room_night_inr: 1799 }).evaluation.decision).toBe('REVIEW');
     expect(run({ rate_per_room_night_inr: 1800 }).evaluation).toMatchObject({
       decision: 'OFFER',
@@ -243,7 +243,7 @@ describe('T14 breakfast bundled at 150 per guest-night (assumption A6), 2 guests
     });
   });
 
-  it('minimum safe rate is the lowest Sales rate plus breakfast per room-night: 1800 + 300 = 2100', () => {
+  it('minimum safe rate is the lowest Reception rate plus breakfast per room-night: 1800 + 300 = 2100', () => {
     expect(e.totals.min_rate_per_room_night_inr).toBe(2100);
     expect(e.trail).toContain(
       'Breakfast: 10 rooms x 2 guests x 2 nights = 40 guest-nights x 150 = 6000 cost, included in the rate',

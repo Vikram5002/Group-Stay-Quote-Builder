@@ -40,7 +40,7 @@ describe.skipIf(!hasDb)('imports and exports over HTTP (DynamoDB Local)', () => 
   afterEach(async () => drop());
 
   const owner = (method: 'get' | 'post', path: string) =>
-    request(app)[method](path).set('x-dev-user', 'owner-1:Owner');
+    request(app)[method](path).set('x-dev-user', 'owner-1:ServiceManager');
 
   async function uploaded(text: string) {
     const res = await owner('post', '/v1/imports/inventory/uploads')
@@ -107,8 +107,8 @@ describe.skipIf(!hasDb)('imports and exports over HTTP (DynamoDB Local)', () => 
     expect(entries.has('manifest.json')).toBe(true);
   });
 
-  it('imports are Owner-only; exports are open to every signed-in role', async () => {
-    for (const user of ['s-1:Sales', 'v-1:Viewer']) {
+  it('imports are Service Manager-only; exports are open to every signed-in role', async () => {
+    for (const user of ['s-1:Reception', 'v-1:Viewer']) {
       await request(app)
         .post('/v1/imports/inventory/uploads')
         .set('x-dev-user', user)

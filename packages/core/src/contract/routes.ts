@@ -8,6 +8,7 @@ import { Policy, PolicyUpdateRequest } from './policy.js';
 import {
   AmendmentRequest,
   ApproveRequest,
+  OwnerDiscountRequest,
   CancelRequest,
   EmailRequest,
   ExtendRequest,
@@ -48,8 +49,16 @@ export interface RouteSpec {
   responses: Readonly<Record<number, RouteResponse>>;
 }
 
-const ALL: readonly Role[] = ['Sales', 'Owner', 'Viewer'];
-const SALES_OWNER: readonly Role[] = ['Sales', 'Owner'];
+const ALL: readonly Role[] = ['Reception', 'ServiceManager', 'Owner', 'Viewer'];
+/** Build quotes: Reception and the Service Manager (the Owner does not build quotes, D-062). */
+const BUILDERS: readonly Role[] = ['Reception', 'ServiceManager'];
+/** Work on an existing quote or booking: the builders and the Owner. */
+const BOOKING: readonly Role[] = ['Reception', 'ServiceManager', 'Owner'];
+/** Approve or reject reviews: the Service Manager only. */
+const REVIEWER: readonly Role[] = ['ServiceManager'];
+/** Imports and policy: the Service Manager and the Owner. */
+const ADMIN: readonly Role[] = ['ServiceManager', 'Owner'];
+/** The Owner's own discount on quotes sent to them (D-062). */
 const OWNER: readonly Role[] = ['Owner'];
 
 const ok = (description: string, schema?: z.ZodType): RouteResponse =>
@@ -71,7 +80,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/preview',
     summary: 'Stateless evaluation: no hold, no save.',
-    roles: SALES_OWNER,
+    roles: BUILDERS,
     idempotent: false,
     request: QuoteRequest,
     responses: { 200: ok('Evaluation.', QuotePreviewResponse) },
@@ -81,7 +90,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes',
     summary: 'Evaluate, acquire holds, save the quote and schedule expiry.',
-    roles: SALES_OWNER,
+    roles: BUILDERS,
     idempotent: true,
     request: QuoteRequest,
     responses: {
@@ -156,7 +165,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/{id}/confirm',
     summary: 'Confirm if allowed (BR-10).',
-    roles: SALES_OWNER,
+    roles: BOOKING,
     idempotent: true,
     responses: {
       200: ok('Confirmed.', Quote),
@@ -169,8 +178,8 @@ export const ROUTES: readonly RouteSpec[] = [
     operationId: 'approveQuote',
     method: 'post',
     path: '/v1/quotes/{id}/approve',
-    summary: 'Owner approves a floor breach with a reason; four-eyes enforced (BR-12).',
-    roles: OWNER,
+    summary: 'Service Manager approves a floor breach with a reason; four-eyes enforced (BR-12).',
+    roles: REVIEWER,
     idempotent: true,
     request: ApproveRequest,
     responses: {
@@ -181,11 +190,26 @@ export const ROUTES: readonly RouteSpec[] = [
     },
   },
   {
+    operationId: 'ownerDiscount',
+    method: 'post',
+    path: '/v1/quotes/{id}/owner-discount',
+    summary: 'Owner sets any discount on a quote sent to them and issues it (D-062).',
+    roles: OWNER,
+    idempotent: true,
+    request: OwnerDiscountRequest,
+    responses: {
+      200: ok('Discount applied; status OFFERED.', Quote),
+      404: ok('NOT_FOUND.'),
+      409: ok('INVALID_STATE.'),
+      410: ok('QUOTE_EXPIRED; holds released.'),
+    },
+  },
+  {
     operationId: 'rejectQuote',
     method: 'post',
     path: '/v1/quotes/{id}/reject',
-    summary: 'Owner rejects and releases holds.',
-    roles: OWNER,
+    summary: 'Service Manager rejects and releases holds.',
+    roles: REVIEWER,
     idempotent: true,
     request: RejectRequest,
     responses: { 200: ok('Rejected.', Quote), 404: ok('NOT_FOUND.'), 409: ok('INVALID_STATE.') },
@@ -195,7 +219,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/{id}/extend',
     summary: 'Extend validity within policy; re-checks holds.',
-    roles: SALES_OWNER,
+    roles: BOOKING,
     idempotent: true,
     request: ExtendRequest,
     responses: {
@@ -210,7 +234,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/{id}/amendments',
     summary: 'Partial cancellation: release rooms first, then re-check the floor (BR-16).',
-    roles: SALES_OWNER,
+    roles: BOOKING,
     idempotent: true,
     request: AmendmentRequest,
     responses: { 200: ok('Amended.', Quote), 404: ok('NOT_FOUND.'), 409: ok('INVALID_STATE.') },
@@ -220,7 +244,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/{id}/cancel',
     summary: 'Full cancellation and release.',
-    roles: SALES_OWNER,
+    roles: BOOKING,
     idempotent: true,
     request: CancelRequest,
     responses: { 200: ok('Cancelled.', Quote), 404: ok('NOT_FOUND.'), 409: ok('INVALID_STATE.') },
@@ -230,7 +254,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/{id}/email-quote',
     summary: 'Email the quote PDF to the organiser (D-059).',
-    roles: SALES_OWNER,
+    roles: BOOKING,
     idempotent: true,
     request: EmailRequest,
     responses: {
@@ -245,7 +269,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/{id}/payment',
     summary: 'Record that the organiser has paid a confirmed booking.',
-    roles: SALES_OWNER,
+    roles: BOOKING,
     idempotent: true,
     request: RecordPaymentRequest,
     responses: { 200: ok('Recorded.', Quote), 404: ok('NOT_FOUND.'), 409: ok('INVALID_STATE.') },
@@ -255,7 +279,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/quotes/{id}/email-invoice',
     summary: 'Email the invoice PDF; only after payment is recorded.',
-    roles: SALES_OWNER,
+    roles: BOOKING,
     idempotent: true,
     request: EmailRequest,
     responses: {
@@ -308,7 +332,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/imports/{kind}/uploads',
     summary: 'Get a presigned S3 URL for an inventory or rates file.',
-    roles: OWNER,
+    roles: ADMIN,
     idempotent: true,
     request: ImportUploadRequest,
     responses: { 200: ok('Upload URL.', ImportUploadResponse) },
@@ -318,7 +342,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/imports/{kind}/{importId}/validate',
     summary: 'Dry run: row-level report, nothing written.',
-    roles: OWNER,
+    roles: ADMIN,
     idempotent: true,
     responses: { 200: ok('Validation report.', ImportReport), 404: ok('NOT_FOUND.') },
   },
@@ -327,7 +351,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'post',
     path: '/v1/imports/{kind}/{importId}/commit',
     summary: 'Commit a validated import. Identical content is a no-op.',
-    roles: OWNER,
+    roles: ADMIN,
     idempotent: true,
     responses: {
       200: ok('Commit report.', ImportReport),
@@ -366,7 +390,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'get',
     path: '/v1/policy',
     summary: 'Read the property policy.',
-    roles: OWNER,
+    roles: ADMIN,
     idempotent: false,
     responses: { 200: ok('Policy.', Policy) },
   },
@@ -375,7 +399,7 @@ export const ROUTES: readonly RouteSpec[] = [
     method: 'put',
     path: '/v1/policy',
     summary: 'Update the policy with an optimistic version check.',
-    roles: OWNER,
+    roles: ADMIN,
     idempotent: false,
     request: PolicyUpdateRequest,
     responses: { 200: ok('Updated policy.', Policy), 409: ok('VERSION_CONFLICT.') },

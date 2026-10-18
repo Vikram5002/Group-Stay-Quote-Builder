@@ -20,7 +20,7 @@ describe.skipIf(!hasDb)('amend, extend and cancel over HTTP (DynamoDB Local)', (
   afterEach(async () => drop());
 
   const post = (path: string, payload: object = {}) =>
-    request(app).post(path).set('x-dev-user', 'sales-1:Sales').send(payload);
+    request(app).post(path).set('x-dev-user', 'sales-1:Reception').send(payload);
 
   async function confirmed() {
     const q = Quote.parse((await post('/v1/quotes', fixture.request).expect(201)).body);

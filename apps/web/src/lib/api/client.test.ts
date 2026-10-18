@@ -14,7 +14,7 @@ afterEach(() => server.resetHandlers());
 
 let unauthenticated = 0;
 
-function clientFor(user: string | null, role: Role = 'Sales'): ApiClient {
+function clientFor(user: string | null, role: Role = 'Reception'): ApiClient {
   return createApiClient({
     baseUrl: 'http://api.test',
     getToken: () => (user ? makeMockToken({ user_id: user, role }) : null),
@@ -172,9 +172,9 @@ describe('quote lifecycle', () => {
     );
     expect(blocked.code).toBe('APPROVAL_REQUIRED');
 
-    // The creator, even as an Owner, cannot approve their own quote.
+    // The creator, even as a Service Manager, cannot approve their own quote.
     const self = await failure(
-      clientFor('asha', 'Owner').approveQuote(
+      clientFor('asha', 'ServiceManager').approveQuote(
         quote.quote_id,
         { reason: 'Looks fine to me' },
         {
@@ -184,9 +184,9 @@ describe('quote lifecycle', () => {
     );
     expect(self.code).toBe('FORBIDDEN');
 
-    // Sales cannot approve at all.
+    // Reception cannot approve at all.
     const wrongRole = await failure(
-      clientFor('ravi', 'Sales').approveQuote(
+      clientFor('ravi', 'Reception').approveQuote(
         quote.quote_id,
         { reason: 'Looks fine to me' },
         {
@@ -196,7 +196,7 @@ describe('quote lifecycle', () => {
     );
     expect(wrongRole.code).toBe('FORBIDDEN');
 
-    const owner = clientFor('meera', 'Owner');
+    const owner = clientFor('meera', 'ServiceManager');
     const approved = await owner.approveQuote(
       quote.quote_id,
       { reason: 'Repeat client, strategic' },
@@ -305,7 +305,7 @@ describe('errors', () => {
       }),
     );
     expect(error.code).toBe('FORBIDDEN');
-    expect(error.friendly.nextStep).toMatch(/Owner/);
+    expect(error.friendly.nextStep).toMatch(/Service Manager/);
   });
 
   it('returns NOT_FOUND for an unknown quote', async () => {
@@ -343,8 +343,8 @@ describe('policy and health', () => {
     expect(health.contract_version).toBe('0.3.0');
   });
 
-  it('is Owner only and uses an optimistic version check', async () => {
-    const owner = clientFor('meera', 'Owner');
+  it('is Service Manager only and uses an optimistic version check', async () => {
+    const owner = clientFor('meera', 'ServiceManager');
     expect((await failure(clientFor('asha').getPolicy())).code).toBe('FORBIDDEN');
 
     const policy = await owner.getPolicy();
@@ -390,9 +390,9 @@ describe('how the caller is identified', () => {
   it('sends only x-dev-user in dev style, as the local API expects', async () => {
     const headers = await headersSentWith({
       authStyle: 'dev',
-      getDevUser: () => ({ user_id: 'asha', role: 'Sales' }),
+      getDevUser: () => ({ user_id: 'asha', role: 'Reception' }),
     });
-    expect(headers.get('x-dev-user')).toBe('asha:Sales');
+    expect(headers.get('x-dev-user')).toBe('asha:Reception');
     expect(headers.get('authorization')).toBeNull();
   });
 

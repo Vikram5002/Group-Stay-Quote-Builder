@@ -19,6 +19,7 @@ import {
 import { ApiError, newIdempotencyKey } from '../../lib/api';
 import { counted } from '../../lib/plural';
 import { usePolicy } from '../policy/queries';
+import { useAuth } from '../auth/auth';
 import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
 import { friendlyIssue, initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
 import type { QuoteForm } from './form';
@@ -55,6 +56,7 @@ function stepFromUrl(search: string): number {
 
 export function QuoteBuilderPage() {
   const api = useApi();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -80,7 +82,7 @@ export function QuoteBuilderPage() {
   const patch = (changes: Partial<QuoteForm>) =>
     setOptions((list) => list.map((f, i) => (i === active ? { ...f, ...changes } : f)));
 
-  // Only an Owner can read the policy; otherwise the documented default zone (IST, which every
+  // Only a Service Manager can read the policy; otherwise the documented default zone (IST, which every
   // screen displays) is used here, and the server checks the date with the real policy.
   const policy = usePolicy();
   const timeZone = policy.data?.timezone ?? DEFAULT_POLICY.timezone;
@@ -134,16 +136,24 @@ export function QuoteBuilderPage() {
     return intent.current.key;
   };
 
-  // An Owner must approve this quote, so Sales can say why it is offered on these terms.
+  // A Service Manager must approve this quote, so Reception can say why it is offered on these terms.
   const needsOwner = current && preview?.evaluation.decision === 'REVIEW';
 
   const issue = useMutation({
     // Confirmation is never optimistic: nothing changes on screen until the server answers.
-    mutationFn: () => {
+    mutationFn: (toOwner: boolean) => {
       if (!request) throw new Error('The request is not valid yet');
       // The note travels with the final request only, so typing it never re-prices the quote.
       const note = form.noteForOwner.trim();
-      const body = note && needsOwner ? { ...request, note_for_owner: note } : request;
+      const noted = note && needsOwner ? { ...request, note_for_owner: note } : request;
+      // Sent to the Owner (D-062): no discount or rate; the Owner sets the price.
+      const {
+        discount_pct: _pct,
+        discount_inr: _inr,
+        rate_per_room_night_inr: _rate,
+        ...unpriced
+      } = noted;
+      const body = toOwner ? { ...unpriced, send_to_owner: true } : noted;
       return api.createQuote(body, { idempotencyKey: keyFor(JSON.stringify(body)) });
     },
     onSuccess: (quote) => {
@@ -512,14 +522,14 @@ export function QuoteBuilderPage() {
                     </Button>
                   </Card>
                   {needsOwner && (
-                    <Card title="Note for the Owner">
+                    <Card title="Note for the Service Manager">
                       <TextAreaField
                         label="Why these terms? (optional)"
                         name="note_for_owner"
                         maxLength={500}
                         value={form.noteForOwner}
                         onChange={(e) => patch({ noteForOwner: e.target.value })}
-                        hint="The Owner sees this with the quote in the review queue."
+                        hint="The Service Manager sees this with the quote in the review queue."
                       />
                     </Card>
                   )}
@@ -560,11 +570,23 @@ export function QuoteBuilderPage() {
                 <Button
                   loading={issue.isPending}
                   disabled={!canIssue}
-                  onClick={() => issue.mutate()}
+                  onClick={() => issue.mutate(false)}
                   {...(issueBlocked ? { 'aria-describedby': 'issue-blocked' } : {})}
                 >
-                  {evaluation?.decision === 'REVIEW' ? 'Send for Owner review' : 'Issue quote'}
+                  {evaluation?.decision === 'REVIEW'
+                    ? 'Send for Service Manager review'
+                    : 'Issue quote'}
                 </Button>
+                {session?.user.role === 'ServiceManager' && (
+                  <Button
+                    variant="secondary"
+                    loading={issue.isPending}
+                    disabled={!request || evaluation?.decision === 'DECLINE'}
+                    onClick={() => issue.mutate(true)}
+                  >
+                    Send to Owner for discount
+                  </Button>
+                )}
               </div>
             )}
           </div>

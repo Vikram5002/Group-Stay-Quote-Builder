@@ -14,7 +14,7 @@ test.describe('real API (seeded with the case fixture)', () => {
 
   test.beforeEach(async ({ page }) => {
     await openApp(page);
-    await signIn(page, 'Smoke Sales', 'Sales');
+    await signIn(page, 'Smoke Reception', 'Reception');
   });
 
   test('the fixture quote is priced by the real engine: 40000 revenue, 24000 contribution', async ({
@@ -30,7 +30,7 @@ test.describe('real API (seeded with the case fixture)', () => {
 
   test('a rate below the floor needs review and offers the minimum safe rate', async ({ page }) => {
     await buildQuote(page, { organiser: 'Smoke Group', rooms: '10', rate: '1700' });
-    await expect(page.getByText('Owner review required')).toBeVisible();
+    await expect(page.getByText('Service Manager review required')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Use rate 1800' })).toBeVisible();
   });
 

@@ -25,12 +25,12 @@ test('every screen fits a phone without sideways scrolling', async ({ page }) =>
   await expect(page.getByRole('heading', { level: 1, name: 'Sign in' })).toBeVisible();
   await expectFits(page, 'sign-in');
 
-  await signIn(page, 'Asha', 'Owner');
+  await signIn(page, 'Asha', 'ServiceManager');
   await expectFits(page, 'dashboard');
 
   await buildQuote(page, { organiser: 'Phone Group', rate: '1700' });
   await expectFits(page, 'quote builder, review step');
-  await issueQuote(page, 'Send for Owner review');
+  await issueQuote(page, 'Send for Service Manager review');
   await expect(page.getByRole('heading', { name: 'Audit timeline' })).toBeVisible();
   await expectFits(page, 'quote detail');
 
@@ -56,7 +56,7 @@ test('every screen fits a phone without sideways scrolling', async ({ page }) =>
 
 test('primary actions are easy to touch', async ({ page }) => {
   await openApp(page);
-  await signIn(page, 'Asha', 'Sales');
+  await signIn(page, 'Asha', 'Reception');
   await goTo(page, 'New quote');
   for (const control of [
     page.getByRole('button', { name: 'Next' }),

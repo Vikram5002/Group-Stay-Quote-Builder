@@ -30,7 +30,7 @@ describe('T20 partial cancellation 10 to 7 rooms (blueprint 5.8)', () => {
     expect(r.totals).toMatchObject({ contribution_floor_inr: 14000, floor_headroom_inr: 2800 });
   });
 
-  it('a booking approved over the Sales limit stays below the floor: owner review', () => {
+  it('a booking approved over the Reception limit stays below the floor: owner review', () => {
     const r = amendTotals(discountedTotals, 10, 7, DEFAULT_POLICY);
     expect(r.floor_ok).toBe(false);
     expect(r.totals.shortfall_inr).toBe(4200); // 300 under on 14 room-nights

@@ -30,8 +30,8 @@ const FEATURES = [
   },
   {
     icon: IconShield,
-    title: 'Owner approval, two sets of eyes',
-    text: 'A quote below your minimum waits for an Owner. The person who made it cannot approve it.',
+    title: 'Service Manager approval, two sets of eyes',
+    text: 'A quote below your minimum waits for a Service Manager. The person who made it cannot approve it.',
   },
   {
     icon: IconList,

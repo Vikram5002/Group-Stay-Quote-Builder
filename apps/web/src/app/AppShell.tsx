@@ -7,6 +7,7 @@ import { useAuth } from '../features/auth/auth';
 import { OPEN_STATUSES } from '../features/quotes/labels';
 import { QUOTES_KEY, useNow, useQuoteList } from '../features/quotes/queries';
 import { cn } from '../lib/cn';
+import { ROLE_LABEL } from '../lib/roles';
 import { useApi } from './ApiProvider';
 import { DESIGN_SYSTEM_PATH, NAV_ITEMS } from './routes';
 import type { NavItem } from './routes';
@@ -64,15 +65,21 @@ function CountBadge({ count, label }: { count: number; label: string }) {
   );
 }
 
-/** Quotes waiting for an Owner, for the Review queue badge. Shares the queue's own query. */
-function usePendingReviewCount(enabled: boolean): number {
+/**
+ * Quotes waiting for this person, for the Review queue badge: the Service Manager's reviews, or the
+ * quotes sent to the Owner for a discount (D-062). Shares the queue's own query.
+ */
+function usePendingReviewCount(role: string | undefined): number {
+  const enabled = role === 'ServiceManager' || role === 'Owner';
   const api = useApi();
   const pending = useQuery({
     queryKey: [...QUOTES_KEY, 'review'],
     queryFn: () => api.listQuotes({ status: 'PENDING_REVIEW', limit: '100' }),
     enabled,
   });
-  return enabled ? (pending.data?.items.length ?? 0) : 0;
+  if (!enabled) return 0;
+  const forOwner = role === 'Owner';
+  return (pending.data?.items ?? []).filter((q) => Boolean(q.awaiting_owner) === forOwner).length;
 }
 
 /** Open quotes whose hold ends within a day, for the Dashboard badge. */
@@ -100,7 +107,7 @@ export function AppShell() {
     !item.roles || (role !== undefined && item.roles.includes(role));
   const items = NAV_ITEMS.filter(allowed);
   const action = items.find((i) => i.group === 'action');
-  const pendingReviews = usePendingReviewCount(role === 'Owner');
+  const pendingReviews = usePendingReviewCount(role);
   const expiringSoon = useExpiringSoonCount(Boolean(session));
   const projectOpen = items.some((i) => i.group === 'project' && i.path === pathname);
 
@@ -277,7 +284,9 @@ export function AppShell() {
                   <span className="block truncate font-semibold text-ink">
                     {session.displayName}
                   </span>
-                  <span className="block text-xs text-on-nav-muted">Role: {session.user.role}</span>
+                  <span className="block text-xs text-on-nav-muted">
+                    Role: {ROLE_LABEL[session.user.role]}
+                  </span>
                 </span>
               </div>
               <Button

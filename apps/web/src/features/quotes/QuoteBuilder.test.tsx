@@ -41,7 +41,7 @@ beforeEach(() => {
 function renderBuilder(path = '/quotes/new') {
   const router = createTestRouter([path]);
   const view = render(
-    <Providers initialSession={mockSession('Sales', 'Asha')} baseUrl="http://api.test">
+    <Providers initialSession={mockSession('Reception', 'Asha')} baseUrl="http://api.test">
       <RouterProvider router={router} />
     </Providers>,
   );
@@ -93,7 +93,7 @@ describe('quote builder: the three rubric flows', () => {
       '40,000',
     );
     expect(within(totals).getAllByText(/24,000/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Within the Sales limit').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Within the Reception limit').length).toBeGreaterThan(0);
     expect(screen.getByText(/20 x 2000 = 40000 room revenue/)).toBeInTheDocument();
 
     // The button stays disabled while the server is still confirming the latest form.
@@ -124,9 +124,9 @@ describe('quote builder: the three rubric flows', () => {
     renderBuilder();
     await toReview(u, { rate: '1700' });
 
-    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    expect(await screen.findByText('Service Manager review required')).toBeInTheDocument();
     expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Send for Owner review' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Send for Service Manager review' })).toBeEnabled();
 
     await u.click(screen.getByRole('button', { name: 'Use rate 1800' }));
     expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
@@ -138,7 +138,7 @@ describe('quote builder: the three rubric flows', () => {
     renderBuilder();
     await toReview(u, { roomType: 'deluxe', rooms: '2' });
 
-    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    expect(await screen.findByText('Service Manager review required')).toBeInTheDocument();
     expect(screen.getByText(/A required cost is unknown/)).toBeInTheDocument();
     const totals = screen
       .getByRole('heading', { name: 'Totals' })
@@ -237,7 +237,7 @@ describe('quote builder: forms and live meter', () => {
     expect(screen.getAllByText(/Over the limit: owner review/).length).toBeGreaterThan(0);
   });
 
-  it('Sales prices by a discount: within the limit is fine, over it goes to the owner', async () => {
+  it('Reception prices by a discount: within the limit is fine, over it goes to the owner', async () => {
     const u = user();
     renderBuilder();
     await fillGroup(u);
@@ -247,7 +247,7 @@ describe('quote builder: forms and live meter', () => {
     await u.clear(discount);
     await u.type(discount, '5');
     await waitFor(() => expect(screen.getByText('Confirmed by the server.')).toBeInTheDocument());
-    expect(screen.getAllByText('Within the Sales limit').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Within the Reception limit').length).toBeGreaterThan(0);
     expect(screen.getByText('5%')).toBeInTheDocument();
     const card = screen.getByRole('complementary', { name: 'Live price check' });
     // 10 rooms x 2 nights: 24000 at full price; 5% off takes 2000, leaving 22000.
@@ -275,7 +275,7 @@ describe('quote builder: forms and live meter', () => {
     await u.click(screen.getByLabelText('Cost is not known yet'));
     expect(screen.getByLabelText(/Cost to the hotel per unit/)).toBeDisabled();
     await next(u);
-    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    expect(await screen.findByText('Service Manager review required')).toBeInTheDocument();
     expect(screen.getByText(/A required cost is unknown/)).toBeInTheDocument();
   });
 
@@ -404,7 +404,7 @@ describe('quote builder: the live meter names the decision', () => {
     // Another quote holds all 10 standard rooms on 1 and 2 Nov.
     const client = createApiClient({
       baseUrl: 'http://api.test',
-      getToken: () => makeMockToken({ user_id: 'ravi', role: 'Sales' }),
+      getToken: () => makeMockToken({ user_id: 'ravi', role: 'Reception' }),
     });
     await client.createQuote(
       {
@@ -482,7 +482,7 @@ describe('quote builder: help while filling it in', () => {
     expect(screen.getByText(/Asking for 12 gives a partial offer of 10\./)).toBeInTheDocument();
   });
 
-  it('shows the full price, the Sales limit and the price a discount gives', async () => {
+  it('shows the full price, the Reception limit and the price a discount gives', async () => {
     const u = user();
     renderBuilder();
     await fillGroup(u);
@@ -490,7 +490,7 @@ describe('quote builder: help while filling it in', () => {
     await next(u);
     expect(
       await screen.findByText(
-        'Full price ₹2,000 per room-night. Sales can give up to 10% off (down to ₹1,800) alone; a lower price goes to an Owner.',
+        'Full price ₹2,000 per room-night. Reception can give up to 10% off (down to ₹1,800) alone; a lower price goes to a Service Manager.',
       ),
     ).toBeInTheDocument();
     const discount = screen.getByLabelText('Discount off full price (%)');
@@ -601,7 +601,7 @@ describe('quote builder: check-in dates', () => {
   });
 });
 
-describe('quote builder: a discount in rupees, the contact and a note for the Owner', () => {
+describe('quote builder: a discount in rupees, the contact and a note for the Service Manager', () => {
   async function toPricing(u: ReturnType<typeof user>) {
     await u.type(screen.getByLabelText(/Organiser name/), 'Fictional Events Pvt Ltd');
     await u.type(screen.getByLabelText(/Contact person/), 'Priya Rao');
@@ -623,7 +623,9 @@ describe('quote builder: a discount in rupees, the contact and a note for the Ow
     await next(u);
 
     expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Note for the Owner' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Note for the Service Manager' }),
+    ).not.toBeInTheDocument();
     const issue = screen.getByRole('button', { name: 'Issue quote' });
     await waitFor(() => expect(issue).toBeEnabled());
     await u.click(issue);
@@ -649,7 +651,7 @@ describe('quote builder: a discount in rupees, the contact and a note for the Ow
     );
   });
 
-  it('₹201 off needs the Owner, and the note for the Owner is sent with it', async () => {
+  it('₹201 off needs the Service Manager, and the note for the Service Manager is sent with it', async () => {
     const u = user();
     renderBuilder();
     await toPricing(u);
@@ -657,12 +659,12 @@ describe('quote builder: a discount in rupees, the contact and a note for the Ow
     await u.type(discount(), '201');
     await next(u);
 
-    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    expect(await screen.findByText('Service Manager review required')).toBeInTheDocument();
     await u.type(
       screen.getByLabelText(/Why these terms/),
       'Repeat client; they book every quarter.',
     );
-    const send = screen.getByRole('button', { name: 'Send for Owner review' });
+    const send = screen.getByRole('button', { name: 'Send for Service Manager review' });
     await waitFor(() => expect(send).toBeEnabled());
     await u.click(send);
     await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
@@ -702,7 +704,9 @@ describe('quote builder: compare two options and issue the one chosen', () => {
     await u.clear(discount);
     await u.type(discount, '15');
     await next(u);
-    await waitFor(() => expect(column('Option B')('Decision')).toBe('Owner review required'));
+    await waitFor(() =>
+      expect(column('Option B')('Decision')).toBe('Service Manager review required'),
+    );
     await waitFor(() => expect(column('Option A')('Decision')).toBe('Ready to offer'));
   }
 
@@ -715,12 +719,14 @@ describe('quote builder: compare two options and issue the one chosen', () => {
     expect(column('Option A')('Total for the client')).toBe('₹40,000');
     expect(column('Option B')('Total for the client')).toBe('₹34,000');
     expect(column('Option B')('Price')).toBe('₹2,000 full price, 15% off = ₹1,700 per room-night');
-    expect(screen.queryByRole('button', { name: /Issue quote|Send for Owner review/ })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: /Issue quote|Send for Service Manager review/ }),
+    ).toBeNull();
 
     await u.click(screen.getByRole('button', { name: 'Choose Option B' }));
-    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    expect(await screen.findByText('Service Manager review required')).toBeInTheDocument();
     expect(screen.queryByRole('table', { name: 'The options side by side' })).toBeNull();
-    const send = screen.getByRole('button', { name: 'Send for Owner review' });
+    const send = screen.getByRole('button', { name: 'Send for Service Manager review' });
     await waitFor(() => expect(send).toBeEnabled());
     await u.click(send);
     await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
@@ -753,7 +759,9 @@ describe('quote builder: compare two options and issue the one chosen', () => {
 
     await act(() => router.navigate('/quotes/new'));
     await u.click(await screen.findByRole('button', { name: 'Resume draft' }));
-    await waitFor(() => expect(column('Option B')('Decision')).toBe('Owner review required'));
+    await waitFor(() =>
+      expect(column('Option B')('Decision')).toBe('Service Manager review required'),
+    );
     expect(column('Option A')('Decision')).toBe('Ready to offer');
   });
 });

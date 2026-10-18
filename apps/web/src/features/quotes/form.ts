@@ -47,7 +47,7 @@ export interface QuoteForm {
   /** Blank means "use the policy default". */
   guests: string;
   inclusions: InclusionForm[];
-  /** For the Owner when the quote needs review. Sent with the final request only. */
+  /** For the Service Manager when the quote needs review. Sent with the final request only. */
   noteForOwner: string;
 }
 
@@ -189,7 +189,7 @@ export function toRequest(form: QuoteForm): unknown {
     room_type: form.roomType,
     rooms: num(form.rooms),
   };
-  // A fixed rate wins; otherwise Sales prices by a discount off the full price (D-057), in %
+  // A fixed rate wins; otherwise Reception prices by a discount off the full price (D-057), in %
   // or in rupees per room-night.
   if (form.rate.trim() !== '') request.rate_per_room_night_inr = num(form.rate);
   else if (form.discount.trim() !== '') {

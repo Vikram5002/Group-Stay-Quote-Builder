@@ -4,7 +4,7 @@ import { reviewBadge, reviewBanner, reviewState } from './reviewState';
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);
 const approval = {
-  approved_by: { user_id: 'meera', role: 'Owner' as const },
+  approved_by: { user_id: 'meera', role: 'ServiceManager' as const },
   approved_at: '2026-10-20T06:00:00.000Z',
   reason: 'Repeat client',
   terms_hash: HASH_A,
@@ -43,12 +43,15 @@ describe('review state of a saved quote', () => {
 
   it('a rejected quote says so instead of asking for review', () => {
     const q = quote({ status: 'REJECTED' }, ['FLOOR_BREACH']);
-    expect(reviewBanner(q)).toMatchObject({ tone: 'danger', title: 'Rejected by an Owner' });
+    expect(reviewBanner(q)).toMatchObject({
+      tone: 'danger',
+      title: 'Rejected by a Service Manager',
+    });
     expect(reviewBadge(reviewState(q))).toBeNull();
   });
 
   it('an approval for an unknown cost is not called "below the floor"', () => {
     const q = quote({ approval }, ['UNKNOWN_COST']);
-    expect(reviewBanner(q)?.title).toBe('Approved by an Owner');
+    expect(reviewBanner(q)?.title).toBe('Approved by a Service Manager');
   });
 });

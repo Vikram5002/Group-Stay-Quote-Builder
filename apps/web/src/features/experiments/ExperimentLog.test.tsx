@@ -39,7 +39,7 @@ beforeEach(() => {
   }
 });
 
-function renderPage(role: Role = 'Sales') {
+function renderPage(role: Role = 'Reception') {
   return render(
     <Providers initialSession={mockSession(role, 'Ravi')} baseUrl={BASE}>
       <RouterProvider router={createTestRouter(['/experiments'])} />
@@ -168,7 +168,7 @@ describe('experiment log', () => {
   it('attaches a saved quote and its version', async () => {
     const sales = createApiClient({
       baseUrl: BASE,
-      getToken: () => makeMockToken({ user_id: 'asha', role: 'Sales' }),
+      getToken: () => makeMockToken({ user_id: 'asha', role: 'Reception' }),
     });
     const quote = await sales.createQuote(
       {

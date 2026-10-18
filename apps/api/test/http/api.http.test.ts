@@ -18,9 +18,9 @@ import { fixture, serviceHarness } from '../services/harness.js';
 
 process.env['LOG_SILENT'] = '1';
 
-const SALES = 'sales-1:Sales';
-const SALES_2 = 'sales-2:Sales';
-const OWNER = 'owner-1:Owner';
+const SALES = 'sales-1:Reception';
+const SALES_2 = 'sales-2:Reception';
+const OWNER = 'owner-1:ServiceManager';
 const VIEWER = 'viewer-1:Viewer';
 const body = (over: object = {}) => ({ ...fixture.request, ...over });
 
@@ -351,7 +351,7 @@ describe.skipIf(!hasDb)('HTTP API (DynamoDB Local)', () => {
 
     it.each(
       ROUTES.filter((r) => r.roles !== 'public' && HANDLERS[r.operationId]).flatMap((r) =>
-        (['Sales', 'Owner', 'Viewer'] as const)
+        (['Reception', 'ServiceManager', 'Viewer'] as const)
           .filter((role) => !(r.roles as readonly string[]).includes(role))
           .map((role) => [r.operationId, role, r.method, r.path.replace('{id}', ID)] as const),
       ),

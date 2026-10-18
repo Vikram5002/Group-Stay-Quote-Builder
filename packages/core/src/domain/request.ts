@@ -118,5 +118,21 @@ export function validateQuoteRequest(input: unknown, instance?: string): QuoteRe
       }),
     };
   }
+  if (v.send_to_owner === true && prices.length > 0) {
+    return {
+      ok: false,
+      problem: problem('VALIDATION_FAILED', {
+        detail: '1 field failed validation',
+        errors: [
+          {
+            path: 'send_to_owner',
+            code: 'INCONSISTENT',
+            message: 'A quote sent to the Owner has no discount or rate; the Owner sets it',
+          },
+        ],
+        ...(instance === undefined ? {} : { instance }),
+      }),
+    };
+  }
   return { ok: true, value: { ...v, stay: lines[0]?.stay as ResolvedStay, lines } };
 }

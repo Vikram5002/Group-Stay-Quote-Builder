@@ -28,7 +28,7 @@ describe('floorRate (D-056: package floor / total rooms, cost included)', () => 
   });
 });
 
-describe('Sales discount (D-057)', () => {
+describe('Reception discount (D-057)', () => {
   it('discountedRate: whole-percent off the floor rate, rounded up', () => {
     expect(discountedRate(DEFAULT_POLICY, 0)).toBe(2000);
     expect(discountedRate(DEFAULT_POLICY, 5)).toBe(1900);
@@ -44,7 +44,7 @@ describe('Sales discount (D-057)', () => {
 });
 
 describe('floorFor (the floor as contribution for a package)', () => {
-  it('lowest Sales rate x room-nights - variable cost', () => {
+  it('lowest Reception rate x room-nights - variable cost', () => {
     expect(floorFor(DEFAULT_POLICY, 20, 16000)).toBe(20000); // fixture: 20 x 1800 - 16000
     expect(floorFor(DEFAULT_POLICY, 2, 1600)).toBe(2000); // 1 room x 2 nights
     expect(floorFor(DEFAULT_POLICY, 0, 0)).toBe(0);
@@ -67,7 +67,7 @@ describe('floorPasses (BR-06)', () => {
   });
 });
 
-describe('Sales discount in rupees off the full price', () => {
+describe('Reception discount in rupees off the full price', () => {
   it('amountOffRate: rupees off the floor rate, never below 0', () => {
     expect(amountOffRate(DEFAULT_POLICY, 0)).toBe(2000);
     expect(amountOffRate(DEFAULT_POLICY, 200)).toBe(1800);

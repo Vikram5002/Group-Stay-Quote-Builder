@@ -14,10 +14,10 @@ import { sendProblem } from './http.js';
 export type Authenticate = (req: Request) => Actor | null;
 
 /** Highest role wins when a user is in several groups. */
-const ROLE_ORDER: readonly Role[] = ['Owner', 'Sales', 'Viewer'];
+const ROLE_ORDER: readonly Role[] = ['Owner', 'ServiceManager', 'Reception', 'Viewer'];
 const USER_ID = /^[A-Za-z0-9:@._-]{1,128}$/;
 
-/** Cognito puts groups in the token as an array, or as "[Owner Sales]" via the HTTP API. */
+/** Cognito puts groups in the token as an array, or as "[ServiceManager Reception]" via the HTTP API. */
 export function groupsFromClaim(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map(String);
   if (typeof raw !== 'string') return [];
@@ -45,7 +45,7 @@ export function jwtAuthenticate(getEvent: () => unknown): Authenticate {
   };
 }
 
-/** Local development and tests only: `x-dev-user: sales-1:Sales`. */
+/** Local development and tests only: `x-dev-user: sales-1:Reception`. */
 export const devAuthenticate: Authenticate = (req) => {
   if (process.env['AWS_LAMBDA_FUNCTION_NAME']) {
     throw new Error('Dev authentication must never run inside Lambda');

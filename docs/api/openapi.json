@@ -50,7 +50,10 @@
       "post": {
         "operationId": "previewQuote",
         "summary": "Stateless evaluation: no hold, no save.",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager"
+        ],
         "responses": {
           "200": {
             "description": "Evaluation.",
@@ -129,7 +132,10 @@
       "post": {
         "operationId": "createQuote",
         "summary": "Evaluate, acquire holds, save the quote and schedule expiry.",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager"
+        ],
         "responses": {
           "200": {
             "description": "Quote saved as DECLINED (no hold taken).",
@@ -239,7 +245,12 @@
       "get": {
         "operationId": "listQuotes",
         "summary": "List quotes with status and date filters, paged.",
-        "x-roles": ["Sales", "Owner", "Viewer"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner",
+          "Viewer"
+        ],
         "responses": {
           "200": {
             "description": "A page of quotes.",
@@ -367,7 +378,12 @@
       "get": {
         "operationId": "getQuote",
         "summary": "Quote with totals, reasons and countdown.",
-        "x-roles": ["Sales", "Owner", "Viewer"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner",
+          "Viewer"
+        ],
         "responses": {
           "200": {
             "description": "The quote.",
@@ -447,7 +463,11 @@
       "post": {
         "operationId": "confirmQuote",
         "summary": "Confirm if allowed (BR-10).",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Confirmed.",
@@ -557,8 +577,10 @@
     "/v1/quotes/{id}/approve": {
       "post": {
         "operationId": "approveQuote",
-        "summary": "Owner approves a floor breach with a reason; four-eyes enforced (BR-12).",
-        "x-roles": ["Owner"],
+        "summary": "Service Manager approves a floor breach with a reason; four-eyes enforced (BR-12).",
+        "x-roles": [
+          "ServiceManager"
+        ],
         "responses": {
           "200": {
             "description": "Approved; status OFFERED.",
@@ -675,11 +697,146 @@
         }
       }
     },
+    "/v1/quotes/{id}/owner-discount": {
+      "post": {
+        "operationId": "ownerDiscount",
+        "summary": "Owner sets any discount on a quote sent to them and issues it (D-062).",
+        "x-roles": [
+          "Owner"
+        ],
+        "responses": {
+          "200": {
+            "description": "Discount applied; status OFFERED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHENTICATED.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "INVALID_STATE.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "QUOTE_EXPIRED; holds released.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_FAILED.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "THROTTLED.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Repeat-safe key (BR-17). Same key and same body returns the same result.",
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerDiscountRequest"
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/quotes/{id}/reject": {
       "post": {
         "operationId": "rejectQuote",
-        "summary": "Owner rejects and releases holds.",
-        "x-roles": ["Owner"],
+        "summary": "Service Manager rejects and releases holds.",
+        "x-roles": [
+          "ServiceManager"
+        ],
         "responses": {
           "200": {
             "description": "Rejected.",
@@ -800,7 +957,11 @@
       "post": {
         "operationId": "extendQuote",
         "summary": "Extend validity within policy; re-checks holds.",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Extended.",
@@ -931,7 +1092,11 @@
       "post": {
         "operationId": "amendQuote",
         "summary": "Partial cancellation: release rooms first, then re-check the floor (BR-16).",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Amended.",
@@ -1052,7 +1217,11 @@
       "post": {
         "operationId": "cancelQuote",
         "summary": "Full cancellation and release.",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Cancelled.",
@@ -1173,7 +1342,11 @@
       "post": {
         "operationId": "emailQuote",
         "summary": "Email the quote PDF to the organiser (D-059).",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Sent; the quote lists the email.",
@@ -1294,7 +1467,11 @@
       "post": {
         "operationId": "recordPayment",
         "summary": "Record that the organiser has paid a confirmed booking.",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Recorded.",
@@ -1415,7 +1592,11 @@
       "post": {
         "operationId": "emailInvoice",
         "summary": "Email the invoice PDF; only after payment is recorded.",
-        "x-roles": ["Sales", "Owner"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Sent; the quote lists the email.",
@@ -1536,7 +1717,12 @@
       "get": {
         "operationId": "getQuoteAudit",
         "summary": "Immutable event stream of a quote.",
-        "x-roles": ["Sales", "Owner", "Viewer"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner",
+          "Viewer"
+        ],
         "responses": {
           "200": {
             "description": "Events, oldest first.",
@@ -1616,7 +1802,12 @@
       "get": {
         "operationId": "getAvailability",
         "summary": "Availability by room type and date range.",
-        "x-roles": ["Sales", "Owner", "Viewer"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner",
+          "Viewer"
+        ],
         "responses": {
           "200": {
             "description": "Inventory nights.",
@@ -1716,7 +1907,10 @@
       "post": {
         "operationId": "createImportUpload",
         "summary": "Get a presigned S3 URL for an inventory or rates file.",
-        "x-roles": ["Owner"],
+        "x-roles": [
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Upload URL.",
@@ -1786,7 +1980,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["inventory", "rates"]
+              "enum": [
+                "inventory",
+                "rates"
+              ]
             }
           },
           {
@@ -1817,7 +2014,10 @@
       "post": {
         "operationId": "validateImport",
         "summary": "Dry run: row-level report, nothing written.",
-        "x-roles": ["Owner"],
+        "x-roles": [
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Validation report.",
@@ -1887,7 +2087,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["inventory", "rates"]
+              "enum": [
+                "inventory",
+                "rates"
+              ]
             }
           },
           {
@@ -1917,7 +2120,10 @@
       "post": {
         "operationId": "commitImport",
         "summary": "Commit a validated import. Identical content is a no-op.",
-        "x-roles": ["Owner"],
+        "x-roles": [
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Commit report.",
@@ -1997,7 +2203,10 @@
             "required": true,
             "schema": {
               "type": "string",
-              "enum": ["inventory", "rates"]
+              "enum": [
+                "inventory",
+                "rates"
+              ]
             }
           },
           {
@@ -2027,7 +2236,12 @@
       "get": {
         "operationId": "exportQuotes",
         "summary": "Quotes as JSON or CSV download link.",
-        "x-roles": ["Sales", "Owner", "Viewer"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner",
+          "Viewer"
+        ],
         "responses": {
           "200": {
             "description": "Download link.",
@@ -2098,7 +2312,10 @@
             "description": "csv or json.",
             "schema": {
               "type": "string",
-              "enum": ["csv", "json"]
+              "enum": [
+                "csv",
+                "json"
+              ]
             }
           }
         ]
@@ -2108,7 +2325,12 @@
       "get": {
         "operationId": "exportEvidence",
         "summary": "Evidence bundle (baseline, scope, results, ledger) download link.",
-        "x-roles": ["Sales", "Owner", "Viewer"],
+        "x-roles": [
+          "Reception",
+          "ServiceManager",
+          "Owner",
+          "Viewer"
+        ],
         "responses": {
           "200": {
             "description": "Download link.",
@@ -2167,7 +2389,10 @@
       "get": {
         "operationId": "getPolicy",
         "summary": "Read the property policy.",
-        "x-roles": ["Owner"],
+        "x-roles": [
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Policy.",
@@ -2224,7 +2449,10 @@
       "put": {
         "operationId": "updatePolicy",
         "summary": "Update the policy with an optimistic version check.",
-        "x-roles": ["Owner"],
+        "x-roles": [
+          "ServiceManager",
+          "Owner"
+        ],
         "responses": {
           "200": {
             "description": "Updated policy.",
@@ -2330,10 +2558,18 @@
           },
           "role": {
             "type": "string",
-            "enum": ["Sales", "Owner", "Viewer"]
+            "enum": [
+              "Reception",
+              "ServiceManager",
+              "Owner",
+              "Viewer"
+            ]
           }
         },
-        "required": ["user_id", "role"],
+        "required": [
+          "user_id",
+          "role"
+        ],
         "additionalProperties": false
       },
       "AmendmentRequest": {
@@ -2350,7 +2586,9 @@
             "maxLength": 500
           }
         },
-        "required": ["rooms"],
+        "required": [
+          "rooms"
+        ],
         "additionalProperties": false
       },
       "Approval": {
@@ -2374,7 +2612,12 @@
             "description": "SHA-256 hex of the canonical commercial terms."
           }
         },
-        "required": ["approved_by", "approved_at", "reason", "terms_hash"],
+        "required": [
+          "approved_by",
+          "approved_at",
+          "reason",
+          "terms_hash"
+        ],
         "additionalProperties": false
       },
       "ApproveRequest": {
@@ -2386,7 +2629,9 @@
             "maxLength": 500
           }
         },
-        "required": ["reason"],
+        "required": [
+          "reason"
+        ],
         "additionalProperties": false
       },
       "AvailabilityResponse": {
@@ -2416,7 +2661,12 @@
             }
           }
         },
-        "required": ["room_type", "from", "to", "nights"],
+        "required": [
+          "room_type",
+          "from",
+          "to",
+          "nights"
+        ],
         "additionalProperties": false
       },
       "CancelRequest": {
@@ -2482,12 +2732,22 @@
             "description": "Whole Indian rupees. Integer; can be negative for headroom."
           }
         },
-        "required": ["type", "summary", "contribution_inr", "floor_headroom_inr"],
+        "required": [
+          "type",
+          "summary",
+          "contribution_inr",
+          "floor_headroom_inr"
+        ],
         "additionalProperties": false
       },
       "Decision": {
         "type": "string",
-        "enum": ["OFFER", "PARTIAL_OFFER", "REVIEW", "DECLINE"]
+        "enum": [
+          "OFFER",
+          "PARTIAL_OFFER",
+          "REVIEW",
+          "DECLINE"
+        ]
       },
       "EmailRequest": {
         "type": "object",
@@ -2612,7 +2872,12 @@
                   "maximum": 9007199254740991
                 }
               },
-              "required": ["check_in", "check_out", "nights", "rooms"],
+              "required": [
+                "check_in",
+                "check_out",
+                "nights",
+                "rooms"
+              ],
               "additionalProperties": false
             }
           }
@@ -2642,7 +2907,11 @@
           },
           "format": {
             "type": "string",
-            "enum": ["csv", "json", "zip"]
+            "enum": [
+              "csv",
+              "json",
+              "zip"
+            ]
           },
           "expires_at": {
             "type": "string",
@@ -2651,7 +2920,11 @@
             "description": "ISO 8601 instant with offset. Stored in UTC."
           }
         },
-        "required": ["download_url", "format", "expires_at"],
+        "required": [
+          "download_url",
+          "format",
+          "expires_at"
+        ],
         "additionalProperties": false
       },
       "ExtendRequest": {
@@ -2663,7 +2936,9 @@
             "maximum": 720
           }
         },
-        "required": ["hours"],
+        "required": [
+          "hours"
+        ],
         "additionalProperties": false
       },
       "HealthResponse": {
@@ -2683,7 +2958,12 @@
             "type": "string"
           }
         },
-        "required": ["status", "service", "version", "contract_version"],
+        "required": [
+          "status",
+          "service",
+          "version",
+          "contract_version"
+        ],
         "additionalProperties": false
       },
       "ImportReport": {
@@ -2696,7 +2976,10 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["inventory", "rates"]
+            "enum": [
+              "inventory",
+              "rates"
+            ]
           },
           "content_sha256": {
             "type": "string",
@@ -2704,7 +2987,12 @@
           },
           "status": {
             "type": "string",
-            "enum": ["VALIDATED", "COMMITTED", "UNCHANGED", "REJECTED"]
+            "enum": [
+              "VALIDATED",
+              "COMMITTED",
+              "UNCHANGED",
+              "REJECTED"
+            ]
           },
           "rows_total": {
             "type": "integer",
@@ -2762,13 +3050,22 @@
           },
           "severity": {
             "type": "string",
-            "enum": ["error", "warning"]
+            "enum": [
+              "error",
+              "warning"
+            ]
           },
           "value": {
             "type": "string"
           }
         },
-        "required": ["row", "field", "code", "message", "severity"],
+        "required": [
+          "row",
+          "field",
+          "code",
+          "message",
+          "severity"
+        ],
         "additionalProperties": false
       },
       "ImportUploadRequest": {
@@ -2776,7 +3073,10 @@
         "properties": {
           "format": {
             "type": "string",
-            "enum": ["csv", "json"]
+            "enum": [
+              "csv",
+              "json"
+            ]
           },
           "file_name": {
             "type": "string",
@@ -2784,7 +3084,10 @@
             "maxLength": 200
           }
         },
-        "required": ["format", "file_name"],
+        "required": [
+          "format",
+          "file_name"
+        ],
         "additionalProperties": false
       },
       "ImportUploadResponse": {
@@ -2806,7 +3109,11 @@
             "description": "ISO 8601 instant with offset. Stored in UTC."
           }
         },
-        "required": ["import_id", "upload_url", "expires_at"],
+        "required": [
+          "import_id",
+          "upload_url",
+          "expires_at"
+        ],
         "additionalProperties": false
       },
       "InclusionInput": {
@@ -2819,7 +3126,10 @@
           },
           "basis": {
             "type": "string",
-            "enum": ["per_guest_night", "per_room_night"]
+            "enum": [
+              "per_guest_night",
+              "per_room_night"
+            ]
           },
           "unit_cost_inr": {
             "anyOf": [
@@ -2844,7 +3154,12 @@
             "description": "Whole Indian rupees per unit. Integer, 0 or more."
           }
         },
-        "required": ["name", "basis", "unit_cost_inr", "included_in_rate"],
+        "required": [
+          "name",
+          "basis",
+          "unit_cost_inr",
+          "included_in_rate"
+        ],
         "additionalProperties": false
       },
       "InventoryImportRow": {
@@ -2875,7 +3190,11 @@
             ]
           }
         },
-        "required": ["date", "room_type", "rooms"],
+        "required": [
+          "date",
+          "room_type",
+          "rooms"
+        ],
         "additionalProperties": false
       },
       "InventoryNight": {
@@ -2970,7 +3289,28 @@
             "pattern": "^\\+?[0-9][0-9 ()-]{5,19}$"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "OwnerDiscountRequest": {
+        "type": "object",
+        "properties": {
+          "discount_pct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "discount_pct"
+        ],
         "additionalProperties": false
       },
       "Payment": {
@@ -2997,7 +3337,11 @@
             ]
           }
         },
-        "required": ["received_at", "recorded_by", "reference"],
+        "required": [
+          "received_at",
+          "recorded_by",
+          "reference"
+        ],
         "additionalProperties": false
       },
       "Policy": {
@@ -3271,7 +3615,12 @@
             }
           }
         },
-        "required": ["type", "title", "status", "code"],
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code"
+        ],
         "additionalProperties": false
       },
       "Quote": {
@@ -3353,6 +3702,9 @@
           "review_required": {
             "type": "boolean"
           },
+          "awaiting_owner": {
+            "type": "boolean"
+          },
           "payment": {
             "anyOf": [
               {
@@ -3416,7 +3768,9 @@
               "CANCELLED",
               "EXPIRED",
               "PAYMENT_RECORDED",
-              "EMAILED"
+              "EMAILED",
+              "SENT_TO_OWNER",
+              "OWNER_DISCOUNTED"
             ]
           },
           "actor": {
@@ -3457,10 +3811,22 @@
             ]
           },
           "reason": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["event_id", "quote_id", "type", "actor", "at", "before", "after", "reason"],
+        "required": [
+          "event_id",
+          "quote_id",
+          "type",
+          "actor",
+          "at",
+          "before",
+          "after",
+          "reason"
+        ],
         "additionalProperties": false
       },
       "QuoteEventList": {
@@ -3473,7 +3839,9 @@
             }
           }
         },
-        "required": ["items"],
+        "required": [
+          "items"
+        ],
         "additionalProperties": false
       },
       "QuoteList": {
@@ -3486,10 +3854,16 @@
             }
           },
           "next_cursor": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
-        "required": ["items", "next_cursor"],
+        "required": [
+          "items",
+          "next_cursor"
+        ],
         "additionalProperties": false
       },
       "QuotePreviewResponse": {
@@ -3517,7 +3891,11 @@
             "description": "SHA-256 hex of the canonical commercial terms."
           }
         },
-        "required": ["evaluation", "valid_until", "terms_hash"],
+        "required": [
+          "evaluation",
+          "valid_until",
+          "terms_hash"
+        ],
         "additionalProperties": false
       },
       "QuoteRequest": {
@@ -3588,12 +3966,23 @@
                   "maximum": 500
                 }
               },
-              "required": ["stay", "rooms"],
+              "required": [
+                "stay",
+                "rooms"
+              ],
               "additionalProperties": false
             }
+          },
+          "send_to_owner": {
+            "type": "boolean"
           }
         },
-        "required": ["organiser", "stay", "room_type", "rooms"],
+        "required": [
+          "organiser",
+          "stay",
+          "room_type",
+          "rooms"
+        ],
         "additionalProperties": false
       },
       "QuoteStatus": {
@@ -3960,7 +4349,9 @@
             "maxLength": 500
           }
         },
-        "required": ["reason"],
+        "required": [
+          "reason"
+        ],
         "additionalProperties": false
       },
       "SentEmail": {
@@ -3968,7 +4359,10 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": ["quote", "invoice"]
+            "enum": [
+              "quote",
+              "invoice"
+            ]
           },
           "to": {
             "type": "string",
@@ -3989,7 +4383,13 @@
             "maxLength": 200
           }
         },
-        "required": ["kind", "to", "sent_at", "sent_by", "message_id"],
+        "required": [
+          "kind",
+          "to",
+          "sent_at",
+          "sent_by",
+          "message_id"
+        ],
         "additionalProperties": false
       },
       "Stay": {
@@ -4013,7 +4413,9 @@
             "description": "Calendar date YYYY-MM-DD in the property time zone."
           }
         },
-        "required": ["check_in"],
+        "required": [
+          "check_in"
+        ],
         "additionalProperties": false
       },
       "ValidationIssue": {
@@ -4029,7 +4431,11 @@
             "type": "string"
           }
         },
-        "required": ["path", "code", "message"],
+        "required": [
+          "path",
+          "code",
+          "message"
+        ],
         "additionalProperties": false
       },
       "ValidationIssueCode": {

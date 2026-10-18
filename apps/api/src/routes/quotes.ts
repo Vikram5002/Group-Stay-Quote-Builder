@@ -5,6 +5,7 @@ import {
   EmailRequest,
   ExtendRequest,
   ListQuotesQuery,
+  OwnerDiscountRequest,
   RecordPaymentRequest,
   RejectRequest,
   Ulid,
@@ -22,7 +23,7 @@ import { emailDocument, recordPayment } from '../services/documents.js';
 import { createQuote } from '../services/create-quote.js';
 import { ServiceError } from '../services/errors.js';
 import { previewQuote } from '../services/preview-quote.js';
-import { approveQuote, rejectQuote } from '../services/review.js';
+import { approveQuote, ownerDiscount, rejectQuote } from '../services/review.js';
 import type { Handlers } from './operations.js';
 
 /** Quote operations (blueprint section 9). Each handler validates, calls one service, returns. */
@@ -39,6 +40,7 @@ function body<
     | typeof CancelRequest
     | typeof EmailRequest
     | typeof ExtendRequest
+    | typeof OwnerDiscountRequest
     | typeof RecordPaymentRequest,
 >(req: Request, schema: S) {
   const b = parseWith(schema, req.body ?? {});
@@ -109,6 +111,14 @@ export const quoteHandlers: Handlers = {
     status: 200,
     body: await approveQuote(deps, quoteId(req), actor, reasonBody(req, ApproveRequest)),
   }),
+
+  ownerDiscount: async ({ req, deps, actor }) => {
+    const b = body(req, OwnerDiscountRequest);
+    return {
+      status: 200,
+      body: await ownerDiscount(deps, quoteId(req), actor, b.discount_pct, b.reason ?? null),
+    };
+  },
 
   rejectQuote: async ({ req, deps, actor }) => ({
     status: 200,

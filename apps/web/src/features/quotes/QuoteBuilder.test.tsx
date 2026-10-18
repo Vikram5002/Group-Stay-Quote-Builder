@@ -493,6 +493,91 @@ describe('quote builder: a discount in rupees, the contact and a note for the Ow
   });
 });
 
+describe('quote builder: compare two options and issue the one chosen', () => {
+  const compareTable = () => screen.getByRole('table', { name: 'The options side by side' });
+  const column = (label: string) => {
+    const cells = within(compareTable()).getAllByRole('row');
+    const index = within(cells[0] as HTMLElement)
+      .getAllByRole('columnheader')
+      .findIndex((h) => h.textContent === label);
+    return (row: string) => {
+      const tr = cells.find((r) => within(r).queryByRole('rowheader', { name: row }));
+      const td = within(tr as HTMLElement)
+        .getAllByRole('cell')
+        [index]?.cloneNode(true) as HTMLElement;
+      // Badge icons are decoration, hidden from screen readers; read the cell as they do.
+      td.querySelectorAll('[aria-hidden="true"]').forEach((el) => el.remove());
+      return td.textContent ?? '';
+    };
+  };
+
+  /** Option A at full price, then Option B with 15% off, both compared on the last step. */
+  async function compareFullPriceWith15Off(u: ReturnType<typeof user>) {
+    await toReview(u, {});
+    expect(await screen.findByText('Ready to offer')).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Compare with another option' }));
+    expect(await screen.findByRole('heading', { name: 'Pricing' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Option B' })).toBeChecked();
+    const discount = screen.getByLabelText('Discount off full price (%)');
+    await u.clear(discount);
+    await u.type(discount, '15');
+    await next(u);
+    await waitFor(() => expect(column('Option B')('Decision')).toBe('Owner review required'));
+    await waitFor(() => expect(column('Option A')('Decision')).toBe('Ready to offer'));
+  }
+
+  it('shows both side by side, then issues only the option chosen', async () => {
+    const u = user();
+    const { container } = renderBuilder();
+    await compareFullPriceWith15Off(u);
+    expect(await axe(container)).toHaveNoViolations();
+
+    expect(column('Option A')('Total for the client')).toBe('₹40,000');
+    expect(column('Option B')('Total for the client')).toBe('₹34,000');
+    expect(column('Option B')('Price')).toBe('₹2,000 full price, 15% off = ₹1,700 per room-night');
+    expect(screen.queryByRole('button', { name: /Issue quote|Send for Owner review/ })).toBeNull();
+
+    await u.click(screen.getByRole('button', { name: 'Choose Option B' }));
+    expect(await screen.findByText('Owner review required')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'The options side by side' })).toBeNull();
+    const send = screen.getByRole('button', { name: 'Send for Owner review' });
+    await waitFor(() => expect(send).toBeEnabled());
+    await u.click(send);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    // Only the chosen option was issued, so no rooms were held twice.
+    expect(store.quotes.size).toBe(1);
+    expect([...store.quotes.values()][0]?.request.discount_pct).toBe(15);
+  });
+
+  it('choosing Option A issues it at full price', async () => {
+    const u = user();
+    renderBuilder();
+    await compareFullPriceWith15Off(u);
+    await u.click(screen.getByRole('button', { name: 'Choose Option A' }));
+    const issue = await screen.findByRole('button', { name: 'Issue quote' });
+    await waitFor(() => expect(issue).toBeEnabled());
+    await u.click(issue);
+    await screen.findByRole('heading', { level: 1, name: 'Fictional Events Pvt Ltd' });
+    expect(store.quotes.size).toBe(1);
+    expect([...store.quotes.values()][0]?.request.discount_pct).toBe(0);
+  });
+
+  it('keeps both options in the draft when the person leaves', async () => {
+    const u = user();
+    const { router } = renderBuilder();
+    await compareFullPriceWith15Off(u);
+    await act(() => router.navigate('/'));
+    const dialog = await screen.findByRole('dialog', { name: 'Leave this quote?' });
+    await u.click(within(dialog).getByRole('button', { name: 'Leave' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+
+    await act(() => router.navigate('/quotes/new'));
+    await u.click(await screen.findByRole('button', { name: 'Resume draft' }));
+    await waitFor(() => expect(column('Option B')('Decision')).toBe('Owner review required'));
+    expect(column('Option A')('Decision')).toBe('Ready to offer');
+  });
+});
+
 describe('quote builder: the URL, drafts and leaving', () => {
   const stepHeading = (name: string) => screen.findByRole('heading', { name });
 

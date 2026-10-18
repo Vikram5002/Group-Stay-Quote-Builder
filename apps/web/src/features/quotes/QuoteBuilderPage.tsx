@@ -9,16 +9,19 @@ import {
   Button,
   Card,
   ProblemAlert,
+  SegmentedControl,
   Spinner,
   Stepper,
   TextAreaField,
+  useToast,
 } from '../../components';
 import { ApiError, newIdempotencyKey } from '../../lib/api';
 import { usePolicy } from '../policy/queries';
 import { AVAILABILITY_KEY, QUOTES_KEY } from './queries';
 import { initialForm, issuesByPath, parseForm, stepErrors, STEPS } from './form';
 import type { QuoteForm } from './form';
-import { clearDraft, isBlank, loadDraft, saveDraft } from './draft';
+import { CompareOptions } from './CompareOptions';
+import { clearDraft, copyOption, isBlank, loadDraft, saveDraft } from './draft';
 import type { QuoteDraft } from './draft';
 import { WIZARD_STATE } from './QuoteBuilderRoute';
 import {
@@ -32,6 +35,8 @@ import { GroupStep, PricingStep, RoomsStep } from './steps';
 import { liveMeterState, usePreview } from './usePreview';
 
 const LAST = STEPS.length - 1;
+const PRICING_STEP = 2;
+const OPTION_LABELS = ['Option A', 'Option B'] as const;
 
 /** The step in the URL (?step=2 is the second step), as a zero-based index. */
 function stepFromUrl(search: string): number {
@@ -44,7 +49,11 @@ export function QuoteBuilderPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
-  const [form, setForm] = useState<QuoteForm>(initialForm);
+  // One option, or two being compared before one is chosen and issued.
+  const [options, setOptions] = useState<QuoteForm[]>([initialForm]);
+  const [active, setActive] = useState(0);
+  const form = options[active] ?? initialForm;
+  const comparing = options.length > 1;
   // Unfinished input from an earlier visit in this tab, offered before anything else.
   const [offer, setOffer] = useState<QuoteDraft | null>(() => loadDraft());
   const done = useRef(false);
@@ -52,8 +61,10 @@ export function QuoteBuilderPage() {
   // Fields the person has changed or left; their errors show at once, the rest after Next.
   const [touched, setTouched] = useState<ReadonlySet<string>>(() => new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const notify = useToast();
 
-  const patch = (changes: Partial<QuoteForm>) => setForm((f) => ({ ...f, ...changes }));
+  const patch = (changes: Partial<QuoteForm>) =>
+    setOptions((list) => list.map((f, i) => (i === active ? { ...f, ...changes } : f)));
 
   // Only an Owner can read the policy; otherwise the documented default zone (IST, which every
   // screen displays) is used here, and the server checks the date with the real policy.
@@ -66,6 +77,17 @@ export function QuoteBuilderPage() {
   const request = parsed.ok ? parsed.request : null;
 
   const { preview, basis, current, stale, error: previewError, refetch } = usePreview(request);
+
+  // The other option, when two are compared, is priced too, so both can be shown side by side.
+  const otherIndex = comparing ? 1 - active : -1;
+  const otherForm = options[otherIndex] ?? null;
+  // Like the main form: re-parsed when the option or the property's day changes.
+  const otherParsed = useMemo(
+    () => (otherForm ? parseForm(otherForm, { nowMs, timeZone }) : null),
+    [otherForm, today, timeZone],
+  );
+  const otherRequest = otherParsed?.ok ? otherParsed.request : null;
+  const other = usePreview(otherRequest);
   const live = liveMeterState(request, {
     basis,
     evaluation: preview?.evaluation,
@@ -155,9 +177,28 @@ export function QuoteBuilderPage() {
   // Keep the input as a draft for this tab while it is unfinished.
   useEffect(() => {
     if (offer || done.current) return;
-    if (isBlank(form)) clearDraft();
-    else saveDraft({ form, step });
-  }, [form, step, offer]);
+    if (options.every(isBlank)) clearDraft();
+    else saveDraft({ form, step, ...(comparing ? { options, active } : {}) });
+  }, [form, step, offer, options, active, comparing]);
+
+  /** Offer the group a second version: a copy of this one, opened at its pricing. */
+  function startComparing() {
+    setOptions([form, copyOption(form)]);
+    setActive(1);
+    goTo(PRICING_STEP);
+  }
+  /** Keep one option and continue to issue it; the other is discarded, nothing was held. */
+  function choose(index: number) {
+    const chosen = options[index];
+    if (!chosen) return;
+    setOptions([chosen]);
+    setActive(0);
+    notify(`${OPTION_LABELS[index]} chosen. Check it and issue it.`, 'info');
+  }
+  function edit(index: number) {
+    setActive(index);
+    goTo(PRICING_STEP);
+  }
 
   function next() {
     if (stepErrors(step, issues).length > 0) {
@@ -197,7 +238,8 @@ export function QuoteBuilderPage() {
             <div className="mt-4 flex flex-wrap gap-3">
               <Button
                 onClick={() => {
-                  setForm(offer.form);
+                  setOptions(offer.options ?? [offer.form]);
+                  setActive(offer.active ?? 0);
                   setOffer(null);
                   goTo(offer.step);
                 }}
@@ -222,7 +264,7 @@ export function QuoteBuilderPage() {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <LeaveGuard when={!isBlank(form)} title="Leave this quote?">
+      <LeaveGuard when={!options.every(isBlank)} title="Leave this quote?">
         What you entered is kept as a draft in this tab. Choose New quote to resume it or start
         over.
       </LeaveGuard>
@@ -235,6 +277,19 @@ export function QuoteBuilderPage() {
       <div className="mt-4">
         <Stepper steps={STEPS} current={step} />
       </div>
+      {comparing && (
+        <div className="mt-4 flex flex-wrap items-end gap-4 rounded-card border border-border bg-surface p-4">
+          <SegmentedControl
+            legend="You are editing"
+            value={String(active)}
+            options={OPTION_LABELS.map((label, i) => ({ value: String(i), label }))}
+            onChange={(value) => setActive(Number(value))}
+          />
+          <p className="text-sm text-ink-muted">
+            Change either option, then compare them on the last step.
+          </p>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_20rem]">
         <form
@@ -260,7 +315,24 @@ export function QuoteBuilderPage() {
           {step === 1 && <RoomsStep form={form} patch={patch} errors={visibleErrors} />}
           {step === 2 && <PricingStep form={form} patch={patch} errors={visibleErrors} />}
 
-          {step === LAST && (
+          {step === LAST && comparing && (
+            <CompareOptions
+              options={OPTION_LABELS.map((label, i) => {
+                const mine = i === active;
+                return {
+                  label,
+                  request: mine ? request : otherRequest,
+                  evaluation: mine ? preview?.evaluation : other.preview?.evaluation,
+                  validUntil: mine ? preview?.valid_until : other.preview?.valid_until,
+                  current: mine ? current : other.current,
+                };
+              })}
+              onChoose={choose}
+              onEdit={edit}
+            />
+          )}
+
+          {step === LAST && !comparing && (
             <>
               {previewError instanceof ApiError && (
                 <Alert
@@ -301,6 +373,16 @@ export function QuoteBuilderPage() {
                   <Card title="Terms">
                     <ValidUntil instant={preview?.valid_until ?? null} />
                   </Card>
+                  <Card title="Another option?">
+                    <p className="text-sm">
+                      Offer the group a second version, for example fewer rooms or a different
+                      discount, and compare the two before you issue one. Nothing is held until you
+                      issue.
+                    </p>
+                    <Button variant="secondary" className="mt-3" onClick={startComparing}>
+                      Compare with another option
+                    </Button>
+                  </Card>
                   {needsOwner && (
                     <Card title="Note for the Owner">
                       <TextAreaField
@@ -335,6 +417,10 @@ export function QuoteBuilderPage() {
             </Button>
             {step < LAST ? (
               <Button type="submit">Next</Button>
+            ) : comparing ? (
+              <p className="self-center text-sm text-ink-muted">
+                Choose an option above to issue it.
+              </p>
             ) : (
               <Button loading={issue.isPending} disabled={!canIssue} onClick={() => issue.mutate()}>
                 {evaluation?.decision === 'REVIEW' ? 'Send for Owner review' : 'Issue quote'}
@@ -343,7 +429,10 @@ export function QuoteBuilderPage() {
           </div>
         </form>
 
-        <aside aria-label="Live price check" className="lg:sticky lg:top-4 lg:self-start">
+        <aside
+          aria-label={comparing ? `Live price check, ${OPTION_LABELS[active]}` : 'Live price check'}
+          className="lg:sticky lg:top-4 lg:self-start"
+        >
           <LiveMeter state={live} />
         </aside>
       </div>

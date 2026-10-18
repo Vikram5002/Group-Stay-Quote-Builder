@@ -119,6 +119,53 @@ export function describeChanges(before: Policy, after: Policy): string[] {
   return out;
 }
 
+/**
+ * What saving the form would change, in words, with the prices that follow from it. Empty while
+ * the form is invalid or unchanged.
+ */
+export function pendingChanges(form: PolicyForm, policy: Policy): string[] {
+  const parsed = parsePolicy(form, policy.version);
+  if (!parsed.ok) return [];
+  const { version: _version, ...update } = parsed.value;
+  const next: Policy = { ...policy, ...update };
+  const out = describeChanges(policy, next);
+  const before = formFromPolicy(policy);
+  const price = (label: string, a: number | null, b: number | null) => {
+    if (a !== null && b !== null && a !== b) {
+      out.push(`${label}: ₹${a.toLocaleString('en-IN')} to ₹${b.toLocaleString('en-IN')}`);
+    }
+  };
+  price('Full price per room-night', floorRatePreview(before), floorRatePreview(form));
+  price('Lowest price Sales can give alone', lowestRatePreview(before), lowestRatePreview(form));
+  return out;
+}
+
+/** "72 hours" also as days, so long windows are easy to read: "3 days". */
+export function hoursAsDays(value: string): string | null {
+  const hours = Number(value);
+  if (value.trim() === '' || !Number.isInteger(hours) || hours < 24) return null;
+  const days = Math.floor(hours / 24);
+  const rest = hours % 24;
+  return `${days} ${days === 1 ? 'day' : 'days'}${rest ? ` ${rest} ${rest === 1 ? 'hour' : 'hours'}` : ''}`;
+}
+
+/** The time now in a zone, to check it is the right one; null when the zone is not known. */
+export function timeIn(zone: string, now: Date = new Date()): string | null {
+  try {
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: zone.trim(),
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(now);
+  } catch {
+    return null;
+  }
+}
+
 /** Floor rate the form implies (package floor / total rooms, rounded up), or null if invalid. */
 export function floorRatePreview(form: PolicyForm): number | null {
   const floor = num(form.contributionFloor);

@@ -10,11 +10,30 @@ import {
   describeChanges,
   floorRatePreview,
   formFromPolicy,
+  hoursAsDays,
   lowestRatePreview,
   parsePolicy,
+  pendingChanges,
+  timeIn,
 } from './policyForm';
 import type { PolicyForm } from './policyForm';
 import { POLICY_KEY } from './queries';
+
+/** Common zones offered as suggestions; any IANA name can still be typed. */
+const ZONES = [
+  'Asia/Kolkata',
+  'Asia/Dubai',
+  'Asia/Singapore',
+  'Asia/Kathmandu',
+  'Asia/Colombo',
+  'Europe/London',
+  'UTC',
+];
+
+const withDays = (hint: string, value: string) => {
+  const days = hoursAsDays(value);
+  return days ? `${hint} Now ${days}.` : hint;
+};
 
 interface SavedChange {
   version: number;
@@ -134,11 +153,6 @@ export function PolicyPage() {
         checked against the version you started from, so two people cannot overwrite each other.
       </p>
 
-      {notice && (
-        <div className="mt-4">
-          <Alert tone="success" title={notice} />
-        </div>
-      )}
       {conflict && (
         <div className="mt-4">
           <Alert
@@ -218,7 +232,10 @@ export function PolicyPage() {
               min={1}
               value={form.validityHours}
               onChange={(e) => set({ validityHours: e.target.value })}
-              hint="How long rooms stay held after a quote is issued."
+              hint={withDays(
+                'How long rooms stay held after a quote is issued.',
+                form.validityHours,
+              )}
               {...err('validity_hours')}
             />
             <TextField
@@ -228,7 +245,7 @@ export function PolicyPage() {
               min={0}
               value={form.stayCutoffHours}
               onChange={(e) => set({ stayCutoffHours: e.target.value })}
-              hint="A quote never outlasts this cutoff."
+              hint={withDays('A quote never outlasts this cutoff.', form.stayCutoffHours)}
               {...err('stay_cutoff_hours')}
             />
             <TextField
@@ -261,17 +278,41 @@ export function PolicyPage() {
               hint="Leave blank if unknown. It is never assumed to be 1."
               {...err('guests_per_room_units')}
             />
-            <TextField
-              label="Time zone"
-              value={form.timezone}
-              onChange={(e) => set({ timezone: e.target.value })}
-              hint="IANA name, for example Asia/Kolkata."
-              {...err('timezone')}
-            />
+            <div>
+              <TextField
+                label="Time zone"
+                value={form.timezone}
+                list="policy-zones"
+                autoComplete="off"
+                onChange={(e) => set({ timezone: e.target.value })}
+                hint={
+                  timeIn(form.timezone)
+                    ? `Dates and "today" use this zone. It is now ${timeIn(form.timezone)} there.`
+                    : 'A time zone name such as Asia/Kolkata.'
+                }
+                {...err('timezone')}
+              />
+              <datalist id="policy-zones">
+                {ZONES.map((z) => (
+                  <option key={z} value={z} />
+                ))}
+              </datalist>
+            </div>
           </div>
         </Card>
 
-        <div className="flex flex-wrap gap-3">
+        {dirty && pendingChanges(form, policy).length > 0 && (
+          <Card title="Before you save">
+            <p className="text-sm">Saving applies to every quote priced from now on:</p>
+            <ul className="mt-2 list-disc pl-5 text-sm">
+              {pendingChanges(form, policy).map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </Card>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" loading={save.isPending} disabled={!dirty}>
             Save policy
           </Button>
@@ -286,6 +327,7 @@ export function PolicyPage() {
             Discard changes
           </Button>
         </div>
+        {notice && <Alert tone="success" title={notice} />}
       </form>
 
       <section aria-labelledby="changes" className="mt-8">
@@ -294,8 +336,7 @@ export function PolicyPage() {
         </h2>
         {saved.length === 0 ? (
           <p className="mt-2 text-sm text-ink-muted">
-            None yet. The API does not keep a policy history yet, so this list lasts only until you
-            leave the page.
+            None yet. Changes you save are listed here until you leave this page.
           </p>
         ) : (
           <ol className="mt-3 flex flex-col gap-3">
